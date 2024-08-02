@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 func main() {
@@ -112,10 +114,50 @@ func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func homeView(m model) string {
-	s := fmt.Sprintf(
-		"Terminal height: %d | Terminal width: %d",
-		m.terminalHeight,
-		m.terminalWidth,
-	)
+
+	// Dark red to orange.
+	gradientColors := []string{"#8B0000", "#A30000", "#BB0000", "#D30000", "#EB0000", "#FF3300", "#FF6600"}
+
+	title1 := `
+ ██████╗   █████╗   ███████╗     ██████╗  ███████╗ ██╗   ██╗
+ ██╔════╝  ██╔══██╗ ██╔════╝     ██╔══██╗ ██╔════╝ ██║   ██║
+ ██║  ███╗ ███████║ ███████╗     ██║  ██║ █████╗   ██║   ██║
+ ██║   ██║ ██╔══██║ ╚════██║     ██║  ██║ ██╔══╝   ╚██╗ ██╔╝
+ ╚██████╔╝ ██║  ██║ ███████║ ██╗ ██████╔╝ ███████╗  ╚████╔╝ 
+  ╚═════╝  ╚═╝  ╚═╝ ╚══════╝ ╚═╝ ╚═════╝  ╚══════╝   ╚═══╝`
+
+	coloredTitle1 := applyGradient(title1, gradientColors)
+
+	title2 := `
+   ___     _     ___       ___    ___  _    _ 
+  / __|   /_\   / __|     |   \  | __| \ \ / /
+ | (_ |  / _ \  \__ \     | |) | | _|   \ V / 
+  \___| /_/ \_\ |___/ (_) |___/  |___|   \_/ 
+	`
+
+	coloredTitle2 := applyGradient(title2, gradientColors)
+
+	title3 := `
+	█▀▀ ▄▀█ █▀▀   █▀▄ █▀▀ █ █
+	█▄█ █▀█ ▄▄█ ▄ █▄▀ ██▄ ▀▄▀
+	`
+
+	coloredTitle3 := applyGradient(title3, gradientColors)
+
+	s := lipgloss.JoinVertical(lipgloss.Top, coloredTitle1, coloredTitle2, coloredTitle3)
+
 	return s
+}
+
+func applyGradient(text string, colors []string) string {
+	lines := strings.Split(text, "\n")
+	var coloredText strings.Builder
+	for i, line := range lines {
+		if len(strings.TrimSpace(line)) > 0 {
+			colorIndex := i * len(colors) / len(lines)
+			coloredLine := lipgloss.NewStyle().Foreground(lipgloss.Color(colors[colorIndex])).Render(line)
+			coloredText.WriteString(coloredLine + "\n")
+		}
+	}
+	return coloredText.String()
 }
