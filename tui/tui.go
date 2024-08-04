@@ -54,7 +54,7 @@ func setAddResourceGraphEntryListItems() []list.Item {
 	items := []list.Item{}
 	for id, data := range resourceTemplateIdToData {
 		if data.isEntry {
-			items = append(items, addResourceGraphEntryListItem{id: id})
+			items = append(items, addResourceGraphEntryListItemId(id))
 		}
 	}
 	return items
@@ -218,17 +218,11 @@ var (
 
 type addResourceGraphEntryListModel struct {
 	list.Model
-	cursor       int
-	selectedId   string
-	selectedItem addResourceGraphEntryListItem
 }
 
 func newAddResourceGraphEntryListModel(items []list.Item, delegate list.ItemDelegate, width int, height int) addResourceGraphEntryListModel {
 	return addResourceGraphEntryListModel{
-		Model:        list.New(items, delegate, width, height),
-		cursor:       0,
-		selectedId:   "",
-		selectedItem: items[0].(addResourceGraphEntryListItem),
+		Model: list.New(items, delegate, width, height),
 	}
 }
 
@@ -237,25 +231,6 @@ func (l addResourceGraphEntryListModel) init() tea.Cmd {
 }
 
 func (m addResourceGraphEntryListModel) Update(msg tea.Msg) (addResourceGraphEntryListModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "down", "j":
-			m.cursor++
-			if m.cursor >= len(m.Items()) {
-				m.cursor = 0
-			}
-			m.selectedItem = m.Items()[m.cursor].(addResourceGraphEntryListItem)
-
-		case "up", "k":
-			m.cursor--
-			if m.cursor < 0 {
-				m.cursor = len(m.Items()) - 1
-			}
-			m.selectedItem = m.Items()[m.cursor].(addResourceGraphEntryListItem)
-		}
-	}
-
 	var cmd tea.Cmd
 	m.Model, cmd = m.Model.Update(msg)
 	return m, cmd
@@ -265,16 +240,14 @@ func (m addResourceGraphEntryListModel) View() string {
 	return m.Model.View()
 }
 
-func (l addResourceGraphEntryListModel) SelectedItem() addResourceGraphEntryListItem {
-	return l.selectedItem
+func (l addResourceGraphEntryListModel) SelectedItemId() addResourceGraphEntryListItemId {
+	return l.Items()[l.Index()].(addResourceGraphEntryListItemId)
 }
 
-type addResourceGraphEntryListItem struct {
-	id string
-}
+type addResourceGraphEntryListItemId string
 
-func (i addResourceGraphEntryListItem) FilterValue() string {
-	return resourceTemplateIdToData[i.id].name
+func (i addResourceGraphEntryListItemId) FilterValue() string {
+	return resourceTemplateIdToData[string(i)].name
 }
 
 type addResourceGraphEntryListDelegate struct{}
@@ -283,12 +256,12 @@ func (d addResourceGraphEntryListDelegate) Height() int                         
 func (d addResourceGraphEntryListDelegate) Spacing() int                            { return 0 }
 func (d addResourceGraphEntryListDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
 func (d addResourceGraphEntryListDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(addResourceGraphEntryListItem)
+	i, ok := listItem.(addResourceGraphEntryListItemId)
 	if !ok {
 		return
 	}
 
-	str := string(resourceTemplateIdToData[i.id].name)
+	str := string(resourceTemplateIdToData[string(i)].name)
 
 	fn := addResourceGraphEntryListItemStyle.Render
 	if index == m.Index() {
@@ -310,6 +283,6 @@ func addResourceGraphEntityInputUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd
 }
 
 func addResourceGraphEntityInputView(m model) string {
-	s := lipgloss.JoinVertical(lipgloss.Top, "Add resource graph entity input view", m.addResourceGraphEntryList.list.selectedItem.id)
+	s := lipgloss.JoinVertical(lipgloss.Top, "Add resource graph entity input view", string(m.addResourceGraphEntryList.list.SelectedItemId()))
 	return s
 }
