@@ -38,11 +38,30 @@ type model struct {
 	addResourceGraphEntryList addResourceGraphEntryListType
 }
 
-func inititialModel() model {
-	addResourceGraphEntryListItems := []list.Item{
-		addResourceGraphEntryListItem{id: "cloudflare-pages-remix", value: "Cloudflare Pages + Remix"},
-		addResourceGraphEntryListItem{id: "cloudflare-worker-hono", value: "Cloudflare Worker + Hono"},
+type resourceTemplateData struct {
+	name    string
+	isEntry bool
+}
+
+type resourceTemplateIdToDataType map[string]resourceTemplateData
+
+var resourceTemplateIdToData = resourceTemplateIdToDataType{
+	"cloudflare-pages-remix": {name: "Cloudflare Pages + Remix", isEntry: true},
+	"cloudflare-worker-hono": {name: "Cloudflare Worker + Hono", isEntry: true},
+}
+
+func setAddResourceGraphEntryListItems() []list.Item {
+	items := []list.Item{}
+	for id, data := range resourceTemplateIdToData {
+		if data.isEntry {
+			items = append(items, addResourceGraphEntryListItem{id: id})
+		}
 	}
+	return items
+}
+
+func inititialModel() model {
+	addResourceGraphEntryListItems := setAddResourceGraphEntryListItems()
 
 	addResourceGraphEntryList := newAddResourceGraphEntryListModel(
 		addResourceGraphEntryListItems,
@@ -251,11 +270,12 @@ func (l addResourceGraphEntryListModel) SelectedItem() addResourceGraphEntryList
 }
 
 type addResourceGraphEntryListItem struct {
-	id    string
-	value string
+	id string
 }
 
-func (i addResourceGraphEntryListItem) FilterValue() string { return i.value }
+func (i addResourceGraphEntryListItem) FilterValue() string {
+	return resourceTemplateIdToData[i.id].name
+}
 
 type addResourceGraphEntryListDelegate struct{}
 
@@ -268,7 +288,7 @@ func (d addResourceGraphEntryListDelegate) Render(w io.Writer, m list.Model, ind
 		return
 	}
 
-	str := string(i.value)
+	str := string(resourceTemplateIdToData[i.id].name)
 
 	fn := addResourceGraphEntryListItemStyle.Render
 	if index == m.Index() {
