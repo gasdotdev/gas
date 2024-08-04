@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"strings"
 
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -16,22 +19,49 @@ func main() {
 	}
 }
 
-type model struct {
-	screen         screen
-	terminalHeight int
-	terminalWidth  int
+type addResourceGraphEntryListType struct {
+	list addResourceGraphEntryListModel
 }
 
 type screen int
 
 const (
 	HOME screen = iota
-	ADD_RESOURCE_GRAPH
+	ADD_RESOURCE_GRAPH_ENTRY_LIST
 )
 
+type model struct {
+	screen                    screen
+	terminalHeight            int
+	terminalWidth             int
+	addResourceGraphEntryList addResourceGraphEntryListType
+}
+
 func inititialModel() model {
+	addResourceGraphEntryListItems := []list.Item{
+		addResourceGraphEntryListItem{id: "cloudflare-pages-remix", value: "Cloudflare Pages + Remix"},
+		addResourceGraphEntryListItem{id: "cloudflare-worker-hono", value: "Cloudflare Worker + Hono"},
+	}
+
+	addResourceGraphEntryList := newAddResourceGraphEntryListModel(
+		addResourceGraphEntryListItems,
+		addResourceGraphEntryListDelegate{},
+		0,
+		0,
+	)
+	addResourceGraphEntryList.Title = "Select entry resource:"
+	addResourceGraphEntryList.SetShowStatusBar(false)
+	addResourceGraphEntryList.SetFilteringEnabled(false)
+	addResourceGraphEntryList.Styles.Title = addResourceGraphEntryListTitleStyle
+	addResourceGraphEntryList.Styles.TitleBar = addResourceGraphEntryListTitleBarStyle
+	addResourceGraphEntryList.Styles.PaginationStyle = addResourceGraphEntryListPaginationStyle
+	addResourceGraphEntryList.Styles.HelpStyle = addResourceGraphEntryListHelpStyle
+
 	return model{
 		screen: HOME,
+		addResourceGraphEntryList: addResourceGraphEntryListType{
+			list: addResourceGraphEntryList,
+		},
 	}
 }
 
@@ -73,9 +103,9 @@ func (m model) Init() tea.Cmd {
 		view:   homeView,
 	})
 
-	screens.register(int(ADD_RESOURCE_GRAPH), uiFns[model]{
-		update: addResourceGraphUpdate,
-		view:   addResourceGraphView,
+	screens.register(int(ADD_RESOURCE_GRAPH_ENTRY_LIST), uiFns[model]{
+		update: addResourceGraphEntryListUpdate,
+		view:   addResourceGraphEntryListView,
 	})
 
 	return nil
@@ -118,7 +148,7 @@ func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlG:
-			m.screen = ADD_RESOURCE_GRAPH
+			m.screen = ADD_RESOURCE_GRAPH_ENTRY_LIST
 			return m, tx
 		}
 	}
@@ -130,15 +160,110 @@ func homeView(m model) string {
 	return s
 }
 
-func addResourceGraphUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+func addResourceGraphEntryListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
 	case txMsg:
+		m.addResourceGraphEntryList.list.SetSize(m.terminalWidth, m.terminalHeight)
 		return m, tea.ClearScreen
 	}
-	return m, nil
+
+	var cmd tea.Cmd
+	m.addResourceGraphEntryList.list, cmd = m.addResourceGraphEntryList.list.Update(msg)
+	return m, cmd
 }
 
-func addResourceGraphView(m model) string {
-	s := lipgloss.JoinVertical(lipgloss.Top, "Add resource graph", "Select entry resource list")
-	return s
+func addResourceGraphEntryListView(m model) string {
+	return m.addResourceGraphEntryList.list.View()
+}
+
+var (
+	addResourceGraphEntryListTitleBarStyle     = lipgloss.NewStyle()
+	addResourceGraphEntryListTitleStyle        = lipgloss.NewStyle()
+	addResourceGraphEntryListItemStyle         = lipgloss.NewStyle().PaddingLeft(2)
+	addResourceGraphEntryListSelectedItemStyle = lipgloss.NewStyle().PaddingLeft(0)
+	addResourceGraphEntryListPaginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	addResourceGraphEntryListHelpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(0)
+)
+
+type addResourceGraphEntryListModel struct {
+	list.Model
+	cursor       int
+	selectedId   string
+	selectedItem addResourceGraphEntryListItem
+}
+
+func newAddResourceGraphEntryListModel(items []list.Item, delegate list.ItemDelegate, width int, height int) addResourceGraphEntryListModel {
+	return addResourceGraphEntryListModel{
+		Model:        list.New(items, delegate, width, height),
+		cursor:       0,
+		selectedId:   "",
+		selectedItem: items[0].(addResourceGraphEntryListItem),
+	}
+}
+
+func (l addResourceGraphEntryListModel) init() tea.Cmd {
+	return nil
+}
+
+func (m addResourceGraphEntryListModel) Update(msg tea.Msg) (addResourceGraphEntryListModel, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "down", "j":
+			m.cursor++
+			if m.cursor >= len(m.Items()) {
+				m.cursor = 0
+			}
+			m.selectedItem = m.Items()[m.cursor].(addResourceGraphEntryListItem)
+
+		case "up", "k":
+			m.cursor--
+			if m.cursor < 0 {
+				m.cursor = len(m.Items()) - 1
+			}
+			m.selectedItem = m.Items()[m.cursor].(addResourceGraphEntryListItem)
+		}
+	}
+
+	var cmd tea.Cmd
+	m.Model, cmd = m.Model.Update(msg)
+	return m, cmd
+}
+
+func (m addResourceGraphEntryListModel) View() string {
+	return m.Model.View()
+}
+
+func (l addResourceGraphEntryListModel) SelectedItem() addResourceGraphEntryListItem {
+	return l.selectedItem
+}
+
+type addResourceGraphEntryListItem struct {
+	id    string
+	value string
+}
+
+func (i addResourceGraphEntryListItem) FilterValue() string { return i.value }
+
+type addResourceGraphEntryListDelegate struct{}
+
+func (d addResourceGraphEntryListDelegate) Height() int                             { return 1 }
+func (d addResourceGraphEntryListDelegate) Spacing() int                            { return 0 }
+func (d addResourceGraphEntryListDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d addResourceGraphEntryListDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(addResourceGraphEntryListItem)
+	if !ok {
+		return
+	}
+
+	str := string(i.value)
+
+	fn := addResourceGraphEntryListItemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return addResourceGraphEntryListSelectedItemStyle.Render("> " + strings.Join(s, " "))
+		}
+	}
+
+	fmt.Fprint(w, fn(str))
 }
