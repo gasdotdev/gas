@@ -28,6 +28,7 @@ type screen int
 const (
 	HOME screen = iota
 	ADD_RESOURCE_GRAPH_ENTRY_LIST
+	ADD_RESOURCE_GRAPH_ENTITY_INPUT
 )
 
 type model struct {
@@ -108,6 +109,11 @@ func (m model) Init() tea.Cmd {
 		view:   addResourceGraphEntryListView,
 	})
 
+	screens.register(int(ADD_RESOURCE_GRAPH_ENTITY_INPUT), uiFns[model]{
+		update: addResourceGraphEntityInputUpdate,
+		view:   addResourceGraphEntityInputView,
+	})
+
 	return nil
 }
 
@@ -161,10 +167,16 @@ func homeView(m model) string {
 }
 
 func addResourceGraphEntryListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case txMsg:
 		m.addResourceGraphEntryList.list.SetSize(m.terminalWidth, m.terminalHeight)
 		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			m.screen = ADD_RESOURCE_GRAPH_ENTITY_INPUT
+			return m, tx
+		}
 	}
 
 	var cmd tea.Cmd
@@ -266,4 +278,18 @@ func (d addResourceGraphEntryListDelegate) Render(w io.Writer, m list.Model, ind
 	}
 
 	fmt.Fprint(w, fn(str))
+}
+
+func addResourceGraphEntityInputUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
+	case txMsg:
+		return m, tea.ClearScreen
+	}
+
+	return m, nil
+}
+
+func addResourceGraphEntityInputView(m model) string {
+	s := lipgloss.JoinVertical(lipgloss.Top, "Add resource graph entity input view", m.addResourceGraphEntryList.list.selectedItem.id)
+	return s
 }
