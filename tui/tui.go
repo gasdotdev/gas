@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -50,21 +51,30 @@ var resourceTemplateIdToData = resourceTemplateIdToDataType{
 	"cloudflare-worker-hono": {name: "Cloudflare Worker + Hono", isEntry: true},
 }
 
-func setAddResourceGraphEntryListItems() []list.Item {
+func setAddResourceGraphEntryOrderedListItems() []list.Item {
 	items := []list.Item{}
+
+	keys := make([]string, 0, len(resourceTemplateIdToData))
 	for id, data := range resourceTemplateIdToData {
 		if data.isEntry {
-			items = append(items, addResourceGraphEntryListItemId(id))
+			keys = append(keys, id)
 		}
 	}
+
+	sort.Strings(keys)
+
+	for _, id := range keys {
+		items = append(items, addResourceGraphEntryListItemId(id))
+	}
+
 	return items
 }
 
 func inititialModel() model {
-	addResourceGraphEntryListItems := setAddResourceGraphEntryListItems()
+	addResourceGraphEntryOrderedListItems := setAddResourceGraphEntryOrderedListItems()
 
 	addResourceGraphEntryList := newAddResourceGraphEntryListModel(
-		addResourceGraphEntryListItems,
+		addResourceGraphEntryOrderedListItems,
 		addResourceGraphEntryListDelegate{},
 		0,
 		0,
@@ -241,7 +251,7 @@ func (m addResourceGraphEntryListModel) View() string {
 }
 
 func (l addResourceGraphEntryListModel) SelectedItemId() addResourceGraphEntryListItemId {
-	return l.Items()[l.Index()].(addResourceGraphEntryListItemId)
+	return l.SelectedItem().(addResourceGraphEntryListItemId)
 }
 
 type addResourceGraphEntryListItemId string
