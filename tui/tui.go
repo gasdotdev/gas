@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -27,6 +26,7 @@ type screen int
 
 const (
 	HOME screen = iota
+	ADD_RESOURCE_GRAPH
 )
 
 func inititialModel() model {
@@ -72,6 +72,12 @@ func (m model) Init() tea.Cmd {
 		update: homeUpdate,
 		view:   homeView,
 	})
+
+	screens.register(int(ADD_RESOURCE_GRAPH), uiFns[model]{
+		update: addResourceGraphUpdate,
+		view:   addResourceGraphView,
+	})
+
 	return nil
 }
 
@@ -106,6 +112,25 @@ func (m model) View() string {
 }
 
 func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case txMsg:
+		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyCtrlG:
+			m.screen = ADD_RESOURCE_GRAPH
+			return m, tx
+		}
+	}
+	return m, nil
+}
+
+func homeView(m model) string {
+	s := lipgloss.JoinVertical(lipgloss.Top, "Gas.dev", "[ctrl+g] Add resource graph")
+	return s
+}
+
+func addResourceGraphUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
 	case txMsg:
 		return m, tea.ClearScreen
@@ -113,51 +138,7 @@ func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func homeView(m model) string {
-
-	// Dark red to orange.
-	gradientColors := []string{"#8B0000", "#A30000", "#BB0000", "#D30000", "#EB0000", "#FF3300", "#FF6600"}
-
-	title1 := `
- ██████╗   █████╗   ███████╗     ██████╗  ███████╗ ██╗   ██╗
- ██╔════╝  ██╔══██╗ ██╔════╝     ██╔══██╗ ██╔════╝ ██║   ██║
- ██║  ███╗ ███████║ ███████╗     ██║  ██║ █████╗   ██║   ██║
- ██║   ██║ ██╔══██║ ╚════██║     ██║  ██║ ██╔══╝   ╚██╗ ██╔╝
- ╚██████╔╝ ██║  ██║ ███████║ ██╗ ██████╔╝ ███████╗  ╚████╔╝ 
-  ╚═════╝  ╚═╝  ╚═╝ ╚══════╝ ╚═╝ ╚═════╝  ╚══════╝   ╚═══╝`
-
-	coloredTitle1 := applyGradient(title1, gradientColors)
-
-	title2 := `
-   ___     _     ___       ___    ___  _    _ 
-  / __|   /_\   / __|     |   \  | __| \ \ / /
- | (_ |  / _ \  \__ \     | |) | | _|   \ V / 
-  \___| /_/ \_\ |___/ (_) |___/  |___|   \_/ 
-	`
-
-	coloredTitle2 := applyGradient(title2, gradientColors)
-
-	title3 := `
-	█▀▀ ▄▀█ █▀▀   █▀▄ █▀▀ █ █
-	█▄█ █▀█ ▄▄█ ▄ █▄▀ ██▄ ▀▄▀
-	`
-
-	coloredTitle3 := applyGradient(title3, gradientColors)
-
-	s := lipgloss.JoinVertical(lipgloss.Top, coloredTitle1, coloredTitle2, coloredTitle3)
-
+func addResourceGraphView(m model) string {
+	s := lipgloss.JoinVertical(lipgloss.Top, "Add resource graph", "Select entry resource list")
 	return s
-}
-
-func applyGradient(text string, colors []string) string {
-	lines := strings.Split(text, "\n")
-	var coloredText strings.Builder
-	for i, line := range lines {
-		if len(strings.TrimSpace(line)) > 0 {
-			colorIndex := i * len(colors) / len(lines)
-			coloredLine := lipgloss.NewStyle().Foreground(lipgloss.Color(colors[colorIndex])).Render(line)
-			coloredText.WriteString(coloredLine + "\n")
-		}
-	}
-	return coloredText.String()
 }
