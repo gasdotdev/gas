@@ -30,6 +30,10 @@ type addResourceGraphEntryEntityInputType struct {
 	input textinput.Model
 }
 
+type addResourceGraphApiListType struct {
+	list addResourceGraphApiListModel
+}
+
 type screen int
 
 const (
@@ -45,10 +49,12 @@ type model struct {
 	terminalWidth                    int
 	addResourceGraphEntryList        addResourceGraphEntryListType
 	addResourceGraphEntryEntityInput addResourceGraphEntryEntityInputType
+	addResourceGraphApiList          addResourceGraphApiListType
 }
 
 type resourceTemplateData struct {
 	name    string
+	isApi   bool
 	isEntry bool
 }
 
@@ -56,7 +62,7 @@ type resourceTemplateIdToDataType map[string]resourceTemplateData
 
 var resourceTemplateIdToData = resourceTemplateIdToDataType{
 	"cloudflare-pages-remix": {name: "Cloudflare Pages + Remix", isEntry: true},
-	"cloudflare-worker-hono": {name: "Cloudflare Worker + Hono", isEntry: true},
+	"cloudflare-worker-hono": {name: "Cloudflare Worker + Hono", isApi: true, isEntry: true},
 }
 
 func setAddResourceGraphEntryOrderedListItems() []list.Item {
@@ -78,11 +84,28 @@ func setAddResourceGraphEntryOrderedListItems() []list.Item {
 	return items
 }
 
-func inititialModel() model {
-	addResourceGraphEntryOrderedListItems := setAddResourceGraphEntryOrderedListItems()
+func setAddResourceGraphOrderedApiListItems() []list.Item {
+	items := []list.Item{}
 
+	keys := make([]string, 0, len(resourceTemplateIdToData))
+	for id, data := range resourceTemplateIdToData {
+		if data.isApi {
+			keys = append(keys, id)
+		}
+	}
+
+	sort.Strings(keys)
+
+	for _, id := range keys {
+		items = append(items, addResourceGraphApiListItemId(id))
+	}
+
+	return items
+}
+
+func inititialModel() model {
 	addResourceGraphEntryList := newAddResourceGraphEntryListModel(
-		addResourceGraphEntryOrderedListItems,
+		setAddResourceGraphEntryOrderedListItems(),
 		addResourceGraphEntryListDelegate{},
 		0,
 		0,
@@ -98,6 +121,20 @@ func inititialModel() model {
 	addResourceGraphEntryEntityInput := textinput.New()
 	addResourceGraphEntryEntityInput.Placeholder = "app, dashboard, landing, etc"
 
+	addResourceGraphApiList := newAddResourceGraphApiListModel(
+		setAddResourceGraphOrderedApiListItems(),
+		addResourceGraphApiListDelegate{},
+		0,
+		0,
+	)
+	addResourceGraphApiList.Title = "Select api resource:"
+	addResourceGraphApiList.SetShowStatusBar(false)
+	addResourceGraphApiList.SetFilteringEnabled(false)
+	addResourceGraphApiList.Styles.Title = addResourceGraphApiListTitleStyle
+	addResourceGraphApiList.Styles.TitleBar = addResourceGraphApiListTitleBarStyle
+	addResourceGraphApiList.Styles.PaginationStyle = addResourceGraphApiListPaginationStyle
+	addResourceGraphApiList.Styles.HelpStyle = addResourceGraphApiListHelpStyle
+
 	return model{
 		screen: HOME,
 		addResourceGraphEntryList: addResourceGraphEntryListType{
@@ -105,6 +142,9 @@ func inititialModel() model {
 		},
 		addResourceGraphEntryEntityInput: addResourceGraphEntryEntityInputType{
 			input: addResourceGraphEntryEntityInput,
+		},
+		addResourceGraphApiList: addResourceGraphApiListType{
+			list: addResourceGraphApiList,
 		},
 	}
 }
@@ -358,12 +398,81 @@ func addResourceGraphEntryEntityInputView(m model) string {
 func addResourceGraphApiListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
 	case txMsg:
+		m.addResourceGraphApiList.list.SetSize(m.terminalWidth, m.terminalHeight)
 		return m, tea.ClearScreen
 	}
 
-	return m, nil
+	var cmd tea.Cmd
+	m.addResourceGraphApiList.list, cmd = m.addResourceGraphApiList.list.Update(msg)
+	return m, cmd
 }
 
 func addResourceGraphApiListView(m model) string {
-	return "Add resource graph api list view"
+	return m.addResourceGraphApiList.list.View()
+}
+
+var (
+	addResourceGraphApiListTitleBarStyle     = lipgloss.NewStyle()
+	addResourceGraphApiListTitleStyle        = lipgloss.NewStyle()
+	addResourceGraphApiListItemStyle         = lipgloss.NewStyle().PaddingLeft(2)
+	addResourceGraphApiListSelectedItemStyle = lipgloss.NewStyle().PaddingLeft(0)
+	addResourceGraphApiListPaginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	addResourceGraphApiListHelpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(0)
+)
+
+type addResourceGraphApiListModel struct {
+	list.Model
+}
+
+func newAddResourceGraphApiListModel(items []list.Item, delegate list.ItemDelegate, width int, height int) addResourceGraphApiListModel {
+	return addResourceGraphApiListModel{
+		Model: list.New(items, delegate, width, height),
+	}
+}
+
+func (l addResourceGraphApiListModel) init() tea.Cmd {
+	return nil
+}
+
+func (m addResourceGraphApiListModel) Update(msg tea.Msg) (addResourceGraphApiListModel, tea.Cmd) {
+	var cmd tea.Cmd
+	m.Model, cmd = m.Model.Update(msg)
+	return m, cmd
+}
+
+func (m addResourceGraphApiListModel) View() string {
+	return m.Model.View()
+}
+
+func (l addResourceGraphApiListModel) SelectedItemId() addResourceGraphApiListItemId {
+	return l.SelectedItem().(addResourceGraphApiListItemId)
+}
+
+type addResourceGraphApiListItemId string
+
+func (i addResourceGraphApiListItemId) FilterValue() string {
+	return resourceTemplateIdToData[string(i)].name
+}
+
+type addResourceGraphApiListDelegate struct{}
+
+func (d addResourceGraphApiListDelegate) Height() int                             { return 1 }
+func (d addResourceGraphApiListDelegate) Spacing() int                            { return 0 }
+func (d addResourceGraphApiListDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d addResourceGraphApiListDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(addResourceGraphApiListItemId)
+	if !ok {
+		return
+	}
+
+	str := string(resourceTemplateIdToData[string(i)].name)
+
+	fn := addResourceGraphApiListItemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return addResourceGraphApiListSelectedItemStyle.Render("> " + strings.Join(s, " "))
+		}
+	}
+
+	fmt.Fprint(w, fn(str))
 }
