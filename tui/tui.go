@@ -34,6 +34,10 @@ type addResourceGraphApiListType struct {
 	list addResourceGraphApiListModel
 }
 
+type addResourceGraphDbListType struct {
+	list addResourceGraphDbListModel
+}
+
 type screen int
 
 const (
@@ -41,6 +45,7 @@ const (
 	ADD_RESOURCE_GRAPH_ENTRY_LIST
 	ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT
 	ADD_RESOURCE_GRAPH_API_LIST
+	ADD_RESOURCE_GRAPH_DB_LIST
 )
 
 type model struct {
@@ -50,11 +55,13 @@ type model struct {
 	addResourceGraphEntryList        addResourceGraphEntryListType
 	addResourceGraphEntryEntityInput addResourceGraphEntryEntityInputType
 	addResourceGraphApiList          addResourceGraphApiListType
+	addResourceGraphDbList           addResourceGraphDbListType
 }
 
 type resourceTemplateData struct {
 	name    string
 	isApi   bool
+	isDb    bool
 	isEntry bool
 }
 
@@ -63,6 +70,7 @@ type resourceTemplateIdToDataType map[string]resourceTemplateData
 var resourceTemplateIdToData = resourceTemplateIdToDataType{
 	"cloudflare-pages-remix": {name: "Cloudflare Pages + Remix", isEntry: true},
 	"cloudflare-worker-hono": {name: "Cloudflare Worker + Hono", isApi: true, isEntry: true},
+	"cloudflare-d1":          {name: "Cloudflare D1", isDb: true},
 }
 
 func setAddResourceGraphEntryOrderedListItems() []list.Item {
@@ -103,6 +111,25 @@ func setAddResourceGraphOrderedApiListItems() []list.Item {
 	return items
 }
 
+func setAddResourceGraphOrderedDbListItems() []list.Item {
+	items := []list.Item{}
+
+	keys := make([]string, 0, len(resourceTemplateIdToData))
+	for id, data := range resourceTemplateIdToData {
+		if data.isDb {
+			keys = append(keys, id)
+		}
+	}
+
+	sort.Strings(keys)
+
+	for _, id := range keys {
+		items = append(items, addResourceGraphDbListItemId(id))
+	}
+
+	return items
+}
+
 func inititialModel() model {
 	addResourceGraphEntryList := newAddResourceGraphEntryListModel(
 		setAddResourceGraphEntryOrderedListItems(),
@@ -135,6 +162,20 @@ func inititialModel() model {
 	addResourceGraphApiList.Styles.PaginationStyle = addResourceGraphApiListPaginationStyle
 	addResourceGraphApiList.Styles.HelpStyle = addResourceGraphApiListHelpStyle
 
+	addResourceGraphDbList := newAddResourceGraphDbListModel(
+		setAddResourceGraphOrderedDbListItems(),
+		addResourceGraphDbListDelegate{},
+		0,
+		0,
+	)
+	addResourceGraphDbList.Title = "Select db resource:"
+	addResourceGraphDbList.SetShowStatusBar(false)
+	addResourceGraphDbList.SetFilteringEnabled(false)
+	addResourceGraphDbList.Styles.Title = addResourceGraphDbListTitleStyle
+	addResourceGraphDbList.Styles.TitleBar = addResourceGraphDbListTitleBarStyle
+	addResourceGraphDbList.Styles.PaginationStyle = addResourceGraphDbListPaginationStyle
+	addResourceGraphDbList.Styles.HelpStyle = addResourceGraphDbListHelpStyle
+
 	return model{
 		screen: HOME,
 		addResourceGraphEntryList: addResourceGraphEntryListType{
@@ -145,6 +186,9 @@ func inititialModel() model {
 		},
 		addResourceGraphApiList: addResourceGraphApiListType{
 			list: addResourceGraphApiList,
+		},
+		addResourceGraphDbList: addResourceGraphDbListType{
+			list: addResourceGraphDbList,
 		},
 	}
 }
@@ -200,6 +244,11 @@ func (m model) Init() tea.Cmd {
 	screens.register(int(ADD_RESOURCE_GRAPH_API_LIST), uiFns[model]{
 		update: addResourceGraphApiListUpdate,
 		view:   addResourceGraphApiListView,
+	})
+
+	screens.register(int(ADD_RESOURCE_GRAPH_DB_LIST), uiFns[model]{
+		update: addResourceGraphDbListUpdate,
+		view:   addResourceGraphDbListView,
 	})
 
 	return nil
@@ -396,10 +445,16 @@ func addResourceGraphEntryEntityInputView(m model) string {
 }
 
 func addResourceGraphApiListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case txMsg:
 		m.addResourceGraphApiList.list.SetSize(m.terminalWidth, m.terminalHeight)
 		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			m.screen = ADD_RESOURCE_GRAPH_DB_LIST
+			return m, tx
+		}
 	}
 
 	var cmd tea.Cmd
@@ -471,6 +526,88 @@ func (d addResourceGraphApiListDelegate) Render(w io.Writer, m list.Model, index
 	if index == m.Index() {
 		fn = func(s ...string) string {
 			return addResourceGraphApiListSelectedItemStyle.Render("> " + strings.Join(s, " "))
+		}
+	}
+
+	fmt.Fprint(w, fn(str))
+}
+
+func addResourceGraphDbListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
+	case txMsg:
+		m.addResourceGraphDbList.list.SetSize(m.terminalWidth, m.terminalHeight)
+		return m, tea.ClearScreen
+	}
+
+	var cmd tea.Cmd
+	m.addResourceGraphDbList.list, cmd = m.addResourceGraphDbList.list.Update(msg)
+	return m, cmd
+}
+
+func addResourceGraphDbListView(m model) string {
+	return m.addResourceGraphDbList.list.View()
+}
+
+var (
+	addResourceGraphDbListTitleBarStyle     = lipgloss.NewStyle()
+	addResourceGraphDbListTitleStyle        = lipgloss.NewStyle()
+	addResourceGraphDbListItemStyle         = lipgloss.NewStyle().PaddingLeft(2)
+	addResourceGraphDbListSelectedItemStyle = lipgloss.NewStyle().PaddingLeft(0)
+	addResourceGraphDbListPaginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	addResourceGraphDbListHelpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(0)
+)
+
+type addResourceGraphDbListModel struct {
+	list.Model
+}
+
+func newAddResourceGraphDbListModel(items []list.Item, delegate list.ItemDelegate, width int, height int) addResourceGraphDbListModel {
+	return addResourceGraphDbListModel{
+		Model: list.New(items, delegate, width, height),
+	}
+}
+
+func (l addResourceGraphDbListModel) init() tea.Cmd {
+	return nil
+}
+
+func (m addResourceGraphDbListModel) Update(msg tea.Msg) (addResourceGraphDbListModel, tea.Cmd) {
+	var cmd tea.Cmd
+	m.Model, cmd = m.Model.Update(msg)
+	return m, cmd
+}
+
+func (m addResourceGraphDbListModel) View() string {
+	return m.Model.View()
+}
+
+func (l addResourceGraphDbListModel) SelectedItemId() addResourceGraphDbListItemId {
+	return l.SelectedItem().(addResourceGraphDbListItemId)
+}
+
+type addResourceGraphDbListItemId string
+
+func (i addResourceGraphDbListItemId) FilterValue() string {
+	return resourceTemplateIdToData[string(i)].name
+}
+
+type addResourceGraphDbListDelegate struct{}
+
+func (d addResourceGraphDbListDelegate) Height() int                             { return 1 }
+func (d addResourceGraphDbListDelegate) Spacing() int                            { return 0 }
+func (d addResourceGraphDbListDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d addResourceGraphDbListDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(addResourceGraphDbListItemId)
+	if !ok {
+		return
+	}
+
+	str := string(resourceTemplateIdToData[string(i)].name)
+
+	fn := addResourceGraphDbListItemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return addResourceGraphDbListSelectedItemStyle.Render("> " + strings.Join(s, " "))
 		}
 	}
 
