@@ -42,10 +42,10 @@ type newProjectDirInputType struct {
 	input textinput.Model
 }
 
-type screen int
+type mode int
 
 const (
-	HOME screen = iota
+	HOME mode = iota
 	ADD_RESOURCE_GRAPH_ENTRY_LIST
 	ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT
 	ADD_RESOURCE_GRAPH_API_LIST
@@ -54,7 +54,7 @@ const (
 )
 
 type model struct {
-	screen                           screen
+	mode                             mode
 	terminalHeight                   int
 	terminalWidth                    int
 	addResourceGraphEntryList        addResourceGraphEntryListType
@@ -186,7 +186,7 @@ func inititialModel() model {
 	newProjectDirInput.Placeholder = "./your-project-dir"
 
 	return model{
-		screen: HOME,
+		mode: HOME,
 		addResourceGraphEntryList: addResourceGraphEntryListType{
 			list: addResourceGraphEntryList,
 		},
@@ -235,35 +235,35 @@ func tx() tea.Msg {
 	return txMsg(true)
 }
 
-var screens = uiNew[model]()
+var modes = uiNew[model]()
 
 func (m model) Init() tea.Cmd {
-	screens.register(int(HOME), uiFns[model]{
+	modes.register(int(HOME), uiFns[model]{
 		update: homeUpdate,
 		view:   homeView,
 	})
 
-	screens.register(int(ADD_RESOURCE_GRAPH_ENTRY_LIST), uiFns[model]{
+	modes.register(int(ADD_RESOURCE_GRAPH_ENTRY_LIST), uiFns[model]{
 		update: addResourceGraphEntryListUpdate,
 		view:   addResourceGraphEntryListView,
 	})
 
-	screens.register(int(ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT), uiFns[model]{
+	modes.register(int(ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT), uiFns[model]{
 		update: addResourceGraphEntryEntityInputUpdate,
 		view:   addResourceGraphEntryEntityInputView,
 	})
 
-	screens.register(int(ADD_RESOURCE_GRAPH_API_LIST), uiFns[model]{
+	modes.register(int(ADD_RESOURCE_GRAPH_API_LIST), uiFns[model]{
 		update: addResourceGraphApiListUpdate,
 		view:   addResourceGraphApiListView,
 	})
 
-	screens.register(int(ADD_RESOURCE_GRAPH_DB_LIST), uiFns[model]{
+	modes.register(int(ADD_RESOURCE_GRAPH_DB_LIST), uiFns[model]{
 		update: addResourceGraphDbListUpdate,
 		view:   addResourceGraphDbListView,
 	})
 
-	screens.register(int(NEW_PROJECT_DIR_INPUT), uiFns[model]{
+	modes.register(int(NEW_PROJECT_DIR_INPUT), uiFns[model]{
 		update: newProjectDirInputUpdate,
 		view:   newProjectDirInputView,
 	})
@@ -284,21 +284,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	screenFn, ok := screens.Fns[int(m.screen)]
+	modeFn, ok := modes.Fns[int(m.mode)]
 	if !ok {
 		return m, nil
 	}
-	return screenFn.update(m, msg)
+	return modeFn.update(m, msg)
 }
 
 func (m model) View() string {
-	screenFn, ok := screens.Fns[int(m.screen)]
+	modeFn, ok := modes.Fns[int(m.mode)]
 	if !ok {
-		s := fmt.Sprintf("Unknown screen: %d\n\n", m.screen)
-		s += "Verify screen, update, and view are registered."
+		s := fmt.Sprintf("Unknown mode: %d\n\n", m.mode)
+		s += "Verify mode, update, and view are registered."
 		return s
 	}
-	return screenFn.view(m)
+	return modeFn.view(m)
 }
 
 func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -308,10 +308,10 @@ func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "g":
-			m.screen = ADD_RESOURCE_GRAPH_ENTRY_LIST
+			m.mode = ADD_RESOURCE_GRAPH_ENTRY_LIST
 			return m, tx
 		case "n":
-			m.screen = NEW_PROJECT_DIR_INPUT
+			m.mode = NEW_PROJECT_DIR_INPUT
 			return m, tea.Sequence(tx, m.newProjectDirInput.input.Focus())
 		}
 	}
@@ -331,7 +331,7 @@ func addResourceGraphEntryListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) 
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":
-			m.screen = ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT
+			m.mode = ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT
 			return m, tea.Sequence(tx, m.addResourceGraphEntryEntityInput.input.Focus())
 		}
 	}
@@ -432,7 +432,7 @@ func addResourceGraphEntryEntityInputUpdate(m model, msg tea.Msg) (tea.Model, te
 				}
 				return m, nil
 			}
-			m.screen = ADD_RESOURCE_GRAPH_API_LIST
+			m.mode = ADD_RESOURCE_GRAPH_API_LIST
 			return m, tx
 		}
 	}
@@ -472,7 +472,7 @@ func addResourceGraphApiListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":
-			m.screen = ADD_RESOURCE_GRAPH_DB_LIST
+			m.mode = ADD_RESOURCE_GRAPH_DB_LIST
 			return m, tx
 		}
 	}
