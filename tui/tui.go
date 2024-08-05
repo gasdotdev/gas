@@ -96,7 +96,7 @@ func inititialModel() model {
 	addResourceGraphEntryList.Styles.HelpStyle = addResourceGraphEntryListHelpStyle
 
 	addResourceGraphEntryEntityInput := textinput.New()
-	addResourceGraphEntryEntityInput.Placeholder = "Enter entity name"
+	addResourceGraphEntryEntityInput.Placeholder = "app, dashboard, landing, etc"
 
 	return model{
 		screen: HOME,
@@ -337,9 +337,10 @@ var inputErrStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 
 func addResourceGraphEntryEntityInputView(m model) string {
 	s := lipgloss.JoinVertical(
-		lipgloss.Top, "Add resource graph entity input view",
-		"Resource entity group pre-set to web",
+		lipgloss.Top,
 		string(m.addResourceGraphEntryList.list.SelectedItemId()),
+		"Resource entity group pre-set to web",
+		"Enter resource entity:",
 		m.addResourceGraphEntryEntityInput.input.View(),
 	)
 	if m.addResourceGraphEntryEntityInput.input.Err != nil {
