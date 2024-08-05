@@ -200,8 +200,8 @@ func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	case txMsg:
 		return m, tea.ClearScreen
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlG:
+		switch msg.String() {
+		case "g":
 			m.screen = ADD_RESOURCE_GRAPH_ENTRY_LIST
 			return m, tx
 		}
@@ -210,7 +210,7 @@ func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func homeView(m model) string {
-	s := lipgloss.JoinVertical(lipgloss.Top, "Gas.dev", "[ctrl+g] Add resource graph")
+	s := lipgloss.JoinVertical(lipgloss.Top, "Gas.dev", "[g] Add resource graph")
 	return s
 }
 
