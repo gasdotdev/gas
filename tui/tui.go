@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -24,19 +26,25 @@ type addResourceGraphEntryListType struct {
 	list addResourceGraphEntryListModel
 }
 
+type addResourceGraphEntryEntityInputType struct {
+	input textinput.Model
+}
+
 type screen int
 
 const (
 	HOME screen = iota
 	ADD_RESOURCE_GRAPH_ENTRY_LIST
-	ADD_RESOURCE_GRAPH_ENTITY_INPUT
+	ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT
+	ADD_RESOURCE_GRAPH_API_LIST
 )
 
 type model struct {
-	screen                    screen
-	terminalHeight            int
-	terminalWidth             int
-	addResourceGraphEntryList addResourceGraphEntryListType
+	screen                           screen
+	terminalHeight                   int
+	terminalWidth                    int
+	addResourceGraphEntryList        addResourceGraphEntryListType
+	addResourceGraphEntryEntityInput addResourceGraphEntryEntityInputType
 }
 
 type resourceTemplateData struct {
@@ -87,10 +95,16 @@ func inititialModel() model {
 	addResourceGraphEntryList.Styles.PaginationStyle = addResourceGraphEntryListPaginationStyle
 	addResourceGraphEntryList.Styles.HelpStyle = addResourceGraphEntryListHelpStyle
 
+	addResourceGraphEntryEntityInput := textinput.New()
+	addResourceGraphEntryEntityInput.Placeholder = "Enter entity name"
+
 	return model{
 		screen: HOME,
 		addResourceGraphEntryList: addResourceGraphEntryListType{
 			list: addResourceGraphEntryList,
+		},
+		addResourceGraphEntryEntityInput: addResourceGraphEntryEntityInputType{
+			input: addResourceGraphEntryEntityInput,
 		},
 	}
 }
@@ -138,9 +152,14 @@ func (m model) Init() tea.Cmd {
 		view:   addResourceGraphEntryListView,
 	})
 
-	screens.register(int(ADD_RESOURCE_GRAPH_ENTITY_INPUT), uiFns[model]{
-		update: addResourceGraphEntityInputUpdate,
-		view:   addResourceGraphEntityInputView,
+	screens.register(int(ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT), uiFns[model]{
+		update: addResourceGraphEntryEntityInputUpdate,
+		view:   addResourceGraphEntryEntityInputView,
+	})
+
+	screens.register(int(ADD_RESOURCE_GRAPH_API_LIST), uiFns[model]{
+		update: addResourceGraphApiListUpdate,
+		view:   addResourceGraphApiListView,
 	})
 
 	return nil
@@ -203,8 +222,8 @@ func addResourceGraphEntryListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) 
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":
-			m.screen = ADD_RESOURCE_GRAPH_ENTITY_INPUT
-			return m, tx
+			m.screen = ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT
+			return m, tea.Sequence(tx, m.addResourceGraphEntryEntityInput.input.Focus())
 		}
 	}
 
@@ -283,7 +302,59 @@ func (d addResourceGraphEntryListDelegate) Render(w io.Writer, m list.Model, ind
 	fmt.Fprint(w, fn(str))
 }
 
-func addResourceGraphEntityInputUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+type InputErr struct {
+	Msg string
+}
+
+func (e *InputErr) Error() string {
+	return e.Msg
+}
+
+func addResourceGraphEntryEntityInputUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case txMsg:
+		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			if m.addResourceGraphEntryEntityInput.input.Value() == "" {
+				m.addResourceGraphEntryEntityInput.input.Err = &InputErr{
+					Msg: "Entity is required",
+				}
+				return m, nil
+			}
+			m.screen = ADD_RESOURCE_GRAPH_API_LIST
+			return m, tx
+		}
+	}
+
+	var cmd tea.Cmd
+	m.addResourceGraphEntryEntityInput.input, cmd = m.addResourceGraphEntryEntityInput.input.Update(msg)
+	return m, cmd
+}
+
+var inputErrStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+
+func addResourceGraphEntryEntityInputView(m model) string {
+	s := lipgloss.JoinVertical(
+		lipgloss.Top, "Add resource graph entity input view",
+		"Resource entity group pre-set to web",
+		string(m.addResourceGraphEntryList.list.SelectedItemId()),
+		m.addResourceGraphEntryEntityInput.input.View(),
+	)
+	if m.addResourceGraphEntryEntityInput.input.Err != nil {
+		var inputErr *InputErr
+		switch {
+		case errors.As(m.addResourceGraphEntryEntityInput.input.Err, &inputErr):
+			s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.addResourceGraphEntryEntityInput.input.Err)))
+		default:
+			s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.addResourceGraphEntryEntityInput.input.Err)))
+		}
+	}
+	return s
+}
+
+func addResourceGraphApiListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
 	case txMsg:
 		return m, tea.ClearScreen
@@ -292,7 +363,6 @@ func addResourceGraphEntityInputUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd
 	return m, nil
 }
 
-func addResourceGraphEntityInputView(m model) string {
-	s := lipgloss.JoinVertical(lipgloss.Top, "Add resource graph entity input view", string(m.addResourceGraphEntryList.list.SelectedItemId()))
-	return s
+func addResourceGraphApiListView(m model) string {
+	return "Add resource graph api list view"
 }
