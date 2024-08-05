@@ -38,6 +38,10 @@ type addResourceGraphDbListType struct {
 	list addResourceGraphDbListModel
 }
 
+type newProjectDirInputType struct {
+	input textinput.Model
+}
+
 type screen int
 
 const (
@@ -46,6 +50,7 @@ const (
 	ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT
 	ADD_RESOURCE_GRAPH_API_LIST
 	ADD_RESOURCE_GRAPH_DB_LIST
+	NEW_PROJECT_DIR_INPUT
 )
 
 type model struct {
@@ -56,6 +61,7 @@ type model struct {
 	addResourceGraphEntryEntityInput addResourceGraphEntryEntityInputType
 	addResourceGraphApiList          addResourceGraphApiListType
 	addResourceGraphDbList           addResourceGraphDbListType
+	newProjectDirInput               newProjectDirInputType
 }
 
 type resourceTemplateData struct {
@@ -176,6 +182,9 @@ func inititialModel() model {
 	addResourceGraphDbList.Styles.PaginationStyle = addResourceGraphDbListPaginationStyle
 	addResourceGraphDbList.Styles.HelpStyle = addResourceGraphDbListHelpStyle
 
+	newProjectDirInput := textinput.New()
+	newProjectDirInput.Placeholder = "./your-project-dir"
+
 	return model{
 		screen: HOME,
 		addResourceGraphEntryList: addResourceGraphEntryListType{
@@ -189,6 +198,9 @@ func inititialModel() model {
 		},
 		addResourceGraphDbList: addResourceGraphDbListType{
 			list: addResourceGraphDbList,
+		},
+		newProjectDirInput: newProjectDirInputType{
+			input: newProjectDirInput,
 		},
 	}
 }
@@ -251,6 +263,11 @@ func (m model) Init() tea.Cmd {
 		view:   addResourceGraphDbListView,
 	})
 
+	screens.register(int(NEW_PROJECT_DIR_INPUT), uiFns[model]{
+		update: newProjectDirInputUpdate,
+		view:   newProjectDirInputView,
+	})
+
 	return nil
 }
 
@@ -293,13 +310,16 @@ func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "g":
 			m.screen = ADD_RESOURCE_GRAPH_ENTRY_LIST
 			return m, tx
+		case "n":
+			m.screen = NEW_PROJECT_DIR_INPUT
+			return m, tea.Sequence(tx, m.newProjectDirInput.input.Focus())
 		}
 	}
 	return m, nil
 }
 
 func homeView(m model) string {
-	s := lipgloss.JoinVertical(lipgloss.Top, "Gas.dev", "[g] Add resource graph")
+	s := lipgloss.JoinVertical(lipgloss.Top, "Gas.dev", "[g] Add resource graph", "[n] New project")
 	return s
 }
 
@@ -612,4 +632,30 @@ func (d addResourceGraphDbListDelegate) Render(w io.Writer, m list.Model, index 
 	}
 
 	fmt.Fprint(w, fn(str))
+}
+
+func newProjectDirInputUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case txMsg:
+		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			if m.newProjectDirInput.input.Value() == "" {
+				m.newProjectDirInput.input.Err = &InputErr{
+					Msg: "Directory is required",
+				}
+				return m, nil
+			}
+			return m, tx
+		}
+	}
+
+	var cmd tea.Cmd
+	m.newProjectDirInput.input, cmd = m.newProjectDirInput.input.Update(msg)
+	return m, cmd
+}
+
+func newProjectDirInputView(m model) string {
+	return lipgloss.JoinVertical(lipgloss.Top, "Enter dir:", m.newProjectDirInput.input.View())
 }
