@@ -160,6 +160,22 @@ func inititialModel() model {
 	newProjectDirInput := textinput.New()
 	newProjectDirInput.Placeholder = "./your-project-dir"
 
+	selectPackageManagerList := newSelectPackageManagerListModel(
+		[]list.Item{
+			selectPackageManagerListItemId("npm"),
+		},
+		selectPackageManagerListDelegate{},
+		0,
+		0,
+	)
+	selectPackageManagerList.Title = "Select package manager:"
+	selectPackageManagerList.SetShowStatusBar(false)
+	selectPackageManagerList.SetFilteringEnabled(false)
+	selectPackageManagerList.Styles.Title = selectPackageManagerListTitleStyle
+	selectPackageManagerList.Styles.TitleBar = selectPackageManagerListTitleBarStyle
+	selectPackageManagerList.Styles.PaginationStyle = selectPackageManagerListPaginationStyle
+	selectPackageManagerList.Styles.HelpStyle = selectPackageManagerListHelpStyle
+
 	return model{
 		mode: HOME,
 		addResourceGraph: addResourceGraphType{
@@ -169,7 +185,8 @@ func inititialModel() model {
 			dbList:           addResourceGraphDbList,
 		},
 		newProject: newProjectType{
-			dirInput: newProjectDirInput,
+			dirInput:                 newProjectDirInput,
+			selectPackageManagerList: selectPackageManagerList,
 		},
 	}
 }
@@ -570,13 +587,15 @@ type newProjectState int
 const (
 	NEW_PROJECT_DIR_INPUT_STATE newProjectState = iota
 	NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE
-	NEW_PROJECT_DIR_CONFIRM_STATE
 	NEW_PROJECT_DIR_ERR_STATE
+	NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE
+	NEW_PROJECT_CREATING_STATE
 )
 
 type newProjectType struct {
-	state    newProjectState
-	dirInput textinput.Model
+	state                    newProjectState
+	dirInput                 textinput.Model
+	selectPackageManagerList selectPackageManagerListModel
 }
 
 func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -602,13 +621,13 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			dirState := newProjectDirPathState(msg)
 			if dirState == NEW_PROJECT_DIR_PATH_STATE_FULL {
 				m.newProject.state = NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE
-				return m, nil
+				return m, tx
 			} else if dirState == NEW_PROJECT_DIR_PATH_STATE_NONE {
-				m.newProject.state = NEW_PROJECT_DIR_CONFIRM_STATE
-				return m, nil
+				m.newProject.state = NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE
+				return m, tx
 			} else if dirState == NEW_PROJECT_DIR_PATH_STATE_EMPTY {
-				m.newProject.state = NEW_PROJECT_DIR_CONFIRM_STATE
-				return m, nil
+				m.newProject.state = NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE
+				return m, tx
 			}
 		case getNewProjectDirPathStateErr:
 			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
@@ -618,6 +637,22 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		var cmd tea.Cmd
 		m.newProject.dirInput, cmd = m.newProject.dirInput.Update(msg)
+		return m, cmd
+	} else if m.newProject.state == NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE {
+		switch msg := msg.(type) {
+		case txMsg:
+			m.newProject.selectPackageManagerList.SetSize(m.terminalWidth, m.terminalHeight)
+			return m, tea.ClearScreen
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				m.newProject.state = NEW_PROJECT_CREATING_STATE
+				return m, tx
+			}
+		}
+
+		var cmd tea.Cmd
+		m.newProject.selectPackageManagerList, cmd = m.newProject.selectPackageManagerList.Update(msg)
 		return m, cmd
 	}
 
@@ -639,10 +674,12 @@ func newProjectView(m model) string {
 		return s
 	} else if m.newProject.state == NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE {
 		return "Confirm empty dir y/n?"
-	} else if m.newProject.state == NEW_PROJECT_DIR_CONFIRM_STATE {
-		return "Confirm new project y/n?"
 	} else if m.newProject.state == NEW_PROJECT_DIR_ERR_STATE {
 		return "Error: " + m.newProject.dirInput.Err.Error()
+	} else if m.newProject.state == NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE {
+		return m.newProject.selectPackageManagerList.View()
+	} else if m.newProject.state == NEW_PROJECT_CREATING_STATE {
+		return "Creating project..."
 	}
 	return "Unknown new project state"
 }
@@ -689,4 +726,70 @@ func doesDirExist(path string) (bool, error) {
 		return false, fmt.Errorf("unable to check if %s dir exists\n%v", path, err)
 	}
 	return info.IsDir(), nil
+}
+
+var (
+	selectPackageManagerListTitleBarStyle     = lipgloss.NewStyle()
+	selectPackageManagerListTitleStyle        = lipgloss.NewStyle()
+	selectPackageManagerListItemStyle         = lipgloss.NewStyle().PaddingLeft(2)
+	selectPackageManagerListSelectedItemStyle = lipgloss.NewStyle().PaddingLeft(0)
+	selectPackageManagerListPaginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	selectPackageManagerListHelpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(0)
+)
+
+type selectPackageManagerListModel struct {
+	list.Model
+}
+
+func newSelectPackageManagerListModel(items []list.Item, delegate list.ItemDelegate, width int, height int) selectPackageManagerListModel {
+	return selectPackageManagerListModel{
+		Model: list.New(items, delegate, width, height),
+	}
+}
+
+func (l selectPackageManagerListModel) init() tea.Cmd {
+	return nil
+}
+
+func (m selectPackageManagerListModel) Update(msg tea.Msg) (selectPackageManagerListModel, tea.Cmd) {
+	var cmd tea.Cmd
+	m.Model, cmd = m.Model.Update(msg)
+	return m, cmd
+}
+
+func (m selectPackageManagerListModel) View() string {
+	return m.Model.View()
+}
+
+func (l selectPackageManagerListModel) SelectedItemId() selectPackageManagerListItemId {
+	return l.SelectedItem().(selectPackageManagerListItemId)
+}
+
+type selectPackageManagerListItemId string
+
+func (i selectPackageManagerListItemId) FilterValue() string {
+	return resourceTemplateIdToData[string(i)].name
+}
+
+type selectPackageManagerListDelegate struct{}
+
+func (d selectPackageManagerListDelegate) Height() int                             { return 1 }
+func (d selectPackageManagerListDelegate) Spacing() int                            { return 0 }
+func (d selectPackageManagerListDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d selectPackageManagerListDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(selectPackageManagerListItemId)
+	if !ok {
+		return
+	}
+
+	str := string(i)
+
+	fn := selectPackageManagerListItemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return selectPackageManagerListSelectedItemStyle.Render("> " + strings.Join(s, " "))
+		}
+	}
+
+	fmt.Fprint(w, fn(str))
 }
