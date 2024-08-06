@@ -209,13 +209,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	if m.mode == HOME {
-		return homeView(m)
+		return homeView()
 	} else if m.mode == ADD_RESOURCE_GRAPH {
 		return addResourceGraphView(m)
 	} else if m.mode == NEW_PROJECT {
 		return newProjectView(m)
 	} else {
-		return fmt.Sprintf("Unknown mode: %d\n\nVerify mode, update, and view are registered.", m.mode)
+		return fmt.Sprintf("Unknown mode: %d", m.mode)
 	}
 }
 
@@ -236,7 +236,7 @@ func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func homeView(m model) string {
+func homeView() string {
 	s := lipgloss.JoinVertical(lipgloss.Top, "Gas.dev", "[g] Add resource graph", "[n] New project")
 	return s
 }
