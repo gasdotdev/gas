@@ -603,7 +603,17 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func newProjectView(m model) string {
 	if m.newProject.state == NEW_PROJECT_DIR_INPUT_STATE {
-		return lipgloss.JoinVertical(lipgloss.Top, "Enter dir:", m.newProject.dirInput.View())
+		s := lipgloss.JoinVertical(lipgloss.Top, "Enter dir:", m.newProject.dirInput.View())
+		if m.newProject.dirInput.Err != nil {
+			var inputErr *InputErr
+			switch {
+			case errors.As(m.newProject.dirInput.Err, &inputErr):
+				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.newProject.dirInput.Err)))
+			default:
+				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.newProject.dirInput.Err)))
+			}
+		}
+		return s
 	}
 	return "Unknown new project state"
 }
