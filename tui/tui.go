@@ -22,46 +22,20 @@ func main() {
 	}
 }
 
-type addResourceGraphEntryListType struct {
-	list addResourceGraphEntryListModel
-}
-
-type addResourceGraphEntryEntityInputType struct {
-	input textinput.Model
-}
-
-type addResourceGraphApiListType struct {
-	list addResourceGraphApiListModel
-}
-
-type addResourceGraphDbListType struct {
-	list addResourceGraphDbListModel
-}
-
-type newProjectDirInputType struct {
-	input textinput.Model
-}
-
 type mode int
 
 const (
 	HOME mode = iota
-	ADD_RESOURCE_GRAPH_ENTRY_LIST
-	ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT
-	ADD_RESOURCE_GRAPH_API_LIST
-	ADD_RESOURCE_GRAPH_DB_LIST
-	NEW_PROJECT_DIR_INPUT
+	ADD_RESOURCE_GRAPH
+	NEW_PROJECT
 )
 
 type model struct {
-	mode                             mode
-	terminalHeight                   int
-	terminalWidth                    int
-	addResourceGraphEntryList        addResourceGraphEntryListType
-	addResourceGraphEntryEntityInput addResourceGraphEntryEntityInputType
-	addResourceGraphApiList          addResourceGraphApiListType
-	addResourceGraphDbList           addResourceGraphDbListType
-	newProjectDirInput               newProjectDirInputType
+	mode             mode
+	terminalHeight   int
+	terminalWidth    int
+	addResourceGraph addResourceGraphType
+	newProject       newProjectType
 }
 
 type resourceTemplateData struct {
@@ -187,46 +161,16 @@ func inititialModel() model {
 
 	return model{
 		mode: HOME,
-		addResourceGraphEntryList: addResourceGraphEntryListType{
-			list: addResourceGraphEntryList,
+		addResourceGraph: addResourceGraphType{
+			entryList:        addResourceGraphEntryList,
+			entryEntityInput: addResourceGraphEntryEntityInput,
+			apiList:          addResourceGraphApiList,
+			dbList:           addResourceGraphDbList,
 		},
-		addResourceGraphEntryEntityInput: addResourceGraphEntryEntityInputType{
-			input: addResourceGraphEntryEntityInput,
-		},
-		addResourceGraphApiList: addResourceGraphApiListType{
-			list: addResourceGraphApiList,
-		},
-		addResourceGraphDbList: addResourceGraphDbListType{
-			list: addResourceGraphDbList,
-		},
-		newProjectDirInput: newProjectDirInputType{
-			input: newProjectDirInput,
+		newProject: newProjectType{
+			dirInput: newProjectDirInput,
 		},
 	}
-}
-
-type ui[M any] struct {
-	Fns map[int]uiFns[M]
-}
-
-type uiFns[M any] struct {
-	update updateFn[M]
-	view   viewFn[M]
-}
-
-type (
-	updateFn[M any] func(m M, msg tea.Msg) (tea.Model, tea.Cmd)
-	viewFn[M any]   func(m M) string
-)
-
-func uiNew[M any]() *ui[M] {
-	return &ui[M]{
-		Fns: make(map[int]uiFns[M]),
-	}
-}
-
-func (u *ui[M]) register(state int, fns uiFns[M]) {
-	u.Fns[state] = fns
 }
 
 type txMsg bool
@@ -235,39 +179,7 @@ func tx() tea.Msg {
 	return txMsg(true)
 }
 
-var modes = uiNew[model]()
-
 func (m model) Init() tea.Cmd {
-	modes.register(int(HOME), uiFns[model]{
-		update: homeUpdate,
-		view:   homeView,
-	})
-
-	modes.register(int(ADD_RESOURCE_GRAPH_ENTRY_LIST), uiFns[model]{
-		update: addResourceGraphEntryListUpdate,
-		view:   addResourceGraphEntryListView,
-	})
-
-	modes.register(int(ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT), uiFns[model]{
-		update: addResourceGraphEntryEntityInputUpdate,
-		view:   addResourceGraphEntryEntityInputView,
-	})
-
-	modes.register(int(ADD_RESOURCE_GRAPH_API_LIST), uiFns[model]{
-		update: addResourceGraphApiListUpdate,
-		view:   addResourceGraphApiListView,
-	})
-
-	modes.register(int(ADD_RESOURCE_GRAPH_DB_LIST), uiFns[model]{
-		update: addResourceGraphDbListUpdate,
-		view:   addResourceGraphDbListView,
-	})
-
-	modes.register(int(NEW_PROJECT_DIR_INPUT), uiFns[model]{
-		update: newProjectDirInputUpdate,
-		view:   newProjectDirInputView,
-	})
-
 	return nil
 }
 
@@ -284,21 +196,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	modeFn, ok := modes.Fns[int(m.mode)]
-	if !ok {
+	if m.mode == HOME {
+		return homeUpdate(m, msg)
+	} else if m.mode == ADD_RESOURCE_GRAPH {
+		return addResourceGraphUpdate(m, msg)
+	} else if m.mode == NEW_PROJECT {
+		return newProjectUpdate(m, msg)
+	} else {
 		return m, nil
 	}
-	return modeFn.update(m, msg)
 }
 
 func (m model) View() string {
-	modeFn, ok := modes.Fns[int(m.mode)]
-	if !ok {
-		s := fmt.Sprintf("Unknown mode: %d\n\n", m.mode)
-		s += "Verify mode, update, and view are registered."
-		return s
+	if m.mode == HOME {
+		return homeView(m)
+	} else if m.mode == ADD_RESOURCE_GRAPH {
+		return addResourceGraphView(m)
+	} else if m.mode == NEW_PROJECT {
+		return newProjectView(m)
+	} else {
+		return fmt.Sprintf("Unknown mode: %d\n\nVerify mode, update, and view are registered.", m.mode)
 	}
-	return modeFn.view(m)
 }
 
 func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -308,11 +226,11 @@ func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "g":
-			m.mode = ADD_RESOURCE_GRAPH_ENTRY_LIST
+			m.mode = ADD_RESOURCE_GRAPH
 			return m, tx
 		case "n":
-			m.mode = NEW_PROJECT_DIR_INPUT
-			return m, tea.Sequence(tx, m.newProjectDirInput.input.Focus())
+			m.mode = NEW_PROJECT
+			return m, tea.Sequence(tx, m.newProject.dirInput.Focus())
 		}
 	}
 	return m, nil
@@ -323,26 +241,129 @@ func homeView(m model) string {
 	return s
 }
 
-func addResourceGraphEntryListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case txMsg:
-		m.addResourceGraphEntryList.list.SetSize(m.terminalWidth, m.terminalHeight)
-		return m, tea.ClearScreen
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "enter":
-			m.mode = ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT
-			return m, tea.Sequence(tx, m.addResourceGraphEntryEntityInput.input.Focus())
-		}
-	}
+type addResourceGraphState int
 
-	var cmd tea.Cmd
-	m.addResourceGraphEntryList.list, cmd = m.addResourceGraphEntryList.list.Update(msg)
-	return m, cmd
+const (
+	ADD_RESOURCE_GRAPH_ENTRY_LIST_STATE addResourceGraphState = iota
+	ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT_STATE
+	ADD_RESOURCE_GRAPH_API_LIST_STATE
+	ADD_RESOURCE_GRAPH_DB_LIST_STATE
+)
+
+type addResourceGraphType struct {
+	state            addResourceGraphState
+	entryList        addResourceGraphEntryListModel
+	entryEntityInput textinput.Model
+	apiList          addResourceGraphApiListModel
+	dbList           addResourceGraphDbListModel
 }
 
-func addResourceGraphEntryListView(m model) string {
-	return m.addResourceGraphEntryList.list.View()
+type InputErr struct {
+	Msg string
+}
+
+func (e *InputErr) Error() string {
+	return e.Msg
+}
+
+func addResourceGraphUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_ENTRY_LIST_STATE {
+		switch msg := msg.(type) {
+		case txMsg:
+			m.addResourceGraph.entryList.SetSize(m.terminalWidth, m.terminalHeight)
+			return m, tea.ClearScreen
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				m.addResourceGraph.state = ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT_STATE
+				return m, tea.Sequence(tx, m.addResourceGraph.entryEntityInput.Focus())
+			}
+		}
+
+		var cmd tea.Cmd
+		m.addResourceGraph.entryList, cmd = m.addResourceGraph.entryList.Update(msg)
+		return m, cmd
+	} else if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT_STATE {
+		switch msg := msg.(type) {
+		case txMsg:
+			return m, tea.ClearScreen
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				if m.addResourceGraph.entryEntityInput.Value() == "" {
+					m.addResourceGraph.entryEntityInput.Err = &InputErr{
+						Msg: "Entity is required",
+					}
+					return m, nil
+				}
+				m.addResourceGraph.state = ADD_RESOURCE_GRAPH_API_LIST_STATE
+				return m, tx
+			}
+		}
+
+		var cmd tea.Cmd
+		m.addResourceGraph.entryEntityInput, cmd = m.addResourceGraph.entryEntityInput.Update(msg)
+		return m, cmd
+	} else if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_API_LIST_STATE {
+		switch msg := msg.(type) {
+		case txMsg:
+			m.addResourceGraph.apiList.SetSize(m.terminalWidth, m.terminalHeight)
+			return m, tea.ClearScreen
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				m.addResourceGraph.state = ADD_RESOURCE_GRAPH_DB_LIST_STATE
+				return m, tx
+			}
+		}
+
+		var cmd tea.Cmd
+		m.addResourceGraph.apiList, cmd = m.addResourceGraph.apiList.Update(msg)
+		return m, cmd
+	} else if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_DB_LIST_STATE {
+		switch msg.(type) {
+		case txMsg:
+			m.addResourceGraph.dbList.SetSize(m.terminalWidth, m.terminalHeight)
+			return m, tea.ClearScreen
+		}
+
+		var cmd tea.Cmd
+		m.addResourceGraph.dbList, cmd = m.addResourceGraph.dbList.Update(msg)
+		return m, cmd
+	}
+
+	return m, nil
+}
+
+var inputErrStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+
+func addResourceGraphView(m model) string {
+	if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_ENTRY_LIST_STATE {
+		return m.addResourceGraph.entryList.View()
+	} else if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT_STATE {
+		s := lipgloss.JoinVertical(
+			lipgloss.Top,
+			string(m.addResourceGraph.entryList.SelectedItemId()),
+			"Resource entity group pre-set to web",
+			"Enter resource entity:",
+			m.addResourceGraph.entryEntityInput.View(),
+		)
+		if m.addResourceGraph.entryEntityInput.Err != nil {
+			var inputErr *InputErr
+			switch {
+			case errors.As(m.addResourceGraph.entryEntityInput.Err, &inputErr):
+				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.addResourceGraph.entryEntityInput.Err)))
+			default:
+				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.addResourceGraph.entryEntityInput.Err)))
+			}
+		}
+		return s
+	} else if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_API_LIST_STATE {
+		return m.addResourceGraph.apiList.View()
+	} else if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_DB_LIST_STATE {
+		return m.addResourceGraph.dbList.View()
+	}
+	return "Unknown add resource graph state"
 }
 
 var (
@@ -411,81 +432,6 @@ func (d addResourceGraphEntryListDelegate) Render(w io.Writer, m list.Model, ind
 	fmt.Fprint(w, fn(str))
 }
 
-type InputErr struct {
-	Msg string
-}
-
-func (e *InputErr) Error() string {
-	return e.Msg
-}
-
-func addResourceGraphEntryEntityInputUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case txMsg:
-		return m, tea.ClearScreen
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "enter":
-			if m.addResourceGraphEntryEntityInput.input.Value() == "" {
-				m.addResourceGraphEntryEntityInput.input.Err = &InputErr{
-					Msg: "Entity is required",
-				}
-				return m, nil
-			}
-			m.mode = ADD_RESOURCE_GRAPH_API_LIST
-			return m, tx
-		}
-	}
-
-	var cmd tea.Cmd
-	m.addResourceGraphEntryEntityInput.input, cmd = m.addResourceGraphEntryEntityInput.input.Update(msg)
-	return m, cmd
-}
-
-var inputErrStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-
-func addResourceGraphEntryEntityInputView(m model) string {
-	s := lipgloss.JoinVertical(
-		lipgloss.Top,
-		string(m.addResourceGraphEntryList.list.SelectedItemId()),
-		"Resource entity group pre-set to web",
-		"Enter resource entity:",
-		m.addResourceGraphEntryEntityInput.input.View(),
-	)
-	if m.addResourceGraphEntryEntityInput.input.Err != nil {
-		var inputErr *InputErr
-		switch {
-		case errors.As(m.addResourceGraphEntryEntityInput.input.Err, &inputErr):
-			s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.addResourceGraphEntryEntityInput.input.Err)))
-		default:
-			s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.addResourceGraphEntryEntityInput.input.Err)))
-		}
-	}
-	return s
-}
-
-func addResourceGraphApiListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case txMsg:
-		m.addResourceGraphApiList.list.SetSize(m.terminalWidth, m.terminalHeight)
-		return m, tea.ClearScreen
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "enter":
-			m.mode = ADD_RESOURCE_GRAPH_DB_LIST
-			return m, tx
-		}
-	}
-
-	var cmd tea.Cmd
-	m.addResourceGraphApiList.list, cmd = m.addResourceGraphApiList.list.Update(msg)
-	return m, cmd
-}
-
-func addResourceGraphApiListView(m model) string {
-	return m.addResourceGraphApiList.list.View()
-}
-
 var (
 	addResourceGraphApiListTitleBarStyle     = lipgloss.NewStyle()
 	addResourceGraphApiListTitleStyle        = lipgloss.NewStyle()
@@ -550,22 +496,6 @@ func (d addResourceGraphApiListDelegate) Render(w io.Writer, m list.Model, index
 	}
 
 	fmt.Fprint(w, fn(str))
-}
-
-func addResourceGraphDbListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg.(type) {
-	case txMsg:
-		m.addResourceGraphDbList.list.SetSize(m.terminalWidth, m.terminalHeight)
-		return m, tea.ClearScreen
-	}
-
-	var cmd tea.Cmd
-	m.addResourceGraphDbList.list, cmd = m.addResourceGraphDbList.list.Update(msg)
-	return m, cmd
-}
-
-func addResourceGraphDbListView(m model) string {
-	return m.addResourceGraphDbList.list.View()
 }
 
 var (
@@ -634,28 +564,46 @@ func (d addResourceGraphDbListDelegate) Render(w io.Writer, m list.Model, index 
 	fmt.Fprint(w, fn(str))
 }
 
-func newProjectDirInputUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case txMsg:
-		return m, tea.ClearScreen
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "enter":
-			if m.newProjectDirInput.input.Value() == "" {
-				m.newProjectDirInput.input.Err = &InputErr{
-					Msg: "Directory is required",
-				}
-				return m, nil
-			}
-			return m, tx
-		}
-	}
+type newProjectState int
 
-	var cmd tea.Cmd
-	m.newProjectDirInput.input, cmd = m.newProjectDirInput.input.Update(msg)
-	return m, cmd
+const (
+	NEW_PROJECT_DIR_INPUT_STATE newProjectState = iota
+)
+
+type newProjectType struct {
+	state    newProjectState
+	dirInput textinput.Model
 }
 
-func newProjectDirInputView(m model) string {
-	return lipgloss.JoinVertical(lipgloss.Top, "Enter dir:", m.newProjectDirInput.input.View())
+func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.newProject.state == NEW_PROJECT_DIR_INPUT_STATE {
+		switch msg := msg.(type) {
+		case txMsg:
+			return m, tea.ClearScreen
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				if m.newProject.dirInput.Value() == "" {
+					m.newProject.dirInput.Err = &InputErr{
+						Msg: "Directory is required",
+					}
+					return m, nil
+				}
+				return m, tx
+			}
+		}
+
+		var cmd tea.Cmd
+		m.newProject.dirInput, cmd = m.newProject.dirInput.Update(msg)
+		return m, cmd
+	}
+
+	return m, nil
+}
+
+func newProjectView(m model) string {
+	if m.newProject.state == NEW_PROJECT_DIR_INPUT_STATE {
+		return lipgloss.JoinVertical(lipgloss.Top, "Enter dir:", m.newProject.dirInput.View())
+	}
+	return "Unknown new project state"
 }
