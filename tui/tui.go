@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -568,6 +569,9 @@ type newProjectState int
 
 const (
 	NEW_PROJECT_DIR_INPUT_STATE newProjectState = iota
+	NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE
+	NEW_PROJECT_DIR_CONFIRM_STATE
+	NEW_PROJECT_DIR_ERR_STATE
 )
 
 type newProjectType struct {
@@ -589,8 +593,27 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, nil
 				}
-				return m, tx
+
+				resolvedPath, _ := filepath.Abs(m.newProject.dirInput.Value())
+
+				return m, getNewProjectDirPathState(resolvedPath)
 			}
+		case getNewProjectDirPathStateOk:
+			dirState := newProjectDirPathState(msg)
+			if dirState == NEW_PROJECT_DIR_PATH_STATE_FULL {
+				m.newProject.state = NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE
+				return m, nil
+			} else if dirState == NEW_PROJECT_DIR_PATH_STATE_NONE {
+				m.newProject.state = NEW_PROJECT_DIR_CONFIRM_STATE
+				return m, nil
+			} else if dirState == NEW_PROJECT_DIR_PATH_STATE_EMPTY {
+				m.newProject.state = NEW_PROJECT_DIR_CONFIRM_STATE
+				return m, nil
+			}
+		case getNewProjectDirPathStateErr:
+			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
+			m.newProject.dirInput.Err = msg
+			return m, nil
 		}
 
 		var cmd tea.Cmd
@@ -614,6 +637,56 @@ func newProjectView(m model) string {
 			}
 		}
 		return s
+	} else if m.newProject.state == NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE {
+		return "Confirm empty dir y/n?"
+	} else if m.newProject.state == NEW_PROJECT_DIR_CONFIRM_STATE {
+		return "Confirm new project y/n?"
+	} else if m.newProject.state == NEW_PROJECT_DIR_ERR_STATE {
+		return "Error: " + m.newProject.dirInput.Err.Error()
 	}
 	return "Unknown new project state"
+}
+
+type newProjectDirPathState string
+
+const (
+	NEW_PROJECT_DIR_PATH_STATE_EMPTY newProjectDirPathState = "EMPTY"
+	NEW_PROJECT_DIR_PATH_STATE_FULL  newProjectDirPathState = "FULL"
+	NEW_PROJECT_DIR_PATH_STATE_NONE  newProjectDirPathState = "NONE"
+)
+
+type getNewProjectDirPathStateOk newProjectDirPathState
+
+type getNewProjectDirPathStateErr error
+
+func getNewProjectDirPathState(dirPath string) tea.Cmd {
+	return func() tea.Msg {
+		dirExists, err := doesDirExist(dirPath)
+		if err != nil {
+			return getNewProjectDirPathStateErr(err)
+		}
+		if !dirExists {
+			return getNewProjectDirPathStateOk(NEW_PROJECT_DIR_PATH_STATE_NONE)
+		}
+
+		files, err := os.ReadDir(dirPath)
+		if err != nil {
+			return getNewProjectDirPathStateErr(err)
+		}
+		if len(files) == 0 {
+			return getNewProjectDirPathStateOk(NEW_PROJECT_DIR_PATH_STATE_EMPTY)
+		}
+		return getNewProjectDirPathStateOk(NEW_PROJECT_DIR_PATH_STATE_FULL)
+	}
+}
+
+func doesDirExist(path string) (bool, error) {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("unable to check if %s dir exists\n%v", path, err)
+	}
+	return info.IsDir(), nil
 }
