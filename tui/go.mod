@@ -1,4 +1,4 @@
-module github.com/gasdotdev/gas
+module github.com/gasdotdev/gas/tui
 
 go 1.22.2
 
