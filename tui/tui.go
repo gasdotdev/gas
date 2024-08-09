@@ -158,7 +158,7 @@ func inititialModel() model {
 	addResourceGraphDbList.Styles.HelpStyle = addResourceGraphDbListHelpStyle
 
 	newProjectDirInput := textinput.New()
-	newProjectDirInput.Placeholder = "./your-project-dir"
+	newProjectDirInput.Placeholder = "your-project-dir"
 
 	selectPackageManagerList := newSelectPackageManagerListModel(
 		[]list.Item{
@@ -176,6 +176,9 @@ func inititialModel() model {
 	selectPackageManagerList.Styles.PaginationStyle = selectPackageManagerListPaginationStyle
 	selectPackageManagerList.Styles.HelpStyle = selectPackageManagerListHelpStyle
 
+	confirmEmptyDirInput := textinput.New()
+	confirmEmptyDirInput.Placeholder = "y/n"
+
 	return model{
 		mode: HOME,
 		addResourceGraph: addResourceGraphType{
@@ -187,6 +190,7 @@ func inititialModel() model {
 		newProject: newProjectType{
 			dirInput:                 newProjectDirInput,
 			selectPackageManagerList: selectPackageManagerList,
+			confirmEmptyDirInput:     confirmEmptyDirInput,
 		},
 	}
 }
@@ -596,6 +600,7 @@ type newProjectType struct {
 	state                    newProjectState
 	dirInput                 textinput.Model
 	selectPackageManagerList selectPackageManagerListModel
+	confirmEmptyDirInput     textinput.Model
 }
 
 func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -621,7 +626,7 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			dirState := newProjectDirPathState(msg)
 			if dirState == NEW_PROJECT_DIR_PATH_STATE_FULL {
 				m.newProject.state = NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE
-				return m, tx
+				return m, tea.Sequence(tx, m.newProject.confirmEmptyDirInput.Focus())
 			} else if dirState == NEW_PROJECT_DIR_PATH_STATE_NONE {
 				m.newProject.state = NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE
 				return m, tx
@@ -637,6 +642,27 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		var cmd tea.Cmd
 		m.newProject.dirInput, cmd = m.newProject.dirInput.Update(msg)
+		return m, cmd
+	} else if m.newProject.state == NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "y":
+				m.newProject.state = NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE
+				return m, tx
+			case "n":
+				m.newProject.state = NEW_PROJECT_DIR_INPUT_STATE
+				return m, tea.Sequence(tx, m.newProject.dirInput.Focus())
+			default:
+				m.newProject.confirmEmptyDirInput.Err = &InputErr{
+					Msg: "y/n is required",
+				}
+				return m, nil
+			}
+		}
+
+		var cmd tea.Cmd
+		m.newProject.confirmEmptyDirInput, cmd = m.newProject.confirmEmptyDirInput.Update(msg)
 		return m, cmd
 	} else if m.newProject.state == NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE {
 		switch msg := msg.(type) {
@@ -673,13 +699,23 @@ func newProjectView(m model) string {
 		}
 		return s
 	} else if m.newProject.state == NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE {
-		return "Confirm empty dir y/n?"
-	} else if m.newProject.state == NEW_PROJECT_DIR_ERR_STATE {
-		return "Error: " + m.newProject.dirInput.Err.Error()
+		s := lipgloss.JoinVertical(lipgloss.Top, "Empty dir?", m.newProject.confirmEmptyDirInput.View())
+		if m.newProject.confirmEmptyDirInput.Err != nil {
+			var inputErr *InputErr
+			switch {
+			case errors.As(m.newProject.confirmEmptyDirInput.Err, &inputErr):
+				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.newProject.confirmEmptyDirInput.Err)))
+			default:
+				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.newProject.confirmEmptyDirInput.Err)))
+			}
+		}
+		return s
 	} else if m.newProject.state == NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE {
 		return m.newProject.selectPackageManagerList.View()
 	} else if m.newProject.state == NEW_PROJECT_CREATING_STATE {
 		return "Creating project..."
+	} else if m.newProject.state == NEW_PROJECT_DIR_ERR_STATE {
+		return "Error: " + m.newProject.dirInput.Err.Error()
 	}
 	return "Unknown new project state"
 }
