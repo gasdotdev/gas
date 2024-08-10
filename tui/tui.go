@@ -594,6 +594,7 @@ const (
 	NEW_PROJECT_DIR_ERR_STATE
 	NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE
 	NEW_PROJECT_CREATING_STATE
+	NEW_PROJECT_CREATED_STATE
 )
 
 type newProjectType struct {
@@ -714,6 +715,8 @@ func newProjectView(m model) string {
 		return m.newProject.selectPackageManagerList.View()
 	} else if m.newProject.state == NEW_PROJECT_CREATING_STATE {
 		return "Creating project..."
+	} else if m.newProject.state == NEW_PROJECT_CREATED_STATE {
+		return "Created project"
 	} else if m.newProject.state == NEW_PROJECT_DIR_ERR_STATE {
 		return "Error: " + m.newProject.dirInput.Err.Error()
 	}
