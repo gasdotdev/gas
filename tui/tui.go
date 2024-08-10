@@ -602,6 +602,7 @@ type newProjectType struct {
 	dirInput                 textinput.Model
 	selectPackageManagerList selectPackageManagerListModel
 	confirmEmptyDirInput     textinput.Model
+	createLogs               []string
 }
 
 func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -646,6 +647,8 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	} else if m.newProject.state == NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE {
 		switch msg := msg.(type) {
+		case txMsg:
+			return m, tea.ClearScreen
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "y":
@@ -681,6 +684,19 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.newProject.selectPackageManagerList, cmd = m.newProject.selectPackageManagerList.Update(msg)
 		return m, cmd
+	} else if m.newProject.state == NEW_PROJECT_CREATING_STATE {
+		switch msg.(type) {
+		case txMsg:
+			if len(m.newProject.createLogs) > 0 {
+				return m, tea.ClearScreen
+			} else if m.newProject.confirmEmptyDirInput.Value() == "y" {
+				// Trigger clear screen and empty dir
+				// return m, tea.ClearScreen
+			} else {
+				m.newProject.createLogs = append(m.newProject.createLogs, "Creating "+m.newProject.dirInput.Value())
+				return m, tea.Sequence(tx, createNewProjectDir(m.newProject.dirInput.Value()))
+			}
+		}
 	}
 
 	return m, nil
@@ -714,7 +730,11 @@ func newProjectView(m model) string {
 	} else if m.newProject.state == NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE {
 		return m.newProject.selectPackageManagerList.View()
 	} else if m.newProject.state == NEW_PROJECT_CREATING_STATE {
-		return "Creating project..."
+		var logs strings.Builder
+		for _, log := range m.newProject.createLogs {
+			logs.WriteString(log + "\n")
+		}
+		return logs.String()
 	} else if m.newProject.state == NEW_PROJECT_CREATED_STATE {
 		return "Created project"
 	} else if m.newProject.state == NEW_PROJECT_DIR_ERR_STATE {
@@ -765,6 +785,20 @@ func doesDirExist(path string) (bool, error) {
 		return false, fmt.Errorf("unable to check if %s dir exists\n%v", path, err)
 	}
 	return info.IsDir(), nil
+}
+
+type createNewProjectDirOk bool
+
+type createNewProjectDirErr error
+
+func createNewProjectDir(dirPath string) tea.Cmd {
+	return func() tea.Msg {
+		err := os.Mkdir(dirPath, 0755)
+		if err != nil {
+			return createNewProjectDirErr(err)
+		}
+		return createNewProjectDirOk(true)
+	}
 }
 
 var (
