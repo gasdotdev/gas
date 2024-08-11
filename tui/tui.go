@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -690,47 +691,79 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.newProject.selectPackageManagerList, cmd = m.newProject.selectPackageManagerList.Update(msg)
 		return m, cmd
 	} else if m.newProject.state == NEW_PROJECT_CREATING_STATE {
+		repoUrl := "https://github.com/gasdotdev/gas"
+		repoBranch := "master"
+		extractPath := m.newProject.dirInput.Value()
+		repoTemplate := "templates/new-project-npm"
+
 		switch msg := msg.(type) {
 		case txMsg:
 			if len(m.newProject.createLogs) > 0 {
 				return m, tea.ClearScreen
 			} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_FULL && m.newProject.confirmEmptyDirInput.Value() == "y" {
 				m.newProject.createLogs = append(m.newProject.createLogs, "Emptying dir...")
-				return m, tea.Sequence(tx, emptyNewProjectDirPath(m.newProject.dirInput.Value()))
+				return m, emptyNewProjectDirPath(m.newProject.dirInput.Value())
 			} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_EMPTY {
 				m.newProject.createLogs = append(m.newProject.createLogs, "Downloading new project template...")
 
-				repoUrl := "https://github.com/gasdotdev/gas"
-				repoBranch := "master"
-				extractPath := m.newProject.dirInput.Value()
-				repoTemplate := "templates/new-project-npm"
-
-				return m, tea.Sequence(tx, runDegit(repoUrl, repoBranch, []degit.Paths{{
+				return m, runDegit(repoUrl, repoBranch, []degit.Paths{{
 					Repo:    repoTemplate,
 					Extract: extractPath,
-				}}))
+				}})
 			} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_NONE {
 				m.newProject.createLogs = append(m.newProject.createLogs, "Creating "+m.newProject.dirInput.Value())
-				return m, tea.Sequence(tx, createNewProjectDir(m.newProject.dirInput.Value()))
+				return m, createNewProjectDir(m.newProject.dirInput.Value())
 			}
-		case runDegitOk:
-			m.newProject.createLogs = append(m.newProject.createLogs, "Project template downloaded successfully.")
-			m.newProject.state = NEW_PROJECT_CREATED_STATE
-			return m, tx
-		case runDegitErr:
+		case createNewProjectDirOk:
+			m.newProject.createLogs = append(m.newProject.createLogs, "Directory created successfully.")
+			return m, runDegit(repoUrl, repoBranch, []degit.Paths{{
+				Repo:    repoTemplate,
+				Extract: extractPath,
+			}})
+		case createNewProjectDirErr:
 			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
-			errMsg := fmt.Sprintf("Error running degit: %v", msg.err)
+			errMsg := fmt.Sprintf("Error creating directory: %v", msg.err)
 			m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
 			return m, tea.Sequence(tx, tea.Println(errMsg))
 		case emptyNewProjectDirPathOk:
 			m.newProject.createLogs = append(m.newProject.createLogs, "Directory emptied successfully.")
-			m.newProject.state = NEW_PROJECT_CREATED_STATE
-			return m, tx
+			return m, runDegit(repoUrl, repoBranch, []degit.Paths{{
+				Repo:    repoTemplate,
+				Extract: extractPath,
+			}})
 		case emptyNewProjectDirPathErr:
 			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
 			errMsg := fmt.Sprintf("Error emptying directory: %v", msg.err)
 			m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
 			return m, tea.Sequence(tx, tea.Println(errMsg))
+		case runDegitOk:
+			m.newProject.createLogs = append(m.newProject.createLogs, "Project template downloaded successfully.")
+			return m, installPackages(extractPath, "npm")
+		case runDegitErr:
+			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
+			errMsg := fmt.Sprintf("Error running degit: %v", msg.err)
+			m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
+			return m, tea.Sequence(tx, tea.Println(errMsg))
+		case installPackagesOk:
+			m.newProject.createLogs = append(m.newProject.createLogs, "Packages installed successfully.")
+			m.newProject.state = NEW_PROJECT_CREATED_STATE
+			return m, tx
+		case installPackagesErr:
+			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
+			errMsg := fmt.Sprintf("Error installing packages: %v", msg.err)
+			m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
+			return m, tea.Sequence(tx, tea.Println(errMsg))
+		}
+	} else if m.newProject.state == NEW_PROJECT_CREATED_STATE {
+		switch msg := msg.(type) {
+		case txMsg:
+			return m, tea.ClearScreen
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "g":
+				m.mode = ADD_RESOURCE_GRAPH
+				return m, tx
+			}
 		}
 	}
 
@@ -776,6 +809,8 @@ func newProjectView(m model) string {
 			logs.WriteString(log + "\n")
 		}
 		logs.WriteString("Project created successfully.")
+		logs.WriteString("\n\n")
+		logs.WriteString("Press g to add resources to the graph.")
 		return logs.String()
 	} else if m.newProject.state == NEW_PROJECT_DIR_ERR_STATE {
 		return fmt.Sprintf("Error occurred:\n%s", strings.Join(m.newProject.createLogs, "\n"))
@@ -879,6 +914,23 @@ func runDegit(repoUrl, branch string, paths []degit.Paths) tea.Cmd {
 			return runDegitErr{err: err}
 		}
 		return runDegitOk(true)
+	}
+}
+
+type installPackagesOk bool
+
+type installPackagesErr struct {
+	err error
+}
+
+func installPackages(dirPath string, packageManager string) tea.Cmd {
+	return func() tea.Msg {
+		cmd := exec.Command(packageManager, "install")
+		cmd.Dir = dirPath
+		if err := cmd.Run(); err != nil {
+			return installPackagesErr{err: fmt.Errorf("unable to complete %s install: %w", packageManager, err)}
+		}
+		return installPackagesOk(true)
 	}
 }
 
