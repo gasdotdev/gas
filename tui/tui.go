@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	degit "github.com/gasdotdev/gas/tui/internal"
 )
 
 func main() {
@@ -600,6 +601,7 @@ const (
 type newProjectType struct {
 	state                    newProjectState
 	dirInput                 textinput.Model
+	dirState                 newProjectDirPathState
 	selectPackageManagerList selectPackageManagerListModel
 	confirmEmptyDirInput     textinput.Model
 	createLogs               []string
@@ -626,6 +628,7 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case getNewProjectDirPathStateOk:
 			dirState := newProjectDirPathState(msg)
+			m.newProject.dirState = dirState
 			if dirState == NEW_PROJECT_DIR_PATH_STATE_FULL {
 				m.newProject.state = NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE
 				return m, tea.Sequence(tx, m.newProject.confirmEmptyDirInput.Focus())
@@ -653,9 +656,11 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "y":
 				m.newProject.state = NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE
+				m.newProject.confirmEmptyDirInput.SetValue("y")
 				return m, tx
 			case "n":
 				m.newProject.state = NEW_PROJECT_DIR_INPUT_STATE
+				m.newProject.confirmEmptyDirInput.SetValue("n")
 				return m, tea.Sequence(tx, m.newProject.dirInput.Focus())
 			default:
 				m.newProject.confirmEmptyDirInput.Err = &InputErr{
@@ -685,17 +690,47 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.newProject.selectPackageManagerList, cmd = m.newProject.selectPackageManagerList.Update(msg)
 		return m, cmd
 	} else if m.newProject.state == NEW_PROJECT_CREATING_STATE {
-		switch msg.(type) {
+		switch msg := msg.(type) {
 		case txMsg:
 			if len(m.newProject.createLogs) > 0 {
 				return m, tea.ClearScreen
-			} else if m.newProject.confirmEmptyDirInput.Value() == "y" {
-				// Trigger clear screen and empty dir
-				// return m, tea.ClearScreen
-			} else {
+			} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_FULL && m.newProject.confirmEmptyDirInput.Value() == "y" {
+				m.newProject.createLogs = append(m.newProject.createLogs, "Emptying dir...")
+				return m, tea.Sequence(tx, emptyNewProjectDirPath(m.newProject.dirInput.Value()))
+			} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_EMPTY {
+				m.newProject.createLogs = append(m.newProject.createLogs, "Downloading new project template...")
+
+				repoUrl := "https://github.com/gasdotdev/gas"
+				repoBranch := "master"
+				extractPath := m.newProject.dirInput.Value()
+				repoTemplate := "templates/new-project-npm"
+
+				return m, tea.Sequence(tx, runDegit(repoUrl, repoBranch, []degit.Paths{{
+					Repo:    repoTemplate,
+					Extract: extractPath,
+				}}))
+			} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_NONE {
 				m.newProject.createLogs = append(m.newProject.createLogs, "Creating "+m.newProject.dirInput.Value())
 				return m, tea.Sequence(tx, createNewProjectDir(m.newProject.dirInput.Value()))
 			}
+		case runDegitOk:
+			m.newProject.createLogs = append(m.newProject.createLogs, "Project template downloaded successfully.")
+			m.newProject.state = NEW_PROJECT_CREATED_STATE
+			return m, tx
+		case runDegitErr:
+			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
+			errMsg := fmt.Sprintf("Error running degit: %v", msg.err)
+			m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
+			return m, tea.Sequence(tx, tea.Println(errMsg))
+		case emptyNewProjectDirPathOk:
+			m.newProject.createLogs = append(m.newProject.createLogs, "Directory emptied successfully.")
+			m.newProject.state = NEW_PROJECT_CREATED_STATE
+			return m, tx
+		case emptyNewProjectDirPathErr:
+			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
+			errMsg := fmt.Sprintf("Error emptying directory: %v", msg.err)
+			m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
+			return m, tea.Sequence(tx, tea.Println(errMsg))
 		}
 	}
 
@@ -736,9 +771,14 @@ func newProjectView(m model) string {
 		}
 		return logs.String()
 	} else if m.newProject.state == NEW_PROJECT_CREATED_STATE {
-		return "Created project"
+		var logs strings.Builder
+		for _, log := range m.newProject.createLogs {
+			logs.WriteString(log + "\n")
+		}
+		logs.WriteString("Project created successfully.")
+		return logs.String()
 	} else if m.newProject.state == NEW_PROJECT_DIR_ERR_STATE {
-		return "Error: " + m.newProject.dirInput.Err.Error()
+		return fmt.Sprintf("Error occurred:\n%s", strings.Join(m.newProject.createLogs, "\n"))
 	}
 	return "Unknown new project state"
 }
@@ -789,15 +829,56 @@ func doesDirExist(path string) (bool, error) {
 
 type createNewProjectDirOk bool
 
-type createNewProjectDirErr error
+type createNewProjectDirErr struct {
+	err error
+}
 
 func createNewProjectDir(dirPath string) tea.Cmd {
 	return func() tea.Msg {
 		err := os.Mkdir(dirPath, 0755)
 		if err != nil {
-			return createNewProjectDirErr(err)
+			return createNewProjectDirErr{err: err}
 		}
 		return createNewProjectDirOk(true)
+	}
+}
+
+type emptyNewProjectDirPathOk bool
+
+type emptyNewProjectDirPathErr struct {
+	err error
+}
+
+func emptyNewProjectDirPath(dirPath string) tea.Cmd {
+	return func() tea.Msg {
+		entries, err := os.ReadDir(dirPath)
+		if err != nil {
+			return emptyNewProjectDirPathErr{err: err}
+		}
+
+		for _, entry := range entries {
+			err := os.RemoveAll(filepath.Join(dirPath, entry.Name()))
+			if err != nil {
+				return emptyNewProjectDirPathErr{err: err}
+			}
+		}
+		return emptyNewProjectDirPathOk(true)
+	}
+}
+
+type runDegitOk bool
+
+type runDegitErr struct {
+	err error
+}
+
+func runDegit(repoUrl, branch string, paths []degit.Paths) tea.Cmd {
+	return func() tea.Msg {
+		err := degit.Run(repoUrl, branch, paths)
+		if err != nil {
+			return runDegitErr{err: err}
+		}
+		return runDegitOk(true)
 	}
 }
 
