@@ -30,6 +30,7 @@ type mode int
 const (
 	HOME mode = iota
 	ADD_RESOURCE_GRAPH
+	ADD_RESOURCE
 	NEW_PROJECT
 )
 
@@ -38,6 +39,7 @@ type model struct {
 	terminalHeight   int
 	terminalWidth    int
 	addResourceGraph addResourceGraphType
+	addResource      addResourceType
 	newProject       newProjectType
 }
 
@@ -181,6 +183,25 @@ func inititialModel() model {
 	confirmEmptyDirInput := textinput.New()
 	confirmEmptyDirInput.Placeholder = "y/n"
 
+	addResourceList := newAddResourceListModel(
+		[]list.Item{
+			addResourceListItemId("cloudflare-pages-remix"),
+		},
+		addResourceListDelegate{},
+		0,
+		0,
+	)
+	addResourceList.Title = "Select resource:"
+	addResourceList.SetShowStatusBar(false)
+	addResourceList.SetFilteringEnabled(false)
+	addResourceList.Styles.Title = addResourceListTitleStyle
+	addResourceList.Styles.TitleBar = addResourceListTitleBarStyle
+	addResourceList.Styles.PaginationStyle = addResourceListPaginationStyle
+	addResourceList.Styles.HelpStyle = addResourceListHelpStyle
+
+	addResourceEntityInput := textinput.New()
+	addResourceEntityInput.Placeholder = "app, dashboard, landing, etc"
+
 	return model{
 		mode: HOME,
 		addResourceGraph: addResourceGraphType{
@@ -188,6 +209,10 @@ func inititialModel() model {
 			entryEntityInput: addResourceGraphEntryEntityInput,
 			apiList:          addResourceGraphApiList,
 			dbList:           addResourceGraphDbList,
+		},
+		addResource: addResourceType{
+			list:        addResourceList,
+			entityInput: addResourceEntityInput,
 		},
 		newProject: newProjectType{
 			dirInput:                 newProjectDirInput,
@@ -226,6 +251,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return addResourceGraphUpdate(m, msg)
 	} else if m.mode == NEW_PROJECT {
 		return newProjectUpdate(m, msg)
+	} else if m.mode == ADD_RESOURCE {
+		return addResourceUpdate(m, msg)
 	} else {
 		return m, nil
 	}
@@ -238,6 +265,8 @@ func (m model) View() string {
 		return addResourceGraphView(m)
 	} else if m.mode == NEW_PROJECT {
 		return newProjectView(m)
+	} else if m.mode == ADD_RESOURCE {
+		return addResourceView(m)
 	} else {
 		return fmt.Sprintf("Unknown mode: %d", m.mode)
 	}
@@ -255,13 +284,16 @@ func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "n":
 			m.mode = NEW_PROJECT
 			return m, tea.Sequence(tx, m.newProject.dirInput.Focus())
+		case "r":
+			m.mode = ADD_RESOURCE
+			return m, tx
 		}
 	}
 	return m, nil
 }
 
 func homeView() string {
-	s := lipgloss.JoinVertical(lipgloss.Top, "Gas.dev", "[g] Add resource graph", "[n] New project")
+	s := lipgloss.JoinVertical(lipgloss.Top, "Gas.dev", "[g] Add resource graph", "[n] New project", "[r] Add resource")
 	return s
 }
 
@@ -994,6 +1026,169 @@ func (d selectPackageManagerListDelegate) Render(w io.Writer, m list.Model, inde
 	if index == m.Index() {
 		fn = func(s ...string) string {
 			return selectPackageManagerListSelectedItemStyle.Render("> " + strings.Join(s, " "))
+		}
+	}
+
+	fmt.Fprint(w, fn(str))
+}
+
+type addResourceState int
+
+const (
+	ADD_RESOURCE_LIST_STATE addResourceState = iota
+	ADD_RESOURCE_ENTITY_INPUT_STATE
+	ADD_RESOURCE_DOWNLOADING_TEMPLATE_STATE
+	ADD_RESOURCE_ERR_STATE
+	ADD_RESOURCE_CREATED_STATE
+)
+
+type addResourceType struct {
+	state       addResourceState
+	list        addResourceListModel
+	entityInput textinput.Model
+}
+
+func addResourceUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.addResource.state == ADD_RESOURCE_LIST_STATE {
+		switch msg := msg.(type) {
+		case txMsg:
+			return m, tea.ClearScreen
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				m.addResource.state = ADD_RESOURCE_ENTITY_INPUT_STATE
+				return m, m.addResource.entityInput.Focus()
+			}
+		}
+
+		var cmd tea.Cmd
+		m.addResource.list, cmd = m.addResource.list.Update(msg)
+		return m, cmd
+	} else if m.addResource.state == ADD_RESOURCE_ENTITY_INPUT_STATE {
+		repoUrl := "https://github.com/gasdotdev/gas"
+		repoBranch := "master"
+		extractPath := filepath.Join(".", "gas", fmt.Sprintf("__web-%s-pages", m.addResource.entityInput.Value()))
+		repoTemplate := "templates/cloudflare-pages-remix"
+
+		switch msg := msg.(type) {
+		case txMsg:
+			return m, tea.ClearScreen
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				m.addResource.state = ADD_RESOURCE_DOWNLOADING_TEMPLATE_STATE
+				return m, runDegit(repoUrl, repoBranch, []degit.Paths{{
+					Repo:    repoTemplate,
+					Extract: extractPath,
+				}})
+			}
+		}
+
+		var cmd tea.Cmd
+		m.addResource.entityInput, cmd = m.addResource.entityInput.Update(msg)
+		return m, cmd
+	} else if m.addResource.state == ADD_RESOURCE_DOWNLOADING_TEMPLATE_STATE {
+		switch msg := msg.(type) {
+		case runDegitOk:
+			m.addResource.state = ADD_RESOURCE_CREATED_STATE
+			return m, tx
+		case runDegitErr:
+			m.addResource.state = ADD_RESOURCE_ERR_STATE
+			errMsg := fmt.Sprintf("Error downloading template: %v", msg.err)
+			return m, tea.Println(errMsg)
+		}
+	}
+
+	return m, nil
+}
+
+func addResourceView(m model) string {
+	if m.addResource.state == ADD_RESOURCE_LIST_STATE {
+		return m.addResource.list.View()
+	} else if m.addResource.state == ADD_RESOURCE_ENTITY_INPUT_STATE {
+		s := lipgloss.JoinVertical(
+			lipgloss.Top,
+			"Enter resource entity:",
+			m.addResource.entityInput.View(),
+		)
+		if m.addResource.entityInput.Err != nil {
+			var inputErr *InputErr
+			switch {
+			case errors.As(m.addResource.entityInput.Err, &inputErr):
+				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.addResource.entityInput.Err)))
+			default:
+				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.addResource.entityInput.Err)))
+			}
+		}
+		return s
+	} else if m.addResource.state == ADD_RESOURCE_DOWNLOADING_TEMPLATE_STATE {
+		return "Downloading template..."
+	} else if m.addResource.state == ADD_RESOURCE_CREATED_STATE {
+		return "Template downloaded successfully."
+	}
+	return "Unknown add resource state"
+}
+
+var (
+	addResourceListTitleBarStyle     = lipgloss.NewStyle()
+	addResourceListTitleStyle        = lipgloss.NewStyle()
+	addResourceListItemStyle         = lipgloss.NewStyle().PaddingLeft(2)
+	addResourceListSelectedItemStyle = lipgloss.NewStyle().PaddingLeft(0)
+	addResourceListPaginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	addResourceListHelpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(0)
+)
+
+type addResourceListModel struct {
+	list.Model
+}
+
+func newAddResourceListModel(items []list.Item, delegate list.ItemDelegate, width int, height int) addResourceListModel {
+	return addResourceListModel{
+		Model: list.New(items, delegate, width, height),
+	}
+}
+
+func (l addResourceListModel) init() tea.Cmd {
+	return nil
+}
+
+func (m addResourceListModel) Update(msg tea.Msg) (addResourceListModel, tea.Cmd) {
+	var cmd tea.Cmd
+	m.Model, cmd = m.Model.Update(msg)
+	return m, cmd
+}
+
+func (m addResourceListModel) View() string {
+	return m.Model.View()
+}
+
+func (l addResourceListModel) SelectedItemId() addResourceListItemId {
+	return l.SelectedItem().(addResourceListItemId)
+}
+
+type addResourceListItemId string
+
+func (i addResourceListItemId) FilterValue() string {
+	return resourceTemplateIdToData[string(i)].name
+}
+
+type addResourceListDelegate struct{}
+
+func (d addResourceListDelegate) Height() int                             { return 1 }
+func (d addResourceListDelegate) Spacing() int                            { return 0 }
+func (d addResourceListDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d addResourceListDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(addResourceListItemId)
+	if !ok {
+		return
+	}
+
+	str := string(resourceTemplateIdToData[string(i)].name)
+
+	fn := addResourceListItemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return addResourceListSelectedItemStyle.Render("> " + strings.Join(s, " "))
 		}
 	}
 
