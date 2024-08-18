@@ -980,22 +980,6 @@ func setupNewProjectTemplate(repoUrl, branch string, path degit.Paths) tea.Cmd {
 	}
 }
 
-type runDegitOk bool
-
-type runDegitErr struct {
-	err error
-}
-
-func runDegit(repoUrl, branch string, paths []degit.Paths) tea.Cmd {
-	return func() tea.Msg {
-		err := degit.Run(repoUrl, branch, paths)
-		if err != nil {
-			return runDegitErr{err: err}
-		}
-		return runDegitOk(true)
-	}
-}
-
 type installPackagesOk bool
 
 type installPackagesErr struct {
@@ -1114,7 +1098,7 @@ func addResourceUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	} else if m.addResource.state == ADD_RESOURCE_ENTITY_INPUT_STATE {
 		repoUrl := "https://github.com/gasdotdev/gas"
 		repoBranch := "master"
-		extractPath := filepath.Join(".", "gas", fmt.Sprintf("__web-%s-pages", m.addResource.entityInput.Value()))
+		extractPath := filepath.Join(".", "gas", fmt.Sprintf("web-%s-pages", m.addResource.entityInput.Value()))
 		repoTemplate := "templates/cloudflare-pages-remix"
 
 		switch msg := msg.(type) {
@@ -1124,10 +1108,13 @@ func addResourceUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "enter":
 				m.addResource.state = ADD_RESOURCE_DOWNLOADING_TEMPLATE_STATE
-				return m, runDegit(repoUrl, repoBranch, []degit.Paths{{
+				entityGroup := "web"
+				entity := m.addResource.entityInput.Value()
+				descriptor := "pages"
+				return m, setupNewResource(repoUrl, repoBranch, degit.Paths{
 					Repo:    repoTemplate,
 					Extract: extractPath,
-				}})
+				}, entityGroup, entity, descriptor)
 			}
 		}
 
@@ -1136,10 +1123,10 @@ func addResourceUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	} else if m.addResource.state == ADD_RESOURCE_DOWNLOADING_TEMPLATE_STATE {
 		switch msg := msg.(type) {
-		case runDegitOk:
+		case setupNewResourceOk:
 			m.addResource.state = ADD_RESOURCE_CREATED_STATE
 			return m, tx
-		case runDegitErr:
+		case setupNewResourceErr:
 			m.addResource.state = ADD_RESOURCE_ERR_STATE
 			errMsg := fmt.Sprintf("Error downloading template: %v", msg.err)
 			return m, tea.Println(errMsg)
@@ -1147,6 +1134,29 @@ func addResourceUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+type setupNewResourceOk bool
+
+type setupNewResourceErr struct {
+	err error
+}
+
+func setupNewResource(repoUrl, branch string, path degit.Paths, entityGroup string, entity string, descriptor string) tea.Cmd {
+	return func() tea.Msg {
+		err := degit.Run(repoUrl, branch, []degit.Paths{path})
+		if err != nil {
+			return setupNewResourceErr{err: err}
+		}
+
+		newFileName := fmt.Sprintf("index.%s.%s.%s.ts", entityGroup, entity, descriptor)
+		err = os.Rename(filepath.Join(path.Extract, "index.web.zzz.pages.ts"), filepath.Join(path.Extract, newFileName))
+		if err != nil {
+			return setupNewResourceErr{err: err}
+		}
+
+		return setupNewResourceOk(true)
+	}
 }
 
 func addResourceView(m model) string {
