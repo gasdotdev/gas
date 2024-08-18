@@ -1150,7 +1150,7 @@ func setupNewResource(repoUrl, branch string, path degit.Paths, entityGroup stri
 		}
 
 		newFileName := fmt.Sprintf("index.%s.%s.%s.ts", entityGroup, entity, descriptor)
-		err = os.Rename(filepath.Join(path.Extract, "index.web.zzz.pages.ts"), filepath.Join(path.Extract, newFileName))
+		err = os.Rename(filepath.Join(path.Extract, "src", "index.web.zzz.pages.ts"), filepath.Join(path.Extract, newFileName))
 		if err != nil {
 			return setupNewResourceErr{err: err}
 		}
