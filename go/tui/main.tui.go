@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,7 +15,9 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	degit "github.com/gasdotdev/gas/tui/internal"
+	degit "github.com/gasdotdev/gas/tui/internal/degit"
+	"github.com/gasdotdev/gas/tui/internal/str"
+	"github.com/iancoleman/orderedmap"
 )
 
 func main() {
@@ -738,20 +741,20 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_EMPTY {
 				m.newProject.createLogs = append(m.newProject.createLogs, "Downloading new project template...")
 
-				return m, runDegit(repoUrl, repoBranch, []degit.Paths{{
+				return m, setupNewProjectTemplate(repoUrl, repoBranch, degit.Paths{
 					Repo:    repoTemplate,
 					Extract: extractPath,
-				}})
+				})
 			} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_NONE {
 				m.newProject.createLogs = append(m.newProject.createLogs, "Creating "+m.newProject.dirInput.Value())
 				return m, createNewProjectDir(m.newProject.dirInput.Value())
 			}
 		case createNewProjectDirOk:
 			m.newProject.createLogs = append(m.newProject.createLogs, "Directory created successfully.")
-			return m, runDegit(repoUrl, repoBranch, []degit.Paths{{
+			return m, setupNewProjectTemplate(repoUrl, repoBranch, degit.Paths{
 				Repo:    repoTemplate,
 				Extract: extractPath,
-			}})
+			})
 		case createNewProjectDirErr:
 			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
 			errMsg := fmt.Sprintf("Error creating directory: %v", msg.err)
@@ -759,21 +762,21 @@ func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Sequence(tx, tea.Println(errMsg))
 		case emptyNewProjectDirPathOk:
 			m.newProject.createLogs = append(m.newProject.createLogs, "Directory emptied successfully.")
-			return m, runDegit(repoUrl, repoBranch, []degit.Paths{{
+			return m, setupNewProjectTemplate(repoUrl, repoBranch, degit.Paths{
 				Repo:    repoTemplate,
 				Extract: extractPath,
-			}})
+			})
 		case emptyNewProjectDirPathErr:
 			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
 			errMsg := fmt.Sprintf("Error emptying directory: %v", msg.err)
 			m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
 			return m, tea.Sequence(tx, tea.Println(errMsg))
-		case runDegitOk:
-			m.newProject.createLogs = append(m.newProject.createLogs, "Project template downloaded successfully.")
+		case setupNewProjectTemplateOk:
+			m.newProject.createLogs = append(m.newProject.createLogs, "Project template set up successfully.")
 			return m, installPackages(extractPath, "npm")
-		case runDegitErr:
+		case setupNewProjectTemplateErr:
 			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
-			errMsg := fmt.Sprintf("Error running degit: %v", msg.err)
+			errMsg := fmt.Sprintf("Error setting up project template: %v", msg.err)
 			m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
 			return m, tea.Sequence(tx, tea.Println(errMsg))
 		case installPackagesOk:
@@ -930,6 +933,50 @@ func emptyNewProjectDirPath(dirPath string) tea.Cmd {
 			}
 		}
 		return emptyNewProjectDirPathOk(true)
+	}
+}
+
+type setupNewProjectTemplateOk bool
+
+type setupNewProjectTemplateErr struct {
+	err error
+}
+
+func setupNewProjectTemplate(repoUrl, branch string, path degit.Paths) tea.Cmd {
+	return func() tea.Msg {
+		err := degit.Run(repoUrl, branch, []degit.Paths{path})
+		if err != nil {
+			return setupNewProjectTemplateErr{err: err}
+		}
+
+		gasConfigPath := filepath.Join(path.Extract, "gas.config.json")
+
+		gasConfigFile, err := os.ReadFile(gasConfigPath)
+		if err != nil {
+			errMsg := fmt.Errorf("unable to read template gas.config.json: %w", err)
+			return setupNewProjectTemplateErr{err: errMsg}
+		}
+
+		var gasConfig orderedmap.OrderedMap
+		if err := json.Unmarshal(gasConfigFile, &gasConfig); err != nil {
+			errMsg := fmt.Errorf("unable to unmarshal template gas.config.json: %w", err)
+			return setupNewProjectTemplateErr{err: errMsg}
+		}
+
+		gasConfig.Set("project", str.LowerCaseKebab(filepath.Base(path.Extract)))
+
+		updatedGasConfig, err := json.MarshalIndent(gasConfig, "", "  ")
+		if err != nil {
+			errMsg := fmt.Errorf("unable to marshal updated gas.config.json: %w", err)
+			return setupNewProjectTemplateErr{err: errMsg}
+		}
+
+		if err := os.WriteFile(gasConfigPath, updatedGasConfig, 0644); err != nil {
+			errMsg := fmt.Errorf("unable to write updated gas.config.json: %w", err)
+			return setupNewProjectTemplateErr{err: errMsg}
+		}
+
+		return setupNewProjectTemplateOk(true)
 	}
 }
 
