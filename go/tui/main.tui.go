@@ -207,6 +207,20 @@ func inititialModel() model {
 	addResourceEntityInput := textinput.New()
 	addResourceEntityInput.Placeholder = "app, dashboard, landing, etc"
 
+	addResourceInputsList := newAddResourceInputsListModel(
+		[]list.Item{},
+		addResourceInputsListDelegate{},
+		0,
+		0,
+	)
+	addResourceInputsList.Title = "Select resource inputs:"
+	addResourceInputsList.SetShowStatusBar(false)
+	addResourceInputsList.SetFilteringEnabled(false)
+	addResourceInputsList.Styles.Title = addResourceInputsListTitleStyle
+	addResourceInputsList.Styles.TitleBar = addResourceInputsListTitleBarStyle
+	addResourceInputsList.Styles.PaginationStyle = addResourceInputsListPaginationStyle
+	addResourceInputsList.Styles.HelpStyle = addResourceInputsListHelpStyle
+
 	return model{
 		mode: HOME,
 		addResourceGraph: addResourceGraphType{
@@ -218,6 +232,7 @@ func inititialModel() model {
 		addResource: addResourceType{
 			list:        addResourceList,
 			entityInput: addResourceEntityInput,
+			inputsList:  addResourceInputsList,
 		},
 		newProject: newProjectType{
 			dirInput:                 newProjectDirInput,
@@ -1101,13 +1116,14 @@ const (
 	ADD_RESOURCE_DOWNLOADING_TEMPLATE_STATE
 	ADD_RESOURCE_ERR_STATE
 	ADD_RESOURCE_CREATED_STATE
-	ADD_RESOURCE_INPUTS_STATES
+	ADD_RESOURCE_INPUTS_STATE
 )
 
 type addResourceType struct {
 	state       addResourceState
 	list        addResourceListModel
 	entityInput textinput.Model
+	inputsList  addResourceInputsListModel
 }
 
 func addResourceUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -1155,14 +1171,19 @@ func addResourceUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	} else if m.addResource.state == ADD_RESOURCE_DOWNLOADING_TEMPLATE_STATE {
 		switch msg := msg.(type) {
 		case setupNewResourceOk:
-			m.addResource.state = ADD_RESOURCE_CREATED_STATE
+			m.addResource.state = ADD_RESOURCE_INPUTS_STATE
+			m.addResource.inputsList.SetItems(
+				[]list.Item{
+					addResourceInputsListItemId("cloudflare-worker-hono"),
+				},
+			)
 			return m, tx
 		case setupNewResourceErr:
 			m.addResource.state = ADD_RESOURCE_ERR_STATE
 			errMsg := fmt.Sprintf("Error downloading template: %v", msg.err)
 			return m, tea.Println(errMsg)
 		}
-	} else if m.addResource.state == ADD_RESOURCE_INPUTS_STATES {
+	} else if m.addResource.state == ADD_RESOURCE_INPUTS_STATE {
 		return m, nil
 	}
 
@@ -1183,7 +1204,7 @@ func setupNewResource(repoUrl, branch string, path degit.Paths, entityGroup stri
 		}
 
 		newFileName := fmt.Sprintf("index.%s.%s.%s.ts", entityGroup, entity, descriptor)
-		err = os.Rename(filepath.Join(path.Extract, "src", "index.web.zzz.pages.ts"), filepath.Join(path.Extract, newFileName))
+		err = os.Rename(filepath.Join(path.Extract, "src", "index.web.entity.pages.ts"), filepath.Join(path.Extract, newFileName))
 		if err != nil {
 			return setupNewResourceErr{err: err}
 		}
@@ -1215,10 +1236,12 @@ func addResourceView(m model) string {
 		return "Downloading template..."
 	} else if m.addResource.state == ADD_RESOURCE_CREATED_STATE {
 		return "Template downloaded successfully."
-	} else if m.addResource.state == ADD_RESOURCE_INPUTS_STATES {
-		return "Enter resource inputs:"
+	} else if m.addResource.state == ADD_RESOURCE_INPUTS_STATE {
+		return m.addResource.inputsList.View()
+	} else if m.addResource.state == ADD_RESOURCE_ERR_STATE {
+		return "error"
 	}
-	return "Unknown add resource state"
+	return fmt.Sprintf("Unknown add resource state: %v", m.addResource.state)
 }
 
 var (
@@ -1281,6 +1304,72 @@ func (d addResourceListDelegate) Render(w io.Writer, m list.Model, index int, li
 	if index == m.Index() {
 		fn = func(s ...string) string {
 			return addResourceListSelectedItemStyle.Render("> " + strings.Join(s, " "))
+		}
+	}
+
+	fmt.Fprint(w, fn(str))
+}
+
+var (
+	addResourceInputsListTitleBarStyle     = lipgloss.NewStyle()
+	addResourceInputsListTitleStyle        = lipgloss.NewStyle()
+	addResourceInputsListItemStyle         = lipgloss.NewStyle().PaddingLeft(2)
+	addResourceInputsListSelectedItemStyle = lipgloss.NewStyle().PaddingLeft(0)
+	addResourceInputsListPaginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	addResourceInputsListHelpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(0)
+)
+
+type addResourceInputsListModel struct {
+	list.Model
+}
+
+func newAddResourceInputsListModel(items []list.Item, delegate list.ItemDelegate, width int, height int) addResourceInputsListModel {
+	return addResourceInputsListModel{
+		Model: list.New(items, delegate, width, height),
+	}
+}
+
+func (l addResourceInputsListModel) init() tea.Cmd {
+	return nil
+}
+
+func (m addResourceInputsListModel) Update(msg tea.Msg) (addResourceInputsListModel, tea.Cmd) {
+	var cmd tea.Cmd
+	m.Model, cmd = m.Model.Update(msg)
+	return m, cmd
+}
+
+func (m addResourceInputsListModel) View() string {
+	return m.Model.View()
+}
+
+func (l addResourceInputsListModel) SelectedItemId() addResourceInputsListItemId {
+	return l.SelectedItem().(addResourceInputsListItemId)
+}
+
+type addResourceInputsListItemId string
+
+func (i addResourceInputsListItemId) FilterValue() string {
+	return resourceTemplateIdToData[string(i)].name
+}
+
+type addResourceInputsListDelegate struct{}
+
+func (d addResourceInputsListDelegate) Height() int                             { return 1 }
+func (d addResourceInputsListDelegate) Spacing() int                            { return 0 }
+func (d addResourceInputsListDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d addResourceInputsListDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(addResourceInputsListItemId)
+	if !ok {
+		return
+	}
+
+	str := string(resourceTemplateIdToData[string(i)].name)
+
+	fn := addResourceInputsListItemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return addResourceInputsListSelectedItemStyle.Render("> " + strings.Join(s, " "))
 		}
 	}
 
