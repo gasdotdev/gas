@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +14,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/gasdotdev/gas/tui/components"
 	degit "github.com/gasdotdev/gas/tui/internal/degit"
 	"github.com/gasdotdev/gas/tui/internal/resources"
 	"github.com/gasdotdev/gas/tui/internal/str"
@@ -76,7 +76,7 @@ func setAddResourceGraphEntryOrderedListItems() []list.Item {
 	sort.Strings(keys)
 
 	for _, id := range keys {
-		items = append(items, addResourceGraphEntryListItemId(id))
+		items = append(items, components.ListItemId(id))
 	}
 
 	return items
@@ -95,7 +95,7 @@ func setAddResourceGraphOrderedApiListItems() []list.Item {
 	sort.Strings(keys)
 
 	for _, id := range keys {
-		items = append(items, addResourceGraphApiListItemId(id))
+		items = append(items, components.ListItemId(id))
 	}
 
 	return items
@@ -114,112 +114,143 @@ func setAddResourceGraphOrderedDbListItems() []list.Item {
 	sort.Strings(keys)
 
 	for _, id := range keys {
-		items = append(items, addResourceGraphDbListItemId(id))
+		items = append(items, components.ListItemId(id))
 	}
 
 	return items
 }
 
 func inititialModel() model {
-	addResourceGraphEntryList := newAddResourceGraphEntryListModel(
+	entryResourceItemIdToData := make(map[string]interface{})
+	for id, data := range resourceTemplateIdToData {
+		if data.isEntry {
+			entryResourceItemIdToData[id] = map[string]interface{}{"name": data.name}
+		}
+	}
+
+	addResourceGraphEntryList := components.NewListModel(
 		setAddResourceGraphEntryOrderedListItems(),
-		addResourceGraphEntryListDelegate{},
+		components.NewListDelegate(entryResourceItemIdToData),
 		0,
 		0,
+		entryResourceItemIdToData,
 	)
 	addResourceGraphEntryList.Title = "Select entry resource:"
 	addResourceGraphEntryList.SetShowStatusBar(false)
 	addResourceGraphEntryList.SetFilteringEnabled(false)
-	addResourceGraphEntryList.Styles.Title = addResourceGraphEntryListTitleStyle
-	addResourceGraphEntryList.Styles.TitleBar = addResourceGraphEntryListTitleBarStyle
-	addResourceGraphEntryList.Styles.PaginationStyle = addResourceGraphEntryListPaginationStyle
-	addResourceGraphEntryList.Styles.HelpStyle = addResourceGraphEntryListHelpStyle
+	addResourceGraphEntryList.Styles.Title = components.ListTitleStyle
+	addResourceGraphEntryList.Styles.TitleBar = components.ListTitleBarStyle
+	addResourceGraphEntryList.Styles.PaginationStyle = components.ListPaginationStyle
+	addResourceGraphEntryList.Styles.HelpStyle = components.ListHelpStyle
 
 	addResourceGraphEntryEntityInput := textinput.New()
 	addResourceGraphEntryEntityInput.Placeholder = "app, dashboard, landing, etc"
 
-	addResourceGraphApiList := newAddResourceGraphApiListModel(
+	apiResourceItemIdToData := make(map[string]interface{})
+	for id, data := range resourceTemplateIdToData {
+		if data.isApi {
+			apiResourceItemIdToData[id] = map[string]interface{}{"name": data.name}
+		}
+	}
+
+	addResourceGraphApiList := components.NewListModel(
 		setAddResourceGraphOrderedApiListItems(),
-		addResourceGraphApiListDelegate{},
+		components.NewListDelegate(apiResourceItemIdToData),
 		0,
 		0,
+		apiResourceItemIdToData,
 	)
 	addResourceGraphApiList.Title = "Select api resource:"
 	addResourceGraphApiList.SetShowStatusBar(false)
 	addResourceGraphApiList.SetFilteringEnabled(false)
-	addResourceGraphApiList.Styles.Title = addResourceGraphApiListTitleStyle
-	addResourceGraphApiList.Styles.TitleBar = addResourceGraphApiListTitleBarStyle
-	addResourceGraphApiList.Styles.PaginationStyle = addResourceGraphApiListPaginationStyle
-	addResourceGraphApiList.Styles.HelpStyle = addResourceGraphApiListHelpStyle
+	addResourceGraphApiList.Styles.Title = components.ListTitleStyle
+	addResourceGraphApiList.Styles.TitleBar = components.ListTitleBarStyle
+	addResourceGraphApiList.Styles.PaginationStyle = components.ListPaginationStyle
+	addResourceGraphApiList.Styles.HelpStyle = components.ListHelpStyle
 
-	addResourceGraphDbList := newAddResourceGraphDbListModel(
+	dbResourceItemIdToData := make(map[string]interface{})
+	for id, data := range resourceTemplateIdToData {
+		if data.isDb {
+			dbResourceItemIdToData[id] = map[string]interface{}{"name": data.name}
+		}
+	}
+
+	addResourceGraphDbList := components.NewListModel(
 		setAddResourceGraphOrderedDbListItems(),
-		addResourceGraphDbListDelegate{},
+		components.NewListDelegate(dbResourceItemIdToData),
 		0,
 		0,
+		dbResourceItemIdToData,
 	)
 	addResourceGraphDbList.Title = "Select db resource:"
 	addResourceGraphDbList.SetShowStatusBar(false)
 	addResourceGraphDbList.SetFilteringEnabled(false)
-	addResourceGraphDbList.Styles.Title = addResourceGraphDbListTitleStyle
-	addResourceGraphDbList.Styles.TitleBar = addResourceGraphDbListTitleBarStyle
-	addResourceGraphDbList.Styles.PaginationStyle = addResourceGraphDbListPaginationStyle
-	addResourceGraphDbList.Styles.HelpStyle = addResourceGraphDbListHelpStyle
+	addResourceGraphDbList.Styles.Title = components.ListTitleStyle
+	addResourceGraphDbList.Styles.TitleBar = components.ListTitleBarStyle
+	addResourceGraphDbList.Styles.PaginationStyle = components.ListPaginationStyle
+	addResourceGraphDbList.Styles.HelpStyle = components.ListHelpStyle
 
 	newProjectDirInput := textinput.New()
 	newProjectDirInput.Placeholder = "your-project-dir"
 
-	selectPackageManagerList := newSelectPackageManagerListModel(
+	packageManagerItemIdToData := map[string]interface{}{
+		"npm": map[string]interface{}{"name": "npm"},
+	}
+
+	selectPackageManagerList := components.NewListModel(
 		[]list.Item{
-			selectPackageManagerListItemId("npm"),
+			components.ListItemId("npm"),
 		},
-		selectPackageManagerListDelegate{},
+		components.NewListDelegate(packageManagerItemIdToData),
 		0,
 		0,
+		packageManagerItemIdToData,
 	)
 	selectPackageManagerList.Title = "Select package manager:"
 	selectPackageManagerList.SetShowStatusBar(false)
 	selectPackageManagerList.SetFilteringEnabled(false)
-	selectPackageManagerList.Styles.Title = selectPackageManagerListTitleStyle
-	selectPackageManagerList.Styles.TitleBar = selectPackageManagerListTitleBarStyle
-	selectPackageManagerList.Styles.PaginationStyle = selectPackageManagerListPaginationStyle
-	selectPackageManagerList.Styles.HelpStyle = selectPackageManagerListHelpStyle
+	selectPackageManagerList.Styles.Title = components.ListTitleStyle
+	selectPackageManagerList.Styles.TitleBar = components.ListTitleBarStyle
+	selectPackageManagerList.Styles.PaginationStyle = components.ListPaginationStyle
+	selectPackageManagerList.Styles.HelpStyle = components.ListHelpStyle
 
 	confirmEmptyDirInput := textinput.New()
 	confirmEmptyDirInput.Placeholder = "y/n"
 
-	addResourceList := newAddResourceListModel(
+	addResourceList := components.NewListModel(
 		[]list.Item{
-			addResourceListItemId("cloudflare-pages-remix"),
+			components.ListItemId("cloudflare-pages-remix"),
 		},
-		addResourceListDelegate{},
+		components.NewListDelegate(resourceTemplateIdToData),
 		0,
 		0,
+		resourceTemplateIdToData,
 	)
 	addResourceList.Title = "Select resource:"
 	addResourceList.SetShowStatusBar(false)
 	addResourceList.SetFilteringEnabled(false)
-	addResourceList.Styles.Title = addResourceListTitleStyle
-	addResourceList.Styles.TitleBar = addResourceListTitleBarStyle
-	addResourceList.Styles.PaginationStyle = addResourceListPaginationStyle
-	addResourceList.Styles.HelpStyle = addResourceListHelpStyle
+	addResourceList.Styles.Title = components.ListTitleStyle
+	addResourceList.Styles.TitleBar = components.ListTitleBarStyle
+	addResourceList.Styles.PaginationStyle = components.ListPaginationStyle
+	addResourceList.Styles.HelpStyle = components.ListHelpStyle
 
 	addResourceEntityInput := textinput.New()
 	addResourceEntityInput.Placeholder = "app, dashboard, landing, etc"
 
-	addResourceInputsList := newAddResourceInputsListModel(
+	addResourceInputsList := components.NewListModel(
 		[]list.Item{},
-		addResourceInputsListDelegate{},
+		components.NewListDelegate(resourceTemplateIdToData),
 		0,
 		0,
+		resourceTemplateIdToData,
 	)
 	addResourceInputsList.Title = "Select resource inputs:"
 	addResourceInputsList.SetShowStatusBar(false)
 	addResourceInputsList.SetFilteringEnabled(false)
-	addResourceInputsList.Styles.Title = addResourceInputsListTitleStyle
-	addResourceInputsList.Styles.TitleBar = addResourceInputsListTitleBarStyle
-	addResourceInputsList.Styles.PaginationStyle = addResourceInputsListPaginationStyle
-	addResourceInputsList.Styles.HelpStyle = addResourceInputsListHelpStyle
+	addResourceInputsList.Styles.Title = components.ListTitleStyle
+	addResourceInputsList.Styles.TitleBar = components.ListTitleBarStyle
+	addResourceInputsList.Styles.PaginationStyle = components.ListPaginationStyle
+	addResourceInputsList.Styles.HelpStyle = components.ListHelpStyle
 
 	return model{
 		mode: HOME,
@@ -356,10 +387,10 @@ const (
 
 type addResourceGraphType struct {
 	state            addResourceGraphState
-	entryList        addResourceGraphEntryListModel
+	entryList        components.ListModel
 	entryEntityInput textinput.Model
-	apiList          addResourceGraphApiListModel
-	dbList           addResourceGraphDbListModel
+	apiList          components.ListModel
+	dbList           components.ListModel
 }
 
 type InputErr struct {
@@ -470,204 +501,6 @@ func addResourceGraphView(m model) string {
 	return "Unknown add resource graph state"
 }
 
-var (
-	addResourceGraphEntryListTitleBarStyle     = lipgloss.NewStyle()
-	addResourceGraphEntryListTitleStyle        = lipgloss.NewStyle()
-	addResourceGraphEntryListItemStyle         = lipgloss.NewStyle().PaddingLeft(2)
-	addResourceGraphEntryListSelectedItemStyle = lipgloss.NewStyle().PaddingLeft(0)
-	addResourceGraphEntryListPaginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	addResourceGraphEntryListHelpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(0)
-)
-
-type addResourceGraphEntryListModel struct {
-	list.Model
-}
-
-func newAddResourceGraphEntryListModel(items []list.Item, delegate list.ItemDelegate, width int, height int) addResourceGraphEntryListModel {
-	return addResourceGraphEntryListModel{
-		Model: list.New(items, delegate, width, height),
-	}
-}
-
-func (l addResourceGraphEntryListModel) init() tea.Cmd {
-	return nil
-}
-
-func (m addResourceGraphEntryListModel) Update(msg tea.Msg) (addResourceGraphEntryListModel, tea.Cmd) {
-	var cmd tea.Cmd
-	m.Model, cmd = m.Model.Update(msg)
-	return m, cmd
-}
-
-func (m addResourceGraphEntryListModel) View() string {
-	return m.Model.View()
-}
-
-func (l addResourceGraphEntryListModel) SelectedItemId() addResourceGraphEntryListItemId {
-	return l.SelectedItem().(addResourceGraphEntryListItemId)
-}
-
-type addResourceGraphEntryListItemId string
-
-func (i addResourceGraphEntryListItemId) FilterValue() string {
-	return resourceTemplateIdToData[string(i)].name
-}
-
-type addResourceGraphEntryListDelegate struct{}
-
-func (d addResourceGraphEntryListDelegate) Height() int                             { return 1 }
-func (d addResourceGraphEntryListDelegate) Spacing() int                            { return 0 }
-func (d addResourceGraphEntryListDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d addResourceGraphEntryListDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(addResourceGraphEntryListItemId)
-	if !ok {
-		return
-	}
-
-	str := string(resourceTemplateIdToData[string(i)].name)
-
-	fn := addResourceGraphEntryListItemStyle.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return addResourceGraphEntryListSelectedItemStyle.Render("> " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fn(str))
-}
-
-var (
-	addResourceGraphApiListTitleBarStyle     = lipgloss.NewStyle()
-	addResourceGraphApiListTitleStyle        = lipgloss.NewStyle()
-	addResourceGraphApiListItemStyle         = lipgloss.NewStyle().PaddingLeft(2)
-	addResourceGraphApiListSelectedItemStyle = lipgloss.NewStyle().PaddingLeft(0)
-	addResourceGraphApiListPaginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	addResourceGraphApiListHelpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(0)
-)
-
-type addResourceGraphApiListModel struct {
-	list.Model
-}
-
-func newAddResourceGraphApiListModel(items []list.Item, delegate list.ItemDelegate, width int, height int) addResourceGraphApiListModel {
-	return addResourceGraphApiListModel{
-		Model: list.New(items, delegate, width, height),
-	}
-}
-
-func (l addResourceGraphApiListModel) init() tea.Cmd {
-	return nil
-}
-
-func (m addResourceGraphApiListModel) Update(msg tea.Msg) (addResourceGraphApiListModel, tea.Cmd) {
-	var cmd tea.Cmd
-	m.Model, cmd = m.Model.Update(msg)
-	return m, cmd
-}
-
-func (m addResourceGraphApiListModel) View() string {
-	return m.Model.View()
-}
-
-func (l addResourceGraphApiListModel) SelectedItemId() addResourceGraphApiListItemId {
-	return l.SelectedItem().(addResourceGraphApiListItemId)
-}
-
-type addResourceGraphApiListItemId string
-
-func (i addResourceGraphApiListItemId) FilterValue() string {
-	return resourceTemplateIdToData[string(i)].name
-}
-
-type addResourceGraphApiListDelegate struct{}
-
-func (d addResourceGraphApiListDelegate) Height() int                             { return 1 }
-func (d addResourceGraphApiListDelegate) Spacing() int                            { return 0 }
-func (d addResourceGraphApiListDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d addResourceGraphApiListDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(addResourceGraphApiListItemId)
-	if !ok {
-		return
-	}
-
-	str := string(resourceTemplateIdToData[string(i)].name)
-
-	fn := addResourceGraphApiListItemStyle.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return addResourceGraphApiListSelectedItemStyle.Render("> " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fn(str))
-}
-
-var (
-	addResourceGraphDbListTitleBarStyle     = lipgloss.NewStyle()
-	addResourceGraphDbListTitleStyle        = lipgloss.NewStyle()
-	addResourceGraphDbListItemStyle         = lipgloss.NewStyle().PaddingLeft(2)
-	addResourceGraphDbListSelectedItemStyle = lipgloss.NewStyle().PaddingLeft(0)
-	addResourceGraphDbListPaginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	addResourceGraphDbListHelpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(0)
-)
-
-type addResourceGraphDbListModel struct {
-	list.Model
-}
-
-func newAddResourceGraphDbListModel(items []list.Item, delegate list.ItemDelegate, width int, height int) addResourceGraphDbListModel {
-	return addResourceGraphDbListModel{
-		Model: list.New(items, delegate, width, height),
-	}
-}
-
-func (l addResourceGraphDbListModel) init() tea.Cmd {
-	return nil
-}
-
-func (m addResourceGraphDbListModel) Update(msg tea.Msg) (addResourceGraphDbListModel, tea.Cmd) {
-	var cmd tea.Cmd
-	m.Model, cmd = m.Model.Update(msg)
-	return m, cmd
-}
-
-func (m addResourceGraphDbListModel) View() string {
-	return m.Model.View()
-}
-
-func (l addResourceGraphDbListModel) SelectedItemId() addResourceGraphDbListItemId {
-	return l.SelectedItem().(addResourceGraphDbListItemId)
-}
-
-type addResourceGraphDbListItemId string
-
-func (i addResourceGraphDbListItemId) FilterValue() string {
-	return resourceTemplateIdToData[string(i)].name
-}
-
-type addResourceGraphDbListDelegate struct{}
-
-func (d addResourceGraphDbListDelegate) Height() int                             { return 1 }
-func (d addResourceGraphDbListDelegate) Spacing() int                            { return 0 }
-func (d addResourceGraphDbListDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d addResourceGraphDbListDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(addResourceGraphDbListItemId)
-	if !ok {
-		return
-	}
-
-	str := string(resourceTemplateIdToData[string(i)].name)
-
-	fn := addResourceGraphDbListItemStyle.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return addResourceGraphDbListSelectedItemStyle.Render("> " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fn(str))
-}
-
 type newProjectState int
 
 const (
@@ -683,7 +516,7 @@ type newProjectType struct {
 	state                    newProjectState
 	dirInput                 textinput.Model
 	dirState                 newProjectDirPathState
-	selectPackageManagerList selectPackageManagerListModel
+	selectPackageManagerList components.ListModel
 	confirmEmptyDirInput     textinput.Model
 	createLogs               []string
 }
@@ -1042,72 +875,6 @@ func installPackages(dirPath string, packageManager string) tea.Cmd {
 	}
 }
 
-var (
-	selectPackageManagerListTitleBarStyle     = lipgloss.NewStyle()
-	selectPackageManagerListTitleStyle        = lipgloss.NewStyle()
-	selectPackageManagerListItemStyle         = lipgloss.NewStyle().PaddingLeft(2)
-	selectPackageManagerListSelectedItemStyle = lipgloss.NewStyle().PaddingLeft(0)
-	selectPackageManagerListPaginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	selectPackageManagerListHelpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(0)
-)
-
-type selectPackageManagerListModel struct {
-	list.Model
-}
-
-func newSelectPackageManagerListModel(items []list.Item, delegate list.ItemDelegate, width int, height int) selectPackageManagerListModel {
-	return selectPackageManagerListModel{
-		Model: list.New(items, delegate, width, height),
-	}
-}
-
-func (l selectPackageManagerListModel) init() tea.Cmd {
-	return nil
-}
-
-func (m selectPackageManagerListModel) Update(msg tea.Msg) (selectPackageManagerListModel, tea.Cmd) {
-	var cmd tea.Cmd
-	m.Model, cmd = m.Model.Update(msg)
-	return m, cmd
-}
-
-func (m selectPackageManagerListModel) View() string {
-	return m.Model.View()
-}
-
-func (l selectPackageManagerListModel) SelectedItemId() selectPackageManagerListItemId {
-	return l.SelectedItem().(selectPackageManagerListItemId)
-}
-
-type selectPackageManagerListItemId string
-
-func (i selectPackageManagerListItemId) FilterValue() string {
-	return resourceTemplateIdToData[string(i)].name
-}
-
-type selectPackageManagerListDelegate struct{}
-
-func (d selectPackageManagerListDelegate) Height() int                             { return 1 }
-func (d selectPackageManagerListDelegate) Spacing() int                            { return 0 }
-func (d selectPackageManagerListDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d selectPackageManagerListDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(selectPackageManagerListItemId)
-	if !ok {
-		return
-	}
-
-	str := string(i)
-
-	fn := selectPackageManagerListItemStyle.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return selectPackageManagerListSelectedItemStyle.Render("> " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fn(str))
-}
-
 type addResourceState int
 
 const (
@@ -1121,15 +888,16 @@ const (
 
 type addResourceType struct {
 	state       addResourceState
-	list        addResourceListModel
+	list        components.ListModel
 	entityInput textinput.Model
-	inputsList  addResourceInputsListModel
+	inputsList  components.ListModel
 }
 
 func addResourceUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.addResource.state == ADD_RESOURCE_LIST_STATE {
 		switch msg := msg.(type) {
 		case txMsg:
+			m.addResource.list.SetSize(m.terminalWidth, m.terminalHeight)
 			return m, tea.ClearScreen
 		case tea.KeyMsg:
 			switch msg.String() {
@@ -1174,7 +942,7 @@ func addResourceUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.addResource.state = ADD_RESOURCE_INPUTS_STATE
 			m.addResource.inputsList.SetItems(
 				[]list.Item{
-					addResourceInputsListItemId("cloudflare-worker-hono"),
+					components.ListItemId("cloudflare-worker-hono"),
 				},
 			)
 			return m, tx
@@ -1242,136 +1010,4 @@ func addResourceView(m model) string {
 		return "error"
 	}
 	return fmt.Sprintf("Unknown add resource state: %v", m.addResource.state)
-}
-
-var (
-	addResourceListTitleBarStyle     = lipgloss.NewStyle()
-	addResourceListTitleStyle        = lipgloss.NewStyle()
-	addResourceListItemStyle         = lipgloss.NewStyle().PaddingLeft(2)
-	addResourceListSelectedItemStyle = lipgloss.NewStyle().PaddingLeft(0)
-	addResourceListPaginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	addResourceListHelpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(0)
-)
-
-type addResourceListModel struct {
-	list.Model
-}
-
-func newAddResourceListModel(items []list.Item, delegate list.ItemDelegate, width int, height int) addResourceListModel {
-	return addResourceListModel{
-		Model: list.New(items, delegate, width, height),
-	}
-}
-
-func (l addResourceListModel) init() tea.Cmd {
-	return nil
-}
-
-func (m addResourceListModel) Update(msg tea.Msg) (addResourceListModel, tea.Cmd) {
-	var cmd tea.Cmd
-	m.Model, cmd = m.Model.Update(msg)
-	return m, cmd
-}
-
-func (m addResourceListModel) View() string {
-	return m.Model.View()
-}
-
-func (l addResourceListModel) SelectedItemId() addResourceListItemId {
-	return l.SelectedItem().(addResourceListItemId)
-}
-
-type addResourceListItemId string
-
-func (i addResourceListItemId) FilterValue() string {
-	return resourceTemplateIdToData[string(i)].name
-}
-
-type addResourceListDelegate struct{}
-
-func (d addResourceListDelegate) Height() int                             { return 1 }
-func (d addResourceListDelegate) Spacing() int                            { return 0 }
-func (d addResourceListDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d addResourceListDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(addResourceListItemId)
-	if !ok {
-		return
-	}
-
-	str := string(resourceTemplateIdToData[string(i)].name)
-
-	fn := addResourceListItemStyle.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return addResourceListSelectedItemStyle.Render("> " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fn(str))
-}
-
-var (
-	addResourceInputsListTitleBarStyle     = lipgloss.NewStyle()
-	addResourceInputsListTitleStyle        = lipgloss.NewStyle()
-	addResourceInputsListItemStyle         = lipgloss.NewStyle().PaddingLeft(2)
-	addResourceInputsListSelectedItemStyle = lipgloss.NewStyle().PaddingLeft(0)
-	addResourceInputsListPaginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	addResourceInputsListHelpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(0)
-)
-
-type addResourceInputsListModel struct {
-	list.Model
-}
-
-func newAddResourceInputsListModel(items []list.Item, delegate list.ItemDelegate, width int, height int) addResourceInputsListModel {
-	return addResourceInputsListModel{
-		Model: list.New(items, delegate, width, height),
-	}
-}
-
-func (l addResourceInputsListModel) init() tea.Cmd {
-	return nil
-}
-
-func (m addResourceInputsListModel) Update(msg tea.Msg) (addResourceInputsListModel, tea.Cmd) {
-	var cmd tea.Cmd
-	m.Model, cmd = m.Model.Update(msg)
-	return m, cmd
-}
-
-func (m addResourceInputsListModel) View() string {
-	return m.Model.View()
-}
-
-func (l addResourceInputsListModel) SelectedItemId() addResourceInputsListItemId {
-	return l.SelectedItem().(addResourceInputsListItemId)
-}
-
-type addResourceInputsListItemId string
-
-func (i addResourceInputsListItemId) FilterValue() string {
-	return resourceTemplateIdToData[string(i)].name
-}
-
-type addResourceInputsListDelegate struct{}
-
-func (d addResourceInputsListDelegate) Height() int                             { return 1 }
-func (d addResourceInputsListDelegate) Spacing() int                            { return 0 }
-func (d addResourceInputsListDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d addResourceInputsListDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(addResourceInputsListItemId)
-	if !ok {
-		return
-	}
-
-	str := string(resourceTemplateIdToData[string(i)].name)
-
-	fn := addResourceInputsListItemStyle.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return addResourceInputsListSelectedItemStyle.Render("> " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fn(str))
 }
