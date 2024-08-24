@@ -13,7 +13,9 @@ import (
 	"github.com/gasdotdev/gas/tui/internal/graph"
 )
 
-type Resources struct{}
+type Resources struct {
+	NameToConfig nameToConfig
+}
 
 func New() (*Resources, error) {
 	r := &Resources{}
@@ -53,13 +55,13 @@ func New() (*Resources, error) {
 
 	groupToDepthToNames := g.GroupToDepthToNodes
 
-	namesWithInDegreesOfZero := g.NodesWithInDegreesOfZero
+	// namesWithInDegreesOfZero := g.NodesWithInDegreesOfZero
 
-	nameToIntermediates := g.NodeToIntermediates
+	// nameToIntermediates := g.NodeToIntermediates
 
-	depthToName := g.DepthToNode
+	// depthToName := g.DepthToNode
 
-	nameToDepth := g.NodeToDepth
+	// nameToDepth := g.NodeToDepth
 
 	nameToConfigData, err := r.setNameToConfigData(nameToIndexFileContent)
 	if err != nil {
@@ -77,6 +79,8 @@ func New() (*Resources, error) {
 	}
 
 	nameToConfig := r.setNameToConfig(runNodeJsConfigScriptResult)
+
+	r.NameToConfig = nameToConfig
 
 	return r, nil
 }
@@ -105,13 +109,11 @@ func getConfigJson() (configJson, error) {
 type containerDirPath string
 
 func getContainerDirPath(configJson configJson) containerDirPath {
-	configJsonDirPath := containerDirPath(configJson["resourceContainerDirPath"].(string))
-
-	if configJsonDirPath == "" {
-		return containerDirPath("./gas")
+	if dirPath, ok := configJson["resourceContainerDirPath"].(string); ok {
+		return containerDirPath(dirPath)
 	}
 
-	return configJsonDirPath
+	return containerDirPath("./gas")
 }
 
 type containerSubdirPaths []string

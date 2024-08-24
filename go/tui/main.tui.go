@@ -16,6 +16,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	degit "github.com/gasdotdev/gas/tui/internal/degit"
+	"github.com/gasdotdev/gas/tui/internal/resources"
 	"github.com/gasdotdev/gas/tui/internal/str"
 	"github.com/iancoleman/orderedmap"
 )
@@ -41,6 +42,7 @@ type model struct {
 	mode             mode
 	terminalHeight   int
 	terminalWidth    int
+	resources        *resources.Resources
 	addResourceGraph addResourceGraphType
 	addResource      addResourceType
 	newProject       newProjectType
@@ -231,12 +233,32 @@ func tx() tea.Msg {
 	return txMsg(true)
 }
 
+type getResourcesOk *resources.Resources
+
+type getResourcesErr struct {
+	err error
+}
+
+func getResources() tea.Msg {
+	r, err := resources.New()
+	if err != nil {
+		return getResourcesErr{err: err}
+	}
+	return getResourcesOk(r)
+}
+
 func (m model) Init() tea.Cmd {
-	return nil
+	return getResources
+	//return nil
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case getResourcesOk:
+		m.resources = msg
+		return m, nil
+	case getResourcesErr:
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.terminalHeight = msg.Height
 		m.terminalWidth = msg.Width
@@ -263,7 +285,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	if m.mode == HOME {
-		return homeView()
+		return homeView(m)
 	} else if m.mode == ADD_RESOURCE_GRAPH {
 		return addResourceGraphView(m)
 	} else if m.mode == NEW_PROJECT {
@@ -295,8 +317,16 @@ func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func homeView() string {
+func homeView(m model) string {
 	s := lipgloss.JoinVertical(lipgloss.Top, "Gas.dev", "[g] Add resource graph", "[n] New project", "[r] Add resource")
+	if m.resources != nil && m.resources.NameToConfig != nil {
+		s += "\n\nExisting resources:"
+		for name := range m.resources.NameToConfig {
+			s += fmt.Sprintf("\n- %s", name)
+		}
+	} else {
+		s += "\n\nNo resources found"
+	}
 	return s
 }
 
@@ -1071,6 +1101,7 @@ const (
 	ADD_RESOURCE_DOWNLOADING_TEMPLATE_STATE
 	ADD_RESOURCE_ERR_STATE
 	ADD_RESOURCE_CREATED_STATE
+	ADD_RESOURCE_INPUTS_STATES
 )
 
 type addResourceType struct {
@@ -1131,6 +1162,8 @@ func addResourceUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			errMsg := fmt.Sprintf("Error downloading template: %v", msg.err)
 			return m, tea.Println(errMsg)
 		}
+	} else if m.addResource.state == ADD_RESOURCE_INPUTS_STATES {
+		return m, nil
 	}
 
 	return m, nil
@@ -1182,6 +1215,8 @@ func addResourceView(m model) string {
 		return "Downloading template..."
 	} else if m.addResource.state == ADD_RESOURCE_CREATED_STATE {
 		return "Template downloaded successfully."
+	} else if m.addResource.state == ADD_RESOURCE_INPUTS_STATES {
+		return "Enter resource inputs:"
 	}
 	return "Unknown add resource state"
 }
