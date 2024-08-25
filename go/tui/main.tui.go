@@ -121,27 +121,14 @@ func setAddResourceGraphOrderedDbListItems() []list.Item {
 }
 
 func inititialModel() model {
-	entryResourceItemIdToData := make(map[string]interface{})
-	for id, data := range resourceTemplateIdToData {
-		if data.isEntry {
-			entryResourceItemIdToData[id] = map[string]interface{}{"name": data.name}
-		}
-	}
+	resourceTemplates := resources.NewTemplates()
+
+	resourceTemplates.SetEntryTemplateListItems()
 
 	addResourceGraphEntryList := components.NewListModel(
-		setAddResourceGraphEntryOrderedListItems(),
-		components.NewListDelegate(entryResourceItemIdToData),
-		0,
-		0,
-		entryResourceItemIdToData,
+		"Select entry resource:",
+		resourceTemplates.EntryTemplateListItems,
 	)
-	addResourceGraphEntryList.Title = "Select entry resource:"
-	addResourceGraphEntryList.SetShowStatusBar(false)
-	addResourceGraphEntryList.SetFilteringEnabled(false)
-	addResourceGraphEntryList.Styles.Title = components.ListTitleStyle
-	addResourceGraphEntryList.Styles.TitleBar = components.ListTitleBarStyle
-	addResourceGraphEntryList.Styles.PaginationStyle = components.ListPaginationStyle
-	addResourceGraphEntryList.Styles.HelpStyle = components.ListHelpStyle
 
 	addResourceGraphEntryEntityInput := textinput.New()
 	addResourceGraphEntryEntityInput.Placeholder = "app, dashboard, landing, etc"
@@ -153,20 +140,12 @@ func inititialModel() model {
 		}
 	}
 
+	resourceTemplates.SetApiTemplateListItems()
+
 	addResourceGraphApiList := components.NewListModel(
-		setAddResourceGraphOrderedApiListItems(),
-		components.NewListDelegate(apiResourceItemIdToData),
-		0,
-		0,
-		apiResourceItemIdToData,
+		"Select api resource:",
+		resourceTemplates.ApiTemplateListItems,
 	)
-	addResourceGraphApiList.Title = "Select api resource:"
-	addResourceGraphApiList.SetShowStatusBar(false)
-	addResourceGraphApiList.SetFilteringEnabled(false)
-	addResourceGraphApiList.Styles.Title = components.ListTitleStyle
-	addResourceGraphApiList.Styles.TitleBar = components.ListTitleBarStyle
-	addResourceGraphApiList.Styles.PaginationStyle = components.ListPaginationStyle
-	addResourceGraphApiList.Styles.HelpStyle = components.ListHelpStyle
 
 	dbResourceItemIdToData := make(map[string]interface{})
 	for id, data := range resourceTemplateIdToData {
