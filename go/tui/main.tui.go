@@ -142,6 +142,8 @@ func getResources() tea.Msg {
 
 var modes = ui.NewRegister[model]()
 
+var states = ui.NewRegister[model]()
+
 func (m model) Init() tea.Cmd {
 	modes.Register(int(HOME), ui.Fns[model]{
 		Update: homeUpdate,
@@ -161,6 +163,75 @@ func (m model) Init() tea.Cmd {
 	modes.Register(int(NEW_PROJECT), ui.Fns[model]{
 		Update: newProjectUpdate,
 		View:   newProjectView,
+	})
+
+	states.Register(int(ADD_RESOURCE_GRAPH_ENTRY_LIST), ui.Fns[model]{
+		Update: addResourceGraphEntryListUpdate,
+		View:   addResourceGraphEntryListView,
+	})
+
+	states.Register(int(ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT), ui.Fns[model]{
+		Update: addResourceGraphEntryEntityInputUpdate,
+		View:   addResourceGraphEntryEntityInputView,
+	})
+
+	states.Register(int(ADD_RESOURCE_GRAPH_API_LIST), ui.Fns[model]{
+		Update: addResourceGraphApiListUpdate,
+		View:   addResourceGraphApiListView,
+	})
+
+	states.Register(int(ADD_RESOURCE_GRAPH_DB_LIST), ui.Fns[model]{
+		Update: addResourceGraphDbListUpdate,
+		View:   addResourceGraphDbListView,
+	})
+
+	states.Register(int(NEW_PROJECT_DIR_INPUT), ui.Fns[model]{
+		Update: newProjectDirInputUpdate,
+		View:   newProjectDirInputView,
+	})
+
+	states.Register(int(NEW_PROJECT_DIR_CONFIRM_EMPTY), ui.Fns[model]{
+		Update: newProjectDirConfirmEmptyUpdate,
+		View:   newProjectDirConfirmEmptyView,
+	})
+
+	states.Register(int(NEW_PROJECT_SELECT_PACKAGE_MANAGER), ui.Fns[model]{
+		Update: newProjectSelectPackageManagerUpdate,
+		View:   newProjectSelectPackageManagerView,
+	})
+
+	states.Register(int(NEW_PROJECT_CREATING), ui.Fns[model]{
+		Update: newProjectCreatingUpdate,
+		View:   newProjectCreatingView,
+	})
+
+	states.Register(int(NEW_PROJECT_CREATED), ui.Fns[model]{
+		Update: newProjectCreatedUpdate,
+		View:   newProjectCreatedView,
+	})
+
+	states.Register(int(ADD_RESOURCE_LIST), ui.Fns[model]{
+		Update: addResourceListUpdate,
+		View:   addResourceListView,
+	})
+
+	states.Register(int(ADD_RESOURCE_ENTITY_INPUT), ui.Fns[model]{
+		Update: addResourceEntityInputUpdate,
+		View:   addResourceEntityInputView,
+	})
+
+	states.Register(int(ADD_RESOURCE_DOWNLOADING_TEMPLATE), ui.Fns[model]{
+		Update: addResourceDownloadingTemplateUpdate,
+		View:   addResourceDownloadingTemplateView,
+	})
+
+	states.Register(int(ADD_RESOURCE_ERR), ui.Fns[model]{
+		View: addResourceErrView,
+	})
+
+	states.Register(int(ADD_RESOURCE_INPUTS), ui.Fns[model]{
+		Update: addResourceInputsUpdate,
+		View:   addResourceInputsView,
 	})
 
 	return getResources
@@ -236,10 +307,10 @@ func homeView(m model) string {
 type addResourceGraphState int
 
 const (
-	ADD_RESOURCE_GRAPH_ENTRY_LIST_STATE addResourceGraphState = iota
-	ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT_STATE
-	ADD_RESOURCE_GRAPH_API_LIST_STATE
-	ADD_RESOURCE_GRAPH_DB_LIST_STATE
+	ADD_RESOURCE_GRAPH_ENTRY_LIST addResourceGraphState = iota
+	ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT
+	ADD_RESOURCE_GRAPH_API_LIST
+	ADD_RESOURCE_GRAPH_DB_LIST
 )
 
 type addResourceGraphType struct {
@@ -259,114 +330,137 @@ func (e *InputErr) Error() string {
 }
 
 func addResourceGraphUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_ENTRY_LIST_STATE {
-		switch msg := msg.(type) {
-		case txMsg:
-			m.addResourceGraph.entryList.SetSize(m.terminalWidth, m.terminalHeight)
-			return m, tea.ClearScreen
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "enter":
-				m.addResourceGraph.state = ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT_STATE
-				return m, tea.Sequence(tx, m.addResourceGraph.entryEntityInput.Focus())
-			}
-		}
+	stateFn, ok := states.Fns[int(m.addResourceGraph.state)]
+	if !ok {
+		s := fmt.Sprintf("Unknown add resource graph state: %d\n\n", m.addResourceGraph.state)
+		return m, tea.Sequence(tx, tea.Println(s))
+	}
+	return stateFn.Update(m, msg)
+}
 
-		var cmd tea.Cmd
-		m.addResourceGraph.entryList, cmd = m.addResourceGraph.entryList.Update(msg)
-		return m, cmd
-	} else if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT_STATE {
-		switch msg := msg.(type) {
-		case txMsg:
-			return m, tea.ClearScreen
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "enter":
-				if m.addResourceGraph.entryEntityInput.Value() == "" {
-					m.addResourceGraph.entryEntityInput.Err = &InputErr{
-						Msg: "Entity is required",
-					}
-					return m, nil
-				}
-				m.addResourceGraph.state = ADD_RESOURCE_GRAPH_API_LIST_STATE
-				return m, tx
-			}
+func addResourceGraphEntryListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case txMsg:
+		m.addResourceGraph.entryList.SetSize(m.terminalWidth, m.terminalHeight)
+		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			m.addResourceGraph.state = ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT
+			return m, tea.Sequence(tx, m.addResourceGraph.entryEntityInput.Focus())
 		}
-
-		var cmd tea.Cmd
-		m.addResourceGraph.entryEntityInput, cmd = m.addResourceGraph.entryEntityInput.Update(msg)
-		return m, cmd
-	} else if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_API_LIST_STATE {
-		switch msg := msg.(type) {
-		case txMsg:
-			m.addResourceGraph.apiList.SetSize(m.terminalWidth, m.terminalHeight)
-			return m, tea.ClearScreen
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "enter":
-				m.addResourceGraph.state = ADD_RESOURCE_GRAPH_DB_LIST_STATE
-				return m, tx
-			}
-		}
-
-		var cmd tea.Cmd
-		m.addResourceGraph.apiList, cmd = m.addResourceGraph.apiList.Update(msg)
-		return m, cmd
-	} else if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_DB_LIST_STATE {
-		switch msg.(type) {
-		case txMsg:
-			m.addResourceGraph.dbList.SetSize(m.terminalWidth, m.terminalHeight)
-			return m, tea.ClearScreen
-		}
-
-		var cmd tea.Cmd
-		m.addResourceGraph.dbList, cmd = m.addResourceGraph.dbList.Update(msg)
-		return m, cmd
 	}
 
-	return m, nil
+	var cmd tea.Cmd
+	m.addResourceGraph.entryList, cmd = m.addResourceGraph.entryList.Update(msg)
+	return m, cmd
+}
+
+func addResourceGraphEntryEntityInputUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case txMsg:
+		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			if m.addResourceGraph.entryEntityInput.Value() == "" {
+				m.addResourceGraph.entryEntityInput.Err = &InputErr{
+					Msg: "Entity is required",
+				}
+				return m, nil
+			}
+			m.addResourceGraph.state = ADD_RESOURCE_GRAPH_API_LIST
+			return m, tx
+		}
+	}
+
+	var cmd tea.Cmd
+	m.addResourceGraph.entryEntityInput, cmd = m.addResourceGraph.entryEntityInput.Update(msg)
+	return m, cmd
+}
+
+func addResourceGraphApiListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case txMsg:
+		m.addResourceGraph.apiList.SetSize(m.terminalWidth, m.terminalHeight)
+		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			m.addResourceGraph.state = ADD_RESOURCE_GRAPH_DB_LIST
+			return m, tx
+		}
+	}
+
+	var cmd tea.Cmd
+	m.addResourceGraph.apiList, cmd = m.addResourceGraph.apiList.Update(msg)
+	return m, cmd
+}
+
+func addResourceGraphDbListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
+	case txMsg:
+		m.addResourceGraph.dbList.SetSize(m.terminalWidth, m.terminalHeight)
+		return m, tea.ClearScreen
+	}
+
+	var cmd tea.Cmd
+	m.addResourceGraph.dbList, cmd = m.addResourceGraph.dbList.Update(msg)
+	return m, cmd
 }
 
 var inputErrStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 
 func addResourceGraphView(m model) string {
-	if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_ENTRY_LIST_STATE {
-		return m.addResourceGraph.entryList.View()
-	} else if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_ENTRY_ENTITY_INPUT_STATE {
-		s := lipgloss.JoinVertical(
-			lipgloss.Top,
-			string(m.addResourceGraph.entryList.SelectedItemId()),
-			"Resource entity group pre-set to web",
-			"Enter resource entity:",
-			m.addResourceGraph.entryEntityInput.View(),
-		)
-		if m.addResourceGraph.entryEntityInput.Err != nil {
-			var inputErr *InputErr
-			switch {
-			case errors.As(m.addResourceGraph.entryEntityInput.Err, &inputErr):
-				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.addResourceGraph.entryEntityInput.Err)))
-			default:
-				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.addResourceGraph.entryEntityInput.Err)))
-			}
-		}
+	stateFn, ok := states.Fns[int(m.addResourceGraph.state)]
+	if !ok {
+		s := fmt.Sprintf("Unknown add resource graph state: %d\n\n", m.addResourceGraph.state)
 		return s
-	} else if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_API_LIST_STATE {
-		return m.addResourceGraph.apiList.View()
-	} else if m.addResourceGraph.state == ADD_RESOURCE_GRAPH_DB_LIST_STATE {
-		return m.addResourceGraph.dbList.View()
 	}
-	return "Unknown add resource graph state"
+	return stateFn.View(m)
+}
+
+func addResourceGraphEntryListView(m model) string {
+	return m.addResourceGraph.entryList.View()
+}
+
+func addResourceGraphEntryEntityInputView(m model) string {
+	s := lipgloss.JoinVertical(
+		lipgloss.Top,
+		string(m.addResourceGraph.entryList.SelectedItemId()),
+		"Resource entity group pre-set to web",
+		"Enter resource entity:",
+		m.addResourceGraph.entryEntityInput.View(),
+	)
+	if m.addResourceGraph.entryEntityInput.Err != nil {
+		var inputErr *InputErr
+		switch {
+		case errors.As(m.addResourceGraph.entryEntityInput.Err, &inputErr):
+			s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.addResourceGraph.entryEntityInput.Err)))
+		default:
+			s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.addResourceGraph.entryEntityInput.Err)))
+		}
+	}
+	return s
+}
+
+func addResourceGraphApiListView(m model) string {
+	return m.addResourceGraph.apiList.View()
+}
+
+func addResourceGraphDbListView(m model) string {
+	return m.addResourceGraph.dbList.View()
 }
 
 type newProjectState int
 
 const (
-	NEW_PROJECT_DIR_INPUT_STATE newProjectState = iota
-	NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE
-	NEW_PROJECT_DIR_ERR_STATE
-	NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE
-	NEW_PROJECT_CREATING_STATE
-	NEW_PROJECT_CREATED_STATE
+	NEW_PROJECT_DIR_INPUT newProjectState = iota
+	NEW_PROJECT_DIR_CONFIRM_EMPTY
+	NEW_PROJECT_DIR_ERR
+	NEW_PROJECT_SELECT_PACKAGE_MANAGER
+	NEW_PROJECT_CREATING
+	NEW_PROJECT_CREATED
 )
 
 type newProjectType struct {
@@ -379,213 +473,240 @@ type newProjectType struct {
 }
 
 func newProjectUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.newProject.state == NEW_PROJECT_DIR_INPUT_STATE {
-		switch msg := msg.(type) {
-		case txMsg:
-			return m, tea.ClearScreen
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "enter":
-				if m.newProject.dirInput.Value() == "" {
-					m.newProject.dirInput.Err = &InputErr{
-						Msg: "Directory is required",
-					}
-					return m, nil
-				}
+	stateFn, ok := states.Fns[int(m.newProject.state)]
+	if !ok {
+		s := fmt.Sprintf("Unknown new project state: %d\n\n", m.newProject.state)
+		return m, tea.Sequence(tx, tea.Println(s))
+	}
+	return stateFn.Update(m, msg)
+}
 
-				resolvedPath, _ := filepath.Abs(m.newProject.dirInput.Value())
-
-				return m, getNewProjectDirPathState(resolvedPath)
-			}
-		case getNewProjectDirPathStateOk:
-			dirState := newProjectDirPathState(msg)
-			m.newProject.dirState = dirState
-			if dirState == NEW_PROJECT_DIR_PATH_STATE_FULL {
-				m.newProject.state = NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE
-				return m, tea.Sequence(tx, m.newProject.confirmEmptyDirInput.Focus())
-			} else if dirState == NEW_PROJECT_DIR_PATH_STATE_NONE {
-				m.newProject.state = NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE
-				return m, tx
-			} else if dirState == NEW_PROJECT_DIR_PATH_STATE_EMPTY {
-				m.newProject.state = NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE
-				return m, tx
-			}
-		case getNewProjectDirPathStateErr:
-			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
-			m.newProject.dirInput.Err = msg
-			return m, nil
-		}
-
-		var cmd tea.Cmd
-		m.newProject.dirInput, cmd = m.newProject.dirInput.Update(msg)
-		return m, cmd
-	} else if m.newProject.state == NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE {
-		switch msg := msg.(type) {
-		case txMsg:
-			return m, tea.ClearScreen
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "y":
-				m.newProject.state = NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE
-				m.newProject.confirmEmptyDirInput.SetValue("y")
-				return m, tx
-			case "n":
-				m.newProject.state = NEW_PROJECT_DIR_INPUT_STATE
-				m.newProject.confirmEmptyDirInput.SetValue("n")
-				return m, tea.Sequence(tx, m.newProject.dirInput.Focus())
-			default:
-				m.newProject.confirmEmptyDirInput.Err = &InputErr{
-					Msg: "y/n is required",
+func newProjectDirInputUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case txMsg:
+		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			if m.newProject.dirInput.Value() == "" {
+				m.newProject.dirInput.Err = &InputErr{
+					Msg: "Directory is required",
 				}
 				return m, nil
 			}
+
+			resolvedPath, _ := filepath.Abs(m.newProject.dirInput.Value())
+
+			return m, getNewProjectDirPathState(resolvedPath)
 		}
-
-		var cmd tea.Cmd
-		m.newProject.confirmEmptyDirInput, cmd = m.newProject.confirmEmptyDirInput.Update(msg)
-		return m, cmd
-	} else if m.newProject.state == NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE {
-		switch msg := msg.(type) {
-		case txMsg:
-			m.newProject.selectPackageManagerList.SetSize(m.terminalWidth, m.terminalHeight)
-			return m, tea.ClearScreen
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "enter":
-				m.newProject.state = NEW_PROJECT_CREATING_STATE
-				return m, tx
-			}
-		}
-
-		var cmd tea.Cmd
-		m.newProject.selectPackageManagerList, cmd = m.newProject.selectPackageManagerList.Update(msg)
-		return m, cmd
-	} else if m.newProject.state == NEW_PROJECT_CREATING_STATE {
-		repoUrl := "https://github.com/gasdotdev/gas"
-		repoBranch := "master"
-		extractPath := m.newProject.dirInput.Value()
-		repoTemplate := "templates/new-project-npm"
-
-		switch msg := msg.(type) {
-		case txMsg:
-			if len(m.newProject.createLogs) > 0 {
-				return m, tea.ClearScreen
-			} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_FULL && m.newProject.confirmEmptyDirInput.Value() == "y" {
-				m.newProject.createLogs = append(m.newProject.createLogs, "Emptying dir...")
-				return m, emptyNewProjectDirPath(m.newProject.dirInput.Value())
-			} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_EMPTY {
-				m.newProject.createLogs = append(m.newProject.createLogs, "Downloading new project template...")
-
-				return m, setupNewProjectTemplate(repoUrl, repoBranch, degit.Paths{
-					Repo:    repoTemplate,
-					Extract: extractPath,
-				})
-			} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_NONE {
-				m.newProject.createLogs = append(m.newProject.createLogs, "Creating "+m.newProject.dirInput.Value())
-				return m, createNewProjectDir(m.newProject.dirInput.Value())
-			}
-		case createNewProjectDirOk:
-			m.newProject.createLogs = append(m.newProject.createLogs, "Directory created successfully.")
-			return m, setupNewProjectTemplate(repoUrl, repoBranch, degit.Paths{
-				Repo:    repoTemplate,
-				Extract: extractPath,
-			})
-		case createNewProjectDirErr:
-			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
-			errMsg := fmt.Sprintf("Error creating directory: %v", msg.err)
-			m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
-			return m, tea.Sequence(tx, tea.Println(errMsg))
-		case emptyNewProjectDirPathOk:
-			m.newProject.createLogs = append(m.newProject.createLogs, "Directory emptied successfully.")
-			return m, setupNewProjectTemplate(repoUrl, repoBranch, degit.Paths{
-				Repo:    repoTemplate,
-				Extract: extractPath,
-			})
-		case emptyNewProjectDirPathErr:
-			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
-			errMsg := fmt.Sprintf("Error emptying directory: %v", msg.err)
-			m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
-			return m, tea.Sequence(tx, tea.Println(errMsg))
-		case setupNewProjectTemplateOk:
-			m.newProject.createLogs = append(m.newProject.createLogs, "Project template set up successfully.")
-			return m, installPackages(extractPath, "npm")
-		case setupNewProjectTemplateErr:
-			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
-			errMsg := fmt.Sprintf("Error setting up project template: %v", msg.err)
-			m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
-			return m, tea.Sequence(tx, tea.Println(errMsg))
-		case installPackagesOk:
-			m.newProject.createLogs = append(m.newProject.createLogs, "Packages installed successfully.")
-			m.newProject.state = NEW_PROJECT_CREATED_STATE
+	case getNewProjectDirPathStateOk:
+		dirState := newProjectDirPathState(msg)
+		m.newProject.dirState = dirState
+		if dirState == NEW_PROJECT_DIR_PATH_STATE_FULL {
+			m.newProject.state = NEW_PROJECT_DIR_CONFIRM_EMPTY
+			return m, tea.Sequence(tx, m.newProject.confirmEmptyDirInput.Focus())
+		} else if dirState == NEW_PROJECT_DIR_PATH_STATE_NONE {
+			m.newProject.state = NEW_PROJECT_SELECT_PACKAGE_MANAGER
 			return m, tx
-		case installPackagesErr:
-			m.newProject.state = NEW_PROJECT_DIR_ERR_STATE
-			errMsg := fmt.Sprintf("Error installing packages: %v", msg.err)
-			m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
-			return m, tea.Sequence(tx, tea.Println(errMsg))
+		} else if dirState == NEW_PROJECT_DIR_PATH_STATE_EMPTY {
+			m.newProject.state = NEW_PROJECT_SELECT_PACKAGE_MANAGER
+			return m, tx
 		}
-	} else if m.newProject.state == NEW_PROJECT_CREATED_STATE {
-		switch msg := msg.(type) {
-		case txMsg:
-			return m, tea.ClearScreen
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "g":
-				m.mode = ADD_RESOURCE_GRAPH
-				return m, tx
+	case getNewProjectDirPathStateErr:
+		m.newProject.state = NEW_PROJECT_DIR_ERR
+		m.newProject.dirInput.Err = msg
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.newProject.dirInput, cmd = m.newProject.dirInput.Update(msg)
+	return m, cmd
+}
+
+func newProjectDirConfirmEmptyUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case txMsg:
+		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "y":
+			m.newProject.state = NEW_PROJECT_SELECT_PACKAGE_MANAGER
+			m.newProject.confirmEmptyDirInput.SetValue("y")
+			return m, tx
+		case "n":
+			m.newProject.state = NEW_PROJECT_DIR_INPUT
+			m.newProject.confirmEmptyDirInput.SetValue("n")
+			return m, tea.Sequence(tx, m.newProject.dirInput.Focus())
+		default:
+			m.newProject.confirmEmptyDirInput.Err = &InputErr{
+				Msg: "y/n is required",
 			}
+			return m, nil
 		}
 	}
 
+	var cmd tea.Cmd
+	m.newProject.confirmEmptyDirInput, cmd = m.newProject.confirmEmptyDirInput.Update(msg)
+	return m, cmd
+}
+
+func newProjectSelectPackageManagerUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case txMsg:
+		m.newProject.selectPackageManagerList.SetSize(m.terminalWidth, m.terminalHeight)
+		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			m.newProject.state = NEW_PROJECT_CREATING
+			return m, tx
+		}
+	}
+
+	var cmd tea.Cmd
+	m.newProject.selectPackageManagerList, cmd = m.newProject.selectPackageManagerList.Update(msg)
+	return m, cmd
+}
+
+func newProjectCreatingUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	repoUrl := "https://github.com/gasdotdev/gas"
+	repoBranch := "master"
+	extractPath := m.newProject.dirInput.Value()
+	repoTemplate := "templates/new-project-npm"
+
+	switch msg := msg.(type) {
+	case txMsg:
+		if len(m.newProject.createLogs) > 0 {
+			return m, tea.ClearScreen
+		} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_FULL && m.newProject.confirmEmptyDirInput.Value() == "y" {
+			m.newProject.createLogs = append(m.newProject.createLogs, "Emptying dir...")
+			return m, emptyNewProjectDirPath(m.newProject.dirInput.Value())
+		} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_EMPTY {
+			m.newProject.createLogs = append(m.newProject.createLogs, "Downloading new project template...")
+
+			return m, setupNewProjectTemplate(repoUrl, repoBranch, degit.Paths{
+				Repo:    repoTemplate,
+				Extract: extractPath,
+			})
+		} else if m.newProject.dirState == NEW_PROJECT_DIR_PATH_STATE_NONE {
+			m.newProject.createLogs = append(m.newProject.createLogs, "Creating "+m.newProject.dirInput.Value())
+			return m, createNewProjectDir(m.newProject.dirInput.Value())
+		}
+	case createNewProjectDirOk:
+		m.newProject.createLogs = append(m.newProject.createLogs, "Directory created successfully.")
+		return m, setupNewProjectTemplate(repoUrl, repoBranch, degit.Paths{
+			Repo:    repoTemplate,
+			Extract: extractPath,
+		})
+	case createNewProjectDirErr:
+		m.newProject.state = NEW_PROJECT_DIR_ERR
+		errMsg := fmt.Sprintf("Error creating directory: %v", msg.err)
+		m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
+		return m, tea.Sequence(tx, tea.Println(errMsg))
+	case emptyNewProjectDirPathOk:
+		m.newProject.createLogs = append(m.newProject.createLogs, "Directory emptied successfully.")
+		return m, setupNewProjectTemplate(repoUrl, repoBranch, degit.Paths{
+			Repo:    repoTemplate,
+			Extract: extractPath,
+		})
+	case emptyNewProjectDirPathErr:
+		m.newProject.state = NEW_PROJECT_DIR_ERR
+		errMsg := fmt.Sprintf("Error emptying directory: %v", msg.err)
+		m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
+		return m, tea.Sequence(tx, tea.Println(errMsg))
+	case setupNewProjectTemplateOk:
+		m.newProject.createLogs = append(m.newProject.createLogs, "Project template set up successfully.")
+		return m, installPackages(extractPath, "npm")
+	case setupNewProjectTemplateErr:
+		m.newProject.state = NEW_PROJECT_DIR_ERR
+		errMsg := fmt.Sprintf("Error setting up project template: %v", msg.err)
+		m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
+		return m, tea.Sequence(tx, tea.Println(errMsg))
+	case installPackagesOk:
+		m.newProject.createLogs = append(m.newProject.createLogs, "Packages installed successfully.")
+		m.newProject.state = NEW_PROJECT_CREATED
+		return m, tx
+	case installPackagesErr:
+		m.newProject.state = NEW_PROJECT_DIR_ERR
+		errMsg := fmt.Sprintf("Error installing packages: %v", msg.err)
+		m.newProject.createLogs = append(m.newProject.createLogs, errMsg)
+		return m, tea.Sequence(tx, tea.Println(errMsg))
+	}
+	return m, nil
+}
+
+func newProjectCreatedUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case txMsg:
+		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "g":
+			m.mode = ADD_RESOURCE_GRAPH
+			return m, tx
+		}
+	}
 	return m, nil
 }
 
 func newProjectView(m model) string {
-	if m.newProject.state == NEW_PROJECT_DIR_INPUT_STATE {
-		s := lipgloss.JoinVertical(lipgloss.Top, "Enter dir:", m.newProject.dirInput.View())
-		if m.newProject.dirInput.Err != nil {
-			var inputErr *InputErr
-			switch {
-			case errors.As(m.newProject.dirInput.Err, &inputErr):
-				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.newProject.dirInput.Err)))
-			default:
-				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.newProject.dirInput.Err)))
-			}
-		}
+	stateFn, ok := states.Fns[int(m.newProject.state)]
+	if !ok {
+		s := fmt.Sprintf("Unknown new project state: %d\n\n", m.newProject.state)
 		return s
-	} else if m.newProject.state == NEW_PROJECT_DIR_CONFIRM_EMPTY_STATE {
-		s := lipgloss.JoinVertical(lipgloss.Top, "Empty dir?", m.newProject.confirmEmptyDirInput.View())
-		if m.newProject.confirmEmptyDirInput.Err != nil {
-			var inputErr *InputErr
-			switch {
-			case errors.As(m.newProject.confirmEmptyDirInput.Err, &inputErr):
-				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.newProject.confirmEmptyDirInput.Err)))
-			default:
-				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.newProject.confirmEmptyDirInput.Err)))
-			}
-		}
-		return s
-	} else if m.newProject.state == NEW_PROJECT_SELECT_PACKAGE_MANAGER_STATE {
-		return m.newProject.selectPackageManagerList.View()
-	} else if m.newProject.state == NEW_PROJECT_CREATING_STATE {
-		var logs strings.Builder
-		for _, log := range m.newProject.createLogs {
-			logs.WriteString(log + "\n")
-		}
-		return logs.String()
-	} else if m.newProject.state == NEW_PROJECT_CREATED_STATE {
-		var logs strings.Builder
-		for _, log := range m.newProject.createLogs {
-			logs.WriteString(log + "\n")
-		}
-		logs.WriteString("Project created successfully.")
-		logs.WriteString("\n\n")
-		logs.WriteString("Press g to add resources to the graph.")
-		return logs.String()
-	} else if m.newProject.state == NEW_PROJECT_DIR_ERR_STATE {
-		return fmt.Sprintf("Error occurred:\n%s", strings.Join(m.newProject.createLogs, "\n"))
 	}
-	return "Unknown new project state"
+	return stateFn.View(m)
+}
+
+func newProjectDirInputView(m model) string {
+	s := lipgloss.JoinVertical(lipgloss.Top, "Enter dir:", m.newProject.dirInput.View())
+	if m.newProject.dirInput.Err != nil {
+		var inputErr *InputErr
+		switch {
+		case errors.As(m.newProject.dirInput.Err, &inputErr):
+			s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.newProject.dirInput.Err)))
+		default:
+			s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.newProject.dirInput.Err)))
+		}
+	}
+	return s
+}
+
+func newProjectDirConfirmEmptyView(m model) string {
+	s := lipgloss.JoinVertical(lipgloss.Top, "Empty dir?", m.newProject.confirmEmptyDirInput.View())
+	if m.newProject.confirmEmptyDirInput.Err != nil {
+		var inputErr *InputErr
+		switch {
+		case errors.As(m.newProject.confirmEmptyDirInput.Err, &inputErr):
+			s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.newProject.confirmEmptyDirInput.Err)))
+		default:
+			s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.newProject.confirmEmptyDirInput.Err)))
+		}
+	}
+	return s
+}
+
+func newProjectSelectPackageManagerView(m model) string {
+	return m.newProject.selectPackageManagerList.View()
+}
+
+func newProjectCreatingView(m model) string {
+	var logs strings.Builder
+	for _, log := range m.newProject.createLogs {
+		logs.WriteString(log + "\n")
+	}
+	return logs.String()
+}
+
+func newProjectCreatedView(m model) string {
+	var logs strings.Builder
+	for _, log := range m.newProject.createLogs {
+		logs.WriteString(log + "\n")
+	}
+	logs.WriteString("Project created successfully.")
+	logs.WriteString("\n\n")
+	logs.WriteString("Press g to add resources to the graph.")
+	return logs.String()
 }
 
 type newProjectDirPathState string
@@ -735,12 +856,11 @@ func installPackages(dirPath string, packageManager string) tea.Cmd {
 type addResourceState int
 
 const (
-	ADD_RESOURCE_LIST_STATE addResourceState = iota
-	ADD_RESOURCE_ENTITY_INPUT_STATE
-	ADD_RESOURCE_DOWNLOADING_TEMPLATE_STATE
-	ADD_RESOURCE_ERR_STATE
-	ADD_RESOURCE_CREATED_STATE
-	ADD_RESOURCE_INPUTS_STATE
+	ADD_RESOURCE_LIST addResourceState = iota
+	ADD_RESOURCE_ENTITY_INPUT
+	ADD_RESOURCE_DOWNLOADING_TEMPLATE
+	ADD_RESOURCE_ERR
+	ADD_RESOURCE_INPUTS
 )
 
 type addResourceType struct {
@@ -751,67 +871,79 @@ type addResourceType struct {
 }
 
 func addResourceUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.addResource.state == ADD_RESOURCE_LIST_STATE {
-		switch msg := msg.(type) {
-		case txMsg:
-			m.addResource.list.SetSize(m.terminalWidth, m.terminalHeight)
-			return m, tea.ClearScreen
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "enter":
-				m.addResource.state = ADD_RESOURCE_ENTITY_INPUT_STATE
-				return m, m.addResource.entityInput.Focus()
-			}
-		}
+	stateFn, ok := states.Fns[int(m.addResource.state)]
+	if !ok {
+		s := fmt.Sprintf("Unknown add resource state: %d\n\n", m.addResource.state)
+		return m, tea.Sequence(tx, tea.Println(s))
+	}
+	return stateFn.Update(m, msg)
+}
 
-		var cmd tea.Cmd
-		m.addResource.list, cmd = m.addResource.list.Update(msg)
-		return m, cmd
-	} else if m.addResource.state == ADD_RESOURCE_ENTITY_INPUT_STATE {
-		repoUrl := "https://github.com/gasdotdev/gas"
-		repoBranch := "master"
-		extractPath := filepath.Join(".", "gas", fmt.Sprintf("web-%s-pages", m.addResource.entityInput.Value()))
-		repoTemplate := "templates/cloudflare-pages-remix"
-
-		switch msg := msg.(type) {
-		case txMsg:
-			return m, tea.ClearScreen
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "enter":
-				m.addResource.state = ADD_RESOURCE_DOWNLOADING_TEMPLATE_STATE
-				entityGroup := "web"
-				entity := m.addResource.entityInput.Value()
-				descriptor := "pages"
-				return m, setupNewResource(repoUrl, repoBranch, degit.Paths{
-					Repo:    repoTemplate,
-					Extract: extractPath,
-				}, entityGroup, entity, descriptor)
-			}
+func addResourceListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case txMsg:
+		m.addResource.list.SetSize(m.terminalWidth, m.terminalHeight)
+		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			m.addResource.state = ADD_RESOURCE_ENTITY_INPUT
+			return m, m.addResource.entityInput.Focus()
 		}
-
-		var cmd tea.Cmd
-		m.addResource.entityInput, cmd = m.addResource.entityInput.Update(msg)
-		return m, cmd
-	} else if m.addResource.state == ADD_RESOURCE_DOWNLOADING_TEMPLATE_STATE {
-		switch msg := msg.(type) {
-		case setupNewResourceOk:
-			m.addResource.state = ADD_RESOURCE_INPUTS_STATE
-			m.addResource.inputsList.SetItems(
-				[]list.Item{
-					components.ListItem{Id: "cloudflare-worker-hono", Option: "Cloudflare Worker Hono"},
-				},
-			)
-			return m, tx
-		case setupNewResourceErr:
-			m.addResource.state = ADD_RESOURCE_ERR_STATE
-			errMsg := fmt.Sprintf("Error downloading template: %v", msg.err)
-			return m, tea.Println(errMsg)
-		}
-	} else if m.addResource.state == ADD_RESOURCE_INPUTS_STATE {
-		return m, nil
 	}
 
+	var cmd tea.Cmd
+	m.addResource.list, cmd = m.addResource.list.Update(msg)
+	return m, cmd
+}
+
+func addResourceEntityInputUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	repoUrl := "https://github.com/gasdotdev/gas"
+	repoBranch := "master"
+	extractPath := filepath.Join(".", "gas", fmt.Sprintf("web-%s-pages", m.addResource.entityInput.Value()))
+	repoTemplate := "templates/cloudflare-pages-remix"
+
+	switch msg := msg.(type) {
+	case txMsg:
+		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			m.addResource.state = ADD_RESOURCE_DOWNLOADING_TEMPLATE
+			entityGroup := "web"
+			entity := m.addResource.entityInput.Value()
+			descriptor := "pages"
+			return m, setupNewResource(repoUrl, repoBranch, degit.Paths{
+				Repo:    repoTemplate,
+				Extract: extractPath,
+			}, entityGroup, entity, descriptor)
+		}
+	}
+
+	var cmd tea.Cmd
+	m.addResource.entityInput, cmd = m.addResource.entityInput.Update(msg)
+	return m, cmd
+}
+
+func addResourceDownloadingTemplateUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case setupNewResourceOk:
+		m.addResource.state = ADD_RESOURCE_INPUTS
+		m.addResource.inputsList.SetItems(
+			[]list.Item{
+				components.ListItem{Id: "cloudflare-worker-hono", Option: "Cloudflare Worker Hono"},
+			},
+		)
+		return m, tx
+	case setupNewResourceErr:
+		m.addResource.state = ADD_RESOURCE_ERR
+		errMsg := fmt.Sprintf("Error downloading template: %v", msg.err)
+		return m, tea.Println(errMsg)
+	}
+	return m, nil
+}
+
+func addResourceInputsUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
@@ -839,32 +971,44 @@ func setupNewResource(repoUrl, branch string, path degit.Paths, entityGroup stri
 }
 
 func addResourceView(m model) string {
-	if m.addResource.state == ADD_RESOURCE_LIST_STATE {
-		return m.addResource.list.View()
-	} else if m.addResource.state == ADD_RESOURCE_ENTITY_INPUT_STATE {
-		s := lipgloss.JoinVertical(
-			lipgloss.Top,
-			"Enter resource entity:",
-			m.addResource.entityInput.View(),
-		)
-		if m.addResource.entityInput.Err != nil {
-			var inputErr *InputErr
-			switch {
-			case errors.As(m.addResource.entityInput.Err, &inputErr):
-				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.addResource.entityInput.Err)))
-			default:
-				s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.addResource.entityInput.Err)))
-			}
-		}
+	stateFn, ok := states.Fns[int(m.addResource.state)]
+	if !ok {
+		s := fmt.Sprintf("Unknown add resource state: %d\n\n", m.addResource.state)
 		return s
-	} else if m.addResource.state == ADD_RESOURCE_DOWNLOADING_TEMPLATE_STATE {
-		return "Downloading template..."
-	} else if m.addResource.state == ADD_RESOURCE_CREATED_STATE {
-		return "Template downloaded successfully."
-	} else if m.addResource.state == ADD_RESOURCE_INPUTS_STATE {
-		return m.addResource.inputsList.View()
-	} else if m.addResource.state == ADD_RESOURCE_ERR_STATE {
-		return "error"
 	}
-	return fmt.Sprintf("Unknown add resource state: %v", m.addResource.state)
+	return stateFn.View(m)
+}
+
+func addResourceListView(m model) string {
+	return m.addResource.list.View()
+}
+
+func addResourceEntityInputView(m model) string {
+	s := lipgloss.JoinVertical(
+		lipgloss.Top,
+		"Enter resource entity:",
+		m.addResource.entityInput.View(),
+	)
+	if m.addResource.entityInput.Err != nil {
+		var inputErr *InputErr
+		switch {
+		case errors.As(m.addResource.entityInput.Err, &inputErr):
+			s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("%v\n\n", m.addResource.entityInput.Err)))
+		default:
+			s = lipgloss.JoinVertical(lipgloss.Top, s, inputErrStyle.Render(fmt.Sprintf("Error: %v\n\n", m.addResource.entityInput.Err)))
+		}
+	}
+	return s
+}
+
+func addResourceDownloadingTemplateView(m model) string {
+	return "Downloading template..."
+}
+
+func addResourceErrView(m model) string {
+	return "Error"
+}
+
+func addResourceInputsView(m model) string {
+	return m.addResource.inputsList.View()
 }
