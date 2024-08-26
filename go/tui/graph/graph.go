@@ -1,6 +1,6 @@
 package graph
 
-import "github.com/gasdotdev/gas/tui/internal/slice"
+import "github.com/gasdotdev/gas/tui/slice"
 
 type Graph struct {
 	nodeToDeps               NodeToDeps

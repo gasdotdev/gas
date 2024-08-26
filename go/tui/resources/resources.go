@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gasdotdev/gas/tui/internal/graph"
+	"github.com/gasdotdev/gas/tui/graph"
 )
 
 type Resources struct {

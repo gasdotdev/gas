@@ -3,7 +3,7 @@ package resources
 import (
 	"sort"
 
-	"github.com/gasdotdev/gas/tui/components"
+	"github.com/gasdotdev/gas/tui/ui/components"
 )
 
 type templates struct {

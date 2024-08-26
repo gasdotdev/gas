@@ -13,11 +13,11 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/gasdotdev/gas/tui/components"
-	degit "github.com/gasdotdev/gas/tui/internal/degit"
-	"github.com/gasdotdev/gas/tui/internal/resources"
-	"github.com/gasdotdev/gas/tui/internal/str"
+	"github.com/gasdotdev/gas/tui/degit"
+	"github.com/gasdotdev/gas/tui/resources"
+	"github.com/gasdotdev/gas/tui/str"
 	"github.com/gasdotdev/gas/tui/ui"
+	"github.com/gasdotdev/gas/tui/ui/components"
 	"github.com/iancoleman/orderedmap"
 )
 
