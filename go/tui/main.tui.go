@@ -17,6 +17,7 @@ import (
 	degit "github.com/gasdotdev/gas/tui/internal/degit"
 	"github.com/gasdotdev/gas/tui/internal/resources"
 	"github.com/gasdotdev/gas/tui/internal/str"
+	"github.com/gasdotdev/gas/tui/ui"
 	"github.com/iancoleman/orderedmap"
 )
 
@@ -139,51 +140,27 @@ func getResources() tea.Msg {
 	return getResourcesOk(r)
 }
 
-type ui[M any] struct {
-	Fns map[int]uiFns[M]
-}
-
-type uiFns[M any] struct {
-	update updateFn[M]
-	view   viewFn[M]
-}
-
-type (
-	updateFn[M any] func(m M, msg tea.Msg) (tea.Model, tea.Cmd)
-	viewFn[M any]   func(m M) string
-)
-
-func uiNew[M any]() *ui[M] {
-	return &ui[M]{
-		Fns: make(map[int]uiFns[M]),
-	}
-}
-
-func (u *ui[M]) register(state int, fns uiFns[M]) {
-	u.Fns[state] = fns
-}
-
-var modes = uiNew[model]()
+var modes = ui.NewRegister[model]()
 
 func (m model) Init() tea.Cmd {
-	modes.register(int(HOME), uiFns[model]{
-		update: homeUpdate,
-		view:   homeView,
+	modes.Register(int(HOME), ui.Fns[model]{
+		Update: homeUpdate,
+		View:   homeView,
 	})
 
-	modes.register(int(ADD_RESOURCE_GRAPH), uiFns[model]{
-		update: addResourceGraphUpdate,
-		view:   addResourceGraphView,
+	modes.Register(int(ADD_RESOURCE_GRAPH), ui.Fns[model]{
+		Update: addResourceGraphUpdate,
+		View:   addResourceGraphView,
 	})
 
-	modes.register(int(ADD_RESOURCE), uiFns[model]{
-		update: addResourceUpdate,
-		view:   addResourceView,
+	modes.Register(int(ADD_RESOURCE), ui.Fns[model]{
+		Update: addResourceUpdate,
+		View:   addResourceView,
 	})
 
-	modes.register(int(NEW_PROJECT), uiFns[model]{
-		update: newProjectUpdate,
-		view:   newProjectView,
+	modes.Register(int(NEW_PROJECT), ui.Fns[model]{
+		Update: newProjectUpdate,
+		View:   newProjectView,
 	})
 
 	return getResources
@@ -211,7 +188,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if !ok {
 		return m, nil
 	}
-	return modeFn.update(m, msg)
+	return modeFn.Update(m, msg)
 }
 
 func (m model) View() string {
@@ -220,7 +197,7 @@ func (m model) View() string {
 		s := fmt.Sprintf("Unknown mode: %d\n\n", m.mode)
 		return s
 	}
-	return modeFn.view(m)
+	return modeFn.View(m)
 }
 
 func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
