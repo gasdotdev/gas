@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -48,188 +47,56 @@ type model struct {
 	newProject       newProjectType
 }
 
-type resourceTemplateData struct {
-	name    string
-	isApi   bool
-	isDb    bool
-	isEntry bool
-}
-
-type resourceTemplateIdToDataType map[string]resourceTemplateData
-
-var resourceTemplateIdToData = resourceTemplateIdToDataType{
-	"cloudflare-pages-remix": {name: "Cloudflare Pages + Remix", isEntry: true},
-	"cloudflare-worker-hono": {name: "Cloudflare Worker + Hono", isApi: true, isEntry: true},
-	"cloudflare-d1":          {name: "Cloudflare D1", isDb: true},
-}
-
-func setAddResourceGraphEntryOrderedListItems() []list.Item {
-	items := []list.Item{}
-
-	keys := make([]string, 0, len(resourceTemplateIdToData))
-	for id, data := range resourceTemplateIdToData {
-		if data.isEntry {
-			keys = append(keys, id)
-		}
-	}
-
-	sort.Strings(keys)
-
-	for _, id := range keys {
-		items = append(items, components.ListItemId(id))
-	}
-
-	return items
-}
-
-func setAddResourceGraphOrderedApiListItems() []list.Item {
-	items := []list.Item{}
-
-	keys := make([]string, 0, len(resourceTemplateIdToData))
-	for id, data := range resourceTemplateIdToData {
-		if data.isApi {
-			keys = append(keys, id)
-		}
-	}
-
-	sort.Strings(keys)
-
-	for _, id := range keys {
-		items = append(items, components.ListItemId(id))
-	}
-
-	return items
-}
-
-func setAddResourceGraphOrderedDbListItems() []list.Item {
-	items := []list.Item{}
-
-	keys := make([]string, 0, len(resourceTemplateIdToData))
-	for id, data := range resourceTemplateIdToData {
-		if data.isDb {
-			keys = append(keys, id)
-		}
-	}
-
-	sort.Strings(keys)
-
-	for _, id := range keys {
-		items = append(items, components.ListItemId(id))
-	}
-
-	return items
-}
-
 func inititialModel() model {
 	resourceTemplates := resources.NewTemplates()
 
-	resourceTemplates.SetEntryTemplateListItems()
+	resourceTemplates.GetEntryTemplateListItems()
 
 	addResourceGraphEntryList := components.NewListModel(
 		"Select entry resource:",
-		resourceTemplates.EntryTemplateListItems,
+		resourceTemplates.GetEntryTemplateListItems(),
 	)
 
 	addResourceGraphEntryEntityInput := textinput.New()
 	addResourceGraphEntryEntityInput.Placeholder = "app, dashboard, landing, etc"
 
-	apiResourceItemIdToData := make(map[string]interface{})
-	for id, data := range resourceTemplateIdToData {
-		if data.isApi {
-			apiResourceItemIdToData[id] = map[string]interface{}{"name": data.name}
-		}
-	}
-
-	resourceTemplates.SetApiTemplateListItems()
-
 	addResourceGraphApiList := components.NewListModel(
 		"Select api resource:",
-		resourceTemplates.ApiTemplateListItems,
+		resourceTemplates.GetApiTemplateListItems(),
 	)
-
-	dbResourceItemIdToData := make(map[string]interface{})
-	for id, data := range resourceTemplateIdToData {
-		if data.isDb {
-			dbResourceItemIdToData[id] = map[string]interface{}{"name": data.name}
-		}
-	}
 
 	addResourceGraphDbList := components.NewListModel(
-		setAddResourceGraphOrderedDbListItems(),
-		components.NewListDelegate(dbResourceItemIdToData),
-		0,
-		0,
-		dbResourceItemIdToData,
+		"Select db resource:",
+		resourceTemplates.GetDbTemplateListItems(),
 	)
-	addResourceGraphDbList.Title = "Select db resource:"
-	addResourceGraphDbList.SetShowStatusBar(false)
-	addResourceGraphDbList.SetFilteringEnabled(false)
-	addResourceGraphDbList.Styles.Title = components.ListTitleStyle
-	addResourceGraphDbList.Styles.TitleBar = components.ListTitleBarStyle
-	addResourceGraphDbList.Styles.PaginationStyle = components.ListPaginationStyle
-	addResourceGraphDbList.Styles.HelpStyle = components.ListHelpStyle
 
 	newProjectDirInput := textinput.New()
 	newProjectDirInput.Placeholder = "your-project-dir"
 
-	packageManagerItemIdToData := map[string]interface{}{
-		"npm": map[string]interface{}{"name": "npm"},
+	packageManagerListItems := []components.ListItem{
+		{Id: "npm", Option: "npm"},
 	}
 
 	selectPackageManagerList := components.NewListModel(
-		[]list.Item{
-			components.ListItemId("npm"),
-		},
-		components.NewListDelegate(packageManagerItemIdToData),
-		0,
-		0,
-		packageManagerItemIdToData,
+		"Select package manager:",
+		packageManagerListItems,
 	)
-	selectPackageManagerList.Title = "Select package manager:"
-	selectPackageManagerList.SetShowStatusBar(false)
-	selectPackageManagerList.SetFilteringEnabled(false)
-	selectPackageManagerList.Styles.Title = components.ListTitleStyle
-	selectPackageManagerList.Styles.TitleBar = components.ListTitleBarStyle
-	selectPackageManagerList.Styles.PaginationStyle = components.ListPaginationStyle
-	selectPackageManagerList.Styles.HelpStyle = components.ListHelpStyle
 
 	confirmEmptyDirInput := textinput.New()
 	confirmEmptyDirInput.Placeholder = "y/n"
 
 	addResourceList := components.NewListModel(
-		[]list.Item{
-			components.ListItemId("cloudflare-pages-remix"),
-		},
-		components.NewListDelegate(resourceTemplateIdToData),
-		0,
-		0,
-		resourceTemplateIdToData,
+		"Select resource:",
+		resourceTemplates.GetTemplateListItems(),
 	)
-	addResourceList.Title = "Select resource:"
-	addResourceList.SetShowStatusBar(false)
-	addResourceList.SetFilteringEnabled(false)
-	addResourceList.Styles.Title = components.ListTitleStyle
-	addResourceList.Styles.TitleBar = components.ListTitleBarStyle
-	addResourceList.Styles.PaginationStyle = components.ListPaginationStyle
-	addResourceList.Styles.HelpStyle = components.ListHelpStyle
 
 	addResourceEntityInput := textinput.New()
 	addResourceEntityInput.Placeholder = "app, dashboard, landing, etc"
 
 	addResourceInputsList := components.NewListModel(
-		[]list.Item{},
-		components.NewListDelegate(resourceTemplateIdToData),
-		0,
-		0,
-		resourceTemplateIdToData,
+		"Select resource inputs:",
+		resourceTemplates.GetTemplateListItems(),
 	)
-	addResourceInputsList.Title = "Select resource inputs:"
-	addResourceInputsList.SetShowStatusBar(false)
-	addResourceInputsList.SetFilteringEnabled(false)
-	addResourceInputsList.Styles.Title = components.ListTitleStyle
-	addResourceInputsList.Styles.TitleBar = components.ListTitleBarStyle
-	addResourceInputsList.Styles.PaginationStyle = components.ListPaginationStyle
-	addResourceInputsList.Styles.HelpStyle = components.ListHelpStyle
 
 	return model{
 		mode: HOME,
@@ -921,7 +788,7 @@ func addResourceUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.addResource.state = ADD_RESOURCE_INPUTS_STATE
 			m.addResource.inputsList.SetItems(
 				[]list.Item{
-					components.ListItemId("cloudflare-worker-hono"),
+					components.ListItem{Id: "cloudflare-worker-hono", Option: "Cloudflare Worker Hono"},
 				},
 			)
 			return m, tx
