@@ -139,9 +139,54 @@ func getResources() tea.Msg {
 	return getResourcesOk(r)
 }
 
+type ui[M any] struct {
+	Fns map[int]uiFns[M]
+}
+
+type uiFns[M any] struct {
+	update updateFn[M]
+	view   viewFn[M]
+}
+
+type (
+	updateFn[M any] func(m M, msg tea.Msg) (tea.Model, tea.Cmd)
+	viewFn[M any]   func(m M) string
+)
+
+func uiNew[M any]() *ui[M] {
+	return &ui[M]{
+		Fns: make(map[int]uiFns[M]),
+	}
+}
+
+func (u *ui[M]) register(state int, fns uiFns[M]) {
+	u.Fns[state] = fns
+}
+
+var modes = uiNew[model]()
+
 func (m model) Init() tea.Cmd {
+	modes.register(int(HOME), uiFns[model]{
+		update: homeUpdate,
+		view:   homeView,
+	})
+
+	modes.register(int(ADD_RESOURCE_GRAPH), uiFns[model]{
+		update: addResourceGraphUpdate,
+		view:   addResourceGraphView,
+	})
+
+	modes.register(int(ADD_RESOURCE), uiFns[model]{
+		update: addResourceUpdate,
+		view:   addResourceView,
+	})
+
+	modes.register(int(NEW_PROJECT), uiFns[model]{
+		update: newProjectUpdate,
+		view:   newProjectView,
+	})
+
 	return getResources
-	//return nil
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -162,31 +207,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if m.mode == HOME {
-		return homeUpdate(m, msg)
-	} else if m.mode == ADD_RESOURCE_GRAPH {
-		return addResourceGraphUpdate(m, msg)
-	} else if m.mode == NEW_PROJECT {
-		return newProjectUpdate(m, msg)
-	} else if m.mode == ADD_RESOURCE {
-		return addResourceUpdate(m, msg)
-	} else {
+	modeFn, ok := modes.Fns[int(m.mode)]
+	if !ok {
 		return m, nil
 	}
+	return modeFn.update(m, msg)
 }
 
 func (m model) View() string {
-	if m.mode == HOME {
-		return homeView(m)
-	} else if m.mode == ADD_RESOURCE_GRAPH {
-		return addResourceGraphView(m)
-	} else if m.mode == NEW_PROJECT {
-		return newProjectView(m)
-	} else if m.mode == ADD_RESOURCE {
-		return addResourceView(m)
-	} else {
-		return fmt.Sprintf("Unknown mode: %d", m.mode)
+	modeFn, ok := modes.Fns[int(m.mode)]
+	if !ok {
+		s := fmt.Sprintf("Unknown mode: %d\n\n", m.mode)
+		return s
 	}
+	return modeFn.view(m)
 }
 
 func homeUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
