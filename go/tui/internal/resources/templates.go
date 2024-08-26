@@ -55,7 +55,7 @@ func NewTemplates() *templates {
 }
 
 // GetApiTemplateListItems returns the API template list items in ABC order.
-// The list items are passed to a list component.
+// The list items are passed to the list component.
 // If the list items have already been generated, it returns the cached list items.
 // Otherwise, it generates the list items and returns them.
 func (t *templates) GetApiTemplateListItems() []components.ListItem {
@@ -77,7 +77,7 @@ func (t *templates) GetApiTemplateListItems() []components.ListItem {
 }
 
 // GetDbTemplateListItems returns the DB template list items in ABC order.
-// The list items are passed to a list component.
+// The list items are passed to the list component.
 // If the list items have already been generated, it returns the cached list items.
 // Otherwise, it generates the list items and returns them.
 func (t *templates) GetDbTemplateListItems() []components.ListItem {
@@ -99,7 +99,7 @@ func (t *templates) GetDbTemplateListItems() []components.ListItem {
 }
 
 // GetEntryTemplateListItems returns the entry template list items in ABC order.
-// The list items are passed to a list component.
+// The list items are passed to the list component.
 // Entry templates are the starting points for building a new resource graph. They
 // have an in-degree of 0. E.g. Cloudflare Pages + Remix.
 // If the list items have already been generated, it returns the cached list items.
@@ -123,7 +123,7 @@ func (t *templates) GetEntryTemplateListItems() []components.ListItem {
 }
 
 // GetTemplateListItems returns the template list items in ABC order.
-// The list items are passed to a list component.
+// The list items are passed to the list component.
 // If the list items have already been generated, it returns the cached list items.
 // Otherwise, it generates the list items and returns them.
 func (t *templates) GetTemplateListItems() []components.ListItem {
