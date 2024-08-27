@@ -14,7 +14,15 @@ import (
 )
 
 type Resources struct {
-	NameToConfig nameToConfig
+	nameToPackageJson           nameToPackageJson
+	packageJsonNameToName       packageJsonNameToName
+	nameToDeps                  nameToDeps
+	nameToIndexFilePath         nameToIndexFilePath
+	nameToIndexFileContent      nameToIndexFileContent
+	nameToConfigData            nameToConfigData
+	nodeJsConfigScript          nodeJsConfigScript
+	runNodeJsConfigScriptResult runNodeJsConfigScriptResult
+	NameToConfig                NameToConfig
 }
 
 func New() (*Resources, error) {
@@ -32,26 +40,26 @@ func New() (*Resources, error) {
 		return nil, err
 	}
 
-	nameToPackageJson, err := getNameToPackageJson(containerSubdirPaths)
+	err = r.setNameToPackageJson(containerSubdirPaths)
 	if err != nil {
 		return nil, err
 	}
 
-	packageJsonNameToName := setPackageJsonNameToName(nameToPackageJson)
+	r.setPackageJsonNameToName()
 
-	nameToDeps := r.setNameToDeps(nameToPackageJson, packageJsonNameToName)
+	r.setNameToDeps()
 
-	nameToIndexFilePath, err := r.setNameToIndexFilePath(containerSubdirPaths)
+	err = r.setNameToIndexFilePath(containerSubdirPaths)
 	if err != nil {
 		return nil, err
 	}
 
-	nameToIndexFileContent, err := r.setNameToIndexFileContent(nameToIndexFilePath)
+	err = r.setNameToIndexFileContent()
 	if err != nil {
 		return nil, err
 	}
 
-	g := graph.New(graph.NodeToDeps(nameToDeps))
+	g := graph.New(graph.NodeToDeps(r.nameToDeps))
 
 	groupToDepthToNames := g.GroupToDepthToNodes
 
@@ -63,24 +71,22 @@ func New() (*Resources, error) {
 
 	// nameToDepth := g.NodeToDepth
 
-	nameToConfigData, err := r.setNameToConfigData(nameToIndexFileContent)
+	err = r.setNameToConfigData()
 	if err != nil {
 		return nil, err
 	}
 
-	nodeJsConfigScript, err := r.setNodeJsConfigScript(nameToConfigData, groupToDepthToNames)
+	err = r.setNodeJsConfigScript(groupToDepthToNames)
 	if err != nil {
 		return nil, err
 	}
 
-	runNodeJsConfigScriptResult, err := r.runNodeJsConfigScript(nodeJsConfigScript)
+	err = r.runNodeJsConfigScript()
 	if err != nil {
 		return nil, err
 	}
 
-	nameToConfig := r.setNameToConfig(runNodeJsConfigScriptResult)
-
-	r.NameToConfig = nameToConfig
+	r.setNameToConfig()
 
 	return r, nil
 }
@@ -147,8 +153,8 @@ type packageJson struct {
 	DevDependencies map[string]string `json:"devDependencies,omitempty"`
 }
 
-func getNameToPackageJson(containerSubdirPaths containerSubdirPaths) (nameToPackageJson, error) {
-	nameToPackageJson := make(nameToPackageJson)
+func (r *Resources) setNameToPackageJson(containerSubdirPaths containerSubdirPaths) error {
+	result := make(nameToPackageJson)
 
 	for _, subdirPath := range containerSubdirPaths {
 		resourceName := convertContainerSubdirPathToName(subdirPath)
@@ -157,19 +163,21 @@ func getNameToPackageJson(containerSubdirPaths containerSubdirPaths) (nameToPack
 
 		data, err := os.ReadFile(packageJsonPath)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read file %s\n%v", packageJsonPath, err)
+			return fmt.Errorf("unable to read file %s\n%v", packageJsonPath, err)
 		}
 
 		var packageJson packageJson
 		err = json.Unmarshal(data, &packageJson)
 		if err != nil {
-			return nil, fmt.Errorf("unable to parse %s\n%v", packageJsonPath, err)
+			return fmt.Errorf("unable to parse %s\n%v", packageJsonPath, err)
 		}
 
-		nameToPackageJson[resourceName] = &packageJson
+		result[resourceName] = &packageJson
 	}
 
-	return nameToPackageJson, nil
+	r.nameToPackageJson = result
+
+	return nil
 }
 
 func convertContainerSubdirPathToName(subdirPath string) string {
@@ -181,23 +189,23 @@ func convertContainerSubdirPathToName(subdirPath string) string {
 
 type packageJsonNameToName map[string]string
 
-func setPackageJsonNameToName(nameToPackageJson nameToPackageJson) packageJsonNameToName {
+func (r *Resources) setPackageJsonNameToName() {
 	result := make(packageJsonNameToName)
-	for resourceName, packageJson := range nameToPackageJson {
+	for resourceName, packageJson := range r.nameToPackageJson {
 		result[packageJson.Name] = resourceName
 	}
-	return result
+	r.packageJsonNameToName = result
 }
 
 type nameToDeps map[string][]string
 
-func (r *Resources) setNameToDeps(nameToPackageJson nameToPackageJson, packageJsonNameToName packageJsonNameToName) nameToDeps {
+func (r *Resources) setNameToDeps() {
 	result := make(nameToDeps)
-	for resourceName, packageJson := range nameToPackageJson {
+	for resourceName, packageJson := range r.nameToPackageJson {
 		var deps []string
 		// Loop over source resource's package.json deps
 		for dep := range packageJson.Dependencies {
-			internalDep, ok := packageJsonNameToName[dep]
+			internalDep, ok := r.packageJsonNameToName[dep]
 			// If package.json dep exists in map then it's an internal dep
 			if ok {
 				deps = append(deps, internalDep)
@@ -205,12 +213,12 @@ func (r *Resources) setNameToDeps(nameToPackageJson nameToPackageJson, packageJs
 		}
 		result[resourceName] = deps
 	}
-	return result
+	r.nameToDeps = result
 }
 
 type nameToIndexFilePath map[string]string
 
-func (r *Resources) setNameToIndexFilePath(containerSubdirPaths containerSubdirPaths) (nameToIndexFilePath, error) {
+func (r *Resources) setNameToIndexFilePath(containerSubdirPaths containerSubdirPaths) error {
 	result := make(nameToIndexFilePath)
 
 	indexFilePathPattern := regexp.MustCompile(`^_[^.]+\.[^.]+\.[^.]+\.index\.ts$`)
@@ -224,7 +232,7 @@ func (r *Resources) setNameToIndexFilePath(containerSubdirPaths containerSubdirP
 
 		files, err := os.ReadDir(srcPath)
 		if err != nil {
-			return nil, err
+			return fmt.Errorf("unable to read dir %s\n%v", srcPath, err)
 		}
 
 		for _, file := range files {
@@ -235,21 +243,24 @@ func (r *Resources) setNameToIndexFilePath(containerSubdirPaths containerSubdirP
 		}
 	}
 
-	return result, nil
+	r.nameToIndexFilePath = result
+
+	return nil
 }
 
 type nameToIndexFileContent map[string]string
 
-func (r *Resources) setNameToIndexFileContent(nameToIndexFilePath nameToIndexFilePath) (nameToIndexFileContent, error) {
+func (r *Resources) setNameToIndexFileContent() error {
 	result := make(nameToIndexFileContent)
-	for name, indexFilePath := range nameToIndexFilePath {
+	for name, indexFilePath := range r.nameToIndexFilePath {
 		data, err := os.ReadFile(indexFilePath)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read file %s\n%v", indexFilePath, err)
+			return fmt.Errorf("unable to read file %s\n%v", indexFilePath, err)
 		}
 		result[name] = string(data)
 	}
-	return result, nil
+	r.nameToIndexFileContent = result
+	return nil
 }
 
 type nameToConfigData map[string]*configData
@@ -260,10 +271,10 @@ type configData struct {
 	exportString string
 }
 
-func (r *Resources) setNameToConfigData(nameToIndexFileContent nameToIndexFileContent) (nameToConfigData, error) {
+func (r *Resources) setNameToConfigData() error {
 	result := make(nameToConfigData)
 
-	for name, indexFileContent := range nameToIndexFileContent {
+	for name, indexFileContent := range r.nameToIndexFileContent {
 		// Config setters are imported like this:
 		// import { cloudflareKv } from "@gasoline-dev/resources"
 		// They can be distinguished using a camelCase pattern.
@@ -315,16 +326,19 @@ func (r *Resources) setNameToConfigData(nameToIndexFileContent nameToIndexFileCo
 			}
 		}
 	}
-	return result, nil
+
+	r.nameToConfigData = result
+
+	return nil
 }
 
 type nodeJsConfigScript = string
 
-func (r *Resources) setNodeJsConfigScript(nameToConfigData nameToConfigData, groupToDepthToNames graph.GroupToDepthToNodes) (nodeJsConfigScript, error) {
+func (r *Resources) setNodeJsConfigScript(groupToDepthToNames graph.GroupToDepthToNodes) error {
 	var functionNames []string
 
 	functionNameToTrue := make(map[string]bool)
-	for _, configData := range nameToConfigData {
+	for _, configData := range r.nameToConfigData {
 		functionNameToTrue[configData.functionName] = true
 		functionNames = append(functionNames, configData.functionName)
 	}
@@ -343,7 +357,7 @@ func (r *Resources) setNodeJsConfigScript(nameToConfigData nameToConfigData, gro
 		numOfDepths := len(groupToDepthToNames[group])
 		for depth := numOfDepths; depth >= 0; depth-- {
 			for _, name := range groupToDepthToNames[group][depth] {
-				result += strings.Replace(nameToConfigData[name].exportString, " as const", "", 1)
+				result += strings.Replace(r.nameToConfigData[name].exportString, " as const", "", 1)
 				result += "\n"
 			}
 		}
@@ -351,25 +365,27 @@ func (r *Resources) setNodeJsConfigScript(nameToConfigData nameToConfigData, gro
 
 	result += "const resourceNameToConfig = {}\n"
 
-	for name, configData := range nameToConfigData {
+	for name, configData := range r.nameToConfigData {
 		result += fmt.Sprintf("resourceNameToConfig[\"%s\"] = %s\n", name, configData.variableName)
 	}
 
 	result += "console.log(JSON.stringify(resourceNameToConfig))\n"
 
-	return result, nil
+	r.nodeJsConfigScript = result
+
+	return nil
 }
 
 type runNodeJsConfigScriptResult map[string]interface{}
 
-func (r *Resources) runNodeJsConfigScript(nodeJsConfigScript nodeJsConfigScript) (runNodeJsConfigScriptResult, error) {
+func (r *Resources) runNodeJsConfigScript() error {
 	cmd := exec.Command("node", "--input-type=module")
 
-	cmd.Stdin = bytes.NewReader([]byte(nodeJsConfigScript))
+	cmd.Stdin = bytes.NewReader([]byte(r.nodeJsConfigScript))
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("unable to execute Node.js config script: %s\n%v", string(output), err)
+		return fmt.Errorf("unable to execute Node.js config script: %s\n%v", string(output), err)
 	}
 
 	strOutput := strings.TrimSpace(string(output))
@@ -377,22 +393,24 @@ func (r *Resources) runNodeJsConfigScript(nodeJsConfigScript nodeJsConfigScript)
 	var result runNodeJsConfigScriptResult
 	err = json.Unmarshal([]byte(strOutput), &result)
 	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal Node.js config script result: %v", err)
+		return fmt.Errorf("unable to unmarshal Node.js config script result: %v", err)
 	}
 
-	return result, nil
+	r.runNodeJsConfigScriptResult = result
+
+	return nil
 }
 
-type nameToConfig = map[string]interface{}
+type NameToConfig = map[string]interface{}
 
-func (r *Resources) setNameToConfig(runNodeJsConfigScriptResult runNodeJsConfigScriptResult) nameToConfig {
-	result := make(nameToConfig)
-	for name, config := range runNodeJsConfigScriptResult {
+func (r *Resources) setNameToConfig() {
+	result := make(NameToConfig)
+	for name, config := range r.runNodeJsConfigScriptResult {
 		c := config.(map[string]interface{})
 		resourceType := c["type"].(string)
 		result[name] = configs[resourceType](config.(map[string]interface{}))
 	}
-	return result
+	r.NameToConfig = result
 }
 
 var configs = map[string]func(config config) interface{}{
