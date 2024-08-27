@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/gasdotdev/gas/tui/config"
 	"github.com/gasdotdev/gas/tui/resources"
 )
 
@@ -106,7 +107,12 @@ type getResourcesErr struct {
 }
 
 func getResources() tea.Msg {
-	r, err := resources.New()
+	config, err := config.New()
+	if err != nil {
+		return getResourcesErr{err: err}
+	}
+
+	r, err := resources.New(config.ContainerDirPath)
 	if err != nil {
 		return getResourcesErr{err: err}
 	}

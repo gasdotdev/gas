@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/gasdotdev/gas/tui/config"
 	"github.com/gasdotdev/gas/tui/graph"
 )
 
@@ -25,17 +26,10 @@ type Resources struct {
 	NameToConfig                NameToConfig
 }
 
-func New() (*Resources, error) {
+func New(configContainerDirPath config.ContainerDirPathType) (*Resources, error) {
 	r := &Resources{}
 
-	configJson, err := getConfigJson()
-	if err != nil {
-		return nil, err
-	}
-
-	containerDir := getContainerDirPath(configJson)
-
-	containerSubdirPaths, err := getContainerSubdirPaths(containerDir)
+	containerSubdirPaths, err := getContainerSubdirPaths(configContainerDirPath)
 	if err != nil {
 		return nil, err
 	}
@@ -91,51 +85,20 @@ func New() (*Resources, error) {
 	return r, nil
 }
 
-type configJson map[string]interface{}
-
-func getConfigJson() (configJson, error) {
-	configPath := "gas.config.json"
-
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return configJson{}, nil
-		}
-		return nil, fmt.Errorf("failed to read gas.config.json: %w", err)
-	}
-
-	var result configJson
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse gas.config.json: %w", err)
-	}
-
-	return result, nil
-}
-
-type containerDirPath string
-
-func getContainerDirPath(configJson configJson) containerDirPath {
-	if dirPath, ok := configJson["resourceContainerDirPath"].(string); ok {
-		return containerDirPath(dirPath)
-	}
-
-	return containerDirPath("./gas")
-}
-
 type containerSubdirPaths []string
 
-func getContainerSubdirPaths(containerDirPath containerDirPath) (containerSubdirPaths, error) {
-	entries, err := os.ReadDir(string(containerDirPath))
+func getContainerSubdirPaths(configContainerDirPath config.ContainerDirPathType) (containerSubdirPaths, error) {
+	entries, err := os.ReadDir(string(configContainerDirPath))
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to read resource container dir %s", containerDirPath)
+		return nil, fmt.Errorf("unable to read resource container dir %s", configContainerDirPath)
 	}
 
 	var containerSubdirPaths containerSubdirPaths
 
 	for _, entry := range entries {
 		if entry.IsDir() {
-			containerSubdirPaths = append(containerSubdirPaths, filepath.Join(string(containerDirPath), entry.Name()))
+			containerSubdirPaths = append(containerSubdirPaths, filepath.Join(string(configContainerDirPath), entry.Name()))
 		}
 	}
 
@@ -408,13 +371,13 @@ func (r *Resources) setNameToConfig() {
 	for name, config := range r.runNodeJsConfigScriptResult {
 		c := config.(map[string]interface{})
 		resourceType := c["type"].(string)
-		result[name] = configs[resourceType](config.(map[string]interface{}))
+		result[name] = resourceConfigs[resourceType](config.(map[string]interface{}))
 	}
 	r.NameToConfig = result
 }
 
-var configs = map[string]func(config config) interface{}{
-	"cloudflare-kv": func(config config) interface{} {
+var resourceConfigs = map[string]func(config resourceConfig) interface{}{
+	"cloudflare-kv": func(config resourceConfig) interface{} {
 		return &CloudflareKVConfig{
 			ConfigCommon: ConfigCommon{
 				Type: config["type"].(string),
@@ -424,7 +387,7 @@ var configs = map[string]func(config config) interface{}{
 	},
 }
 
-type config map[string]interface{}
+type resourceConfig map[string]interface{}
 
 type ConfigCommon struct {
 	Type string `json:"type"`
