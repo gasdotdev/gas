@@ -31,6 +31,16 @@ type model struct {
 func InitialModel() model {
 	resourceTemplates := newTemplates()
 
+	addResourceGraphOrSingleListItems := []ListItem{
+		{Id: "graph", Option: "Build new graph"},
+		{Id: "single", Option: "Add to existing graph"},
+	}
+
+	addResourceWhichList := NewListModel(
+		"Add resource(s):",
+		addResourceGraphOrSingleListItems,
+	)
+
 	addResourceList := NewListModel(
 		"Select resource:",
 		resourceTemplates.getTemplateListItems(),
@@ -80,6 +90,7 @@ func InitialModel() model {
 	return model{
 		mode: HOME,
 		addResource: addResourceType{
+			whichList:   addResourceWhichList,
 			list:        addResourceList,
 			entityInput: addResourceEntityInput,
 			inputsList:  addResourceInputsList,
@@ -128,6 +139,11 @@ func (m model) Init() tea.Cmd {
 	modes.register(int(ADD_RESOURCE), regsiterFns[model]{
 		Update: addResourceUpdate,
 		View:   addResourceView,
+	})
+
+	addResourceStates.register(int(ADD_RESOURCE_WHICH_LIST), regsiterFns[model]{
+		Update: addResourceWhichListUpdate,
+		View:   addResourceWhichListView,
 	})
 
 	addResourceStates.register(int(ADD_RESOURCE_LIST), regsiterFns[model]{

@@ -16,7 +16,8 @@ import (
 type addResourceState int
 
 const (
-	ADD_RESOURCE_LIST addResourceState = iota
+	ADD_RESOURCE_WHICH_LIST addResourceState = iota
+	ADD_RESOURCE_LIST
 	ADD_RESOURCE_ENTITY_INPUT
 	ADD_RESOURCE_DOWNLOADING_TEMPLATE
 	ADD_RESOURCE_ERR
@@ -25,6 +26,7 @@ const (
 
 type addResourceType struct {
 	state       addResourceState
+	whichList   ListModel
 	list        ListModel
 	entityInput textinput.Model
 	inputsList  ListModel
@@ -39,6 +41,32 @@ func addResourceUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Sequence(tx, tea.Println(s))
 	}
 	return stateFn.Update(m, msg)
+}
+
+func addResourceWhichListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case txMsg:
+		m.addResource.whichList.SetSize(m.terminalWidth, m.terminalHeight)
+		return m, tea.ClearScreen
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			if m.addResource.whichList.SelectedItemId() == "graph" {
+				m.mode = ADD_RESOURCE_GRAPH
+				return m, tx
+			}
+			m.addResource.state = ADD_RESOURCE_LIST
+			return m, tx
+		}
+	}
+
+	var cmd tea.Cmd
+	m.addResource.whichList, cmd = m.addResource.whichList.Update(msg)
+	return m, cmd
+}
+
+func addResourceWhichListView(m model) string {
+	return m.addResource.whichList.View()
 }
 
 func addResourceListUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
