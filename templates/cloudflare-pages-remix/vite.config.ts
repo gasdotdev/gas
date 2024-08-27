@@ -305,7 +305,7 @@ export default defineConfig({
   plugins: [
     cloudflareDevProxyVitePlugin(),
     remix({
-      appDirectory: 'src/app',
+      appDirectory: 'app',
       future: {
         v3_fetcherPersist: true,
         v3_relativeSplatPath: true,

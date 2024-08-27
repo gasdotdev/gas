@@ -191,16 +191,14 @@ func (r *Resources) setNameToIndexFilePath(containerSubdirPaths containerSubdirP
 		snakeCaseResourceName := strings.ReplaceAll(subdirName, "-", "_")
 		screamingSnakeCaseResourceName := strings.ToUpper(snakeCaseResourceName)
 
-		srcPath := filepath.Join(subdirPath, "src")
-
-		files, err := os.ReadDir(srcPath)
+		files, err := os.ReadDir(subdirPath)
 		if err != nil {
-			return fmt.Errorf("unable to read dir %s\n%v", srcPath, err)
+			return fmt.Errorf("unable to read dir %s\n%v", subdirPath, err)
 		}
 
 		for _, file := range files {
 			if !file.IsDir() && indexFilePathPattern.MatchString(file.Name()) {
-				result[screamingSnakeCaseResourceName] = filepath.Join(srcPath, file.Name())
+				result[screamingSnakeCaseResourceName] = filepath.Join(subdirPath, file.Name())
 				break
 			}
 		}
