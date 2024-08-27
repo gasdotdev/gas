@@ -399,6 +399,14 @@ func setupNewProjectTemplate(repoUrl, branch string, path degit.Paths) tea.Cmd {
 			return setupNewProjectTemplateErr{err: errMsg}
 		}
 
+		gitkeepPath := filepath.Join(path.Extract, "gas", ".gitkeep")
+		if err := os.Remove(gitkeepPath); err != nil {
+			if !os.IsNotExist(err) {
+				errMsg := fmt.Errorf("unable to remove gas/.gitkeep: %w", err)
+				return setupNewProjectTemplateErr{err: errMsg}
+			}
+		}
+
 		return setupNewProjectTemplateOk(true)
 	}
 }
