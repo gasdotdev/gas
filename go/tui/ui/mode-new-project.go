@@ -192,6 +192,7 @@ func newProjectCreatingUpdate(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	case installPackagesOk:
 		m.newProject.createLogs = append(m.newProject.createLogs, "Packages installed successfully.")
 		m.newProject.state = NEW_PROJECT_CREATED
+		m.currDir = filepath.Join(m.currDir, m.newProject.dirInput.Value())
 		return m, tx
 	case installPackagesErr:
 		m.newProject.state = NEW_PROJECT_DIR_ERR

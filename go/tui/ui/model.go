@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,6 +21,7 @@ const (
 
 type model struct {
 	mode             mode
+	currDir          string
 	resources        *resources.Resources
 	terminalHeight   int
 	terminalWidth    int
@@ -29,6 +31,11 @@ type model struct {
 }
 
 func InitialModel() model {
+	currDir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+
 	resourceTemplates := newTemplates()
 
 	addResourceGraphOrSingleListItems := []ListItem{
@@ -88,7 +95,8 @@ func InitialModel() model {
 	confirmEmptyDirInput.Placeholder = "y/n"
 
 	return model{
-		mode: HOME,
+		mode:    HOME,
+		currDir: currDir,
 		addResource: addResourceType{
 			whichList:   addResourceWhichList,
 			list:        addResourceList,
