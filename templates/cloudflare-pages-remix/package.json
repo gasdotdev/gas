@@ -15,7 +15,7 @@
         "isbot": "^4.1.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
-        "resources": "file:../../npm-tmp/resources"
+        "resources": "file:../new-project-npm/npm-tmp/resources"
     },
     "devDependencies": {
         "@remix-run/dev": "*",

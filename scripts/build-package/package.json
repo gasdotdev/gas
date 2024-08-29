@@ -1,0 +1,17 @@
+{
+    "name": "build-package",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "main": "./index.build-package.ts",
+    "types": "./index.build-package.ts",
+    "engines": {
+        "node": ">=20.0.0"
+    },
+    "scripts": {
+        "build": "tsup index.build-package.ts --format=esm --target=node20 --clean --config=tsconfig.json --sourcemap"
+    },
+    "dependencies": {
+        "esbuild": "^0.23.1"
+    }
+}

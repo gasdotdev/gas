@@ -1,8 +1,16 @@
 {
-  "scripts": {},
+  "name": "root",
+  "scripts": {
+    "build": "turbo run build --filter='./packages/*'",
+    "dev": "turbo run dev --filter='./packages/*'"
+  },
   "license": "MIT",
   "dependencies": {
     "turbo": "^2.0.12"
   },
-  "packageManager": "pnpm@9.7.0"
+  "packageManager": "pnpm@9.7.0",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.5.4"
+  }
 }
