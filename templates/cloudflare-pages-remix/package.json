@@ -6,6 +6,7 @@
     "scripts": {
         "dev": "remix vite:dev",
         "build": "remix vite:build",
+        "check": "pnpm biome check ./*.ts",
         "start": "wrangler pages dev ./build/client"
     },
     "dependencies": {

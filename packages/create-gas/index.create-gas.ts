@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { parseArgs } from 'node:util';
+import { parseArgs } from "node:util";
 
 await main();
 
@@ -28,7 +28,7 @@ Options:
 			parsedArgs.positionals.length === 0 &&
 			Object.keys(parsedArgs.values).length === 0
 		) {
-			console.log('create-gas');
+			console.log("create-gas");
 		} else if (parsedArgs.values.help) {
 			console.log(helpMessage);
 		} else {

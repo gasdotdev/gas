@@ -9,7 +9,8 @@
         "node": ">=20.0.0"
     },
     "scripts": {
-        "build": "tsup index.build-package.ts --format=esm --target=node20 --clean --config=tsconfig.json --sourcemap"
+        "build": "tsup index.build-package.ts --format=esm --target=node20 --clean --config=tsconfig.json --sourcemap",
+        "check": "pnpm biome check ./*.ts"
     },
     "dependencies": {
         "esbuild": "^0.23.1"
