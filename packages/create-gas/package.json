@@ -9,9 +9,7 @@
 	"engines": {
 		"node": ">=20.0.0"
 	},
-	"files": [
-		"build/"
-	],
+	"files": ["build/", "template/"],
 	"homepage": "https://gas.dev",
 	"license": "MIT",
 	"repository": {
@@ -25,8 +23,7 @@
 		"dev": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts index.create-gas.ts --watch"
 	},
 	"dependencies": {
-		"@inquirer/prompts": "^5.3.8",
-		"inquirer": "^9.2.12"
+		"@inquirer/prompts": "^5.3.8"
 	},
 	"devDependencies": {
 		"@types/node": "^20.0.0"
