@@ -9,7 +9,7 @@
 		"outDir": "build",
 		"skipLibCheck": true,
 		"strictNullChecks": true,
-		"target": "ES2022",
+		"target": "ES2022"
 	},
-	"include": ["src/index.cli.ts"]
+	"include": ["src/**/*.ts"]
 }

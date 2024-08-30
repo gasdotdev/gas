@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
+import { Config } from "./config.js";
+import { Resources } from "./resources.js";
 
 await main();
 
@@ -23,12 +25,26 @@ async function main() {
 gas [command] [options]
 
 Available commands:
+  add         Add a new item (placeholder)
 
 Options:
 	--help, -h Print help`;
 
 		if (parsedArgs.values.help) {
 			console.log(helpMessage);
+			return;
+		}
+
+		const command = parsedArgs.positionals[0];
+		switch (command) {
+			case "add": {
+				const config = await Config.new();
+				const resources = await Resources.new(config.containerDirPath);
+				console.log(resources.containerDirPath);
+				break;
+			}
+			default:
+				console.log(helpMessage);
 		}
 	} catch (error) {
 		console.error(error);
