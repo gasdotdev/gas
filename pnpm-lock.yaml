@@ -22,6 +22,12 @@ importers:
         specifier: ^5.5.4
         version: 5.5.4
 
+  packages/cli:
+    dependencies:
+      '@inquirer/prompts':
+        specifier: ^5.3.8
+        version: 5.3.8
+
   packages/create-gas:
     dependencies:
       '@inquirer/prompts':
