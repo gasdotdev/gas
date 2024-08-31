@@ -1,3 +1,5 @@
+export type GraphGroupToDepthToNodes = Record<number, Record<number, string[]>>;
+
 export class Graph {
 	private nameToDeps: Record<string, string[]> = {};
 	private nodeToInDegrees: Record<string, number> = {};
@@ -6,7 +8,7 @@ export class Graph {
 	private nodeToGroup: Record<string, number> = {};
 	private depthToNode: Record<number, string[]> = {};
 	private nodeToDepth: Record<string, number> = {};
-	private groupToDepthToNodes: Record<number, Record<number, string[]>> = {};
+	public groupToDepthToNodes: GraphGroupToDepthToNodes = {};
 
 	public static new(nameToDeps: Record<string, string[]>): Graph {
 		const graph = new Graph();

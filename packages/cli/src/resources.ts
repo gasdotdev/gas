@@ -1,5 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { spawn } from "node:child_process";
+import { Graph, type GraphGroupToDepthToNodes } from "./graph.js";
 
 type PackageJson = Record<string, unknown>;
 
@@ -8,6 +10,33 @@ interface ConfigData {
 	functionName: string;
 	exportString: string;
 }
+
+interface ConfigCommon {
+	type: string;
+	name: string;
+}
+
+interface CloudflareKVConfig extends ConfigCommon {}
+
+interface CloudflareWorkerConfig extends ConfigCommon {
+	kv: Array<{ binding: string }>;
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+type ResourceConfig = Record<string, any>;
+
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+const resourceConfigs: Record<string, (config: ResourceConfig) => any> = {
+	"cloudflare-kv": (config: ResourceConfig): CloudflareKVConfig => ({
+		type: config.type as string,
+		name: config.name as string,
+	}),
+	"cloudflare-worker": (config: ResourceConfig): CloudflareWorkerConfig => ({
+		type: config.type as string,
+		name: config.name as string,
+		kv: (config.kv as Array<{ binding: string }>) || [],
+	}),
+};
 
 export class Resources {
 	public containerDirPath: string;
@@ -18,6 +47,10 @@ export class Resources {
 	private nameToIndexFilePath: Record<string, string> = {};
 	private nameToIndexFileContent: Record<string, string> = {};
 	private nameToConfigData: Record<string, ConfigData> = {};
+	private nodeJsConfigScript: string;
+	private runNodeJsConfigScriptResult: Record<string, ResourceConfig> = {};
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	private nameToConfig: Record<string, any> = {};
 
 	public static async new(containerDirPath: string): Promise<Resources> {
 		const resources = new Resources();
@@ -29,6 +62,10 @@ export class Resources {
 		await resources.setNameToIndexFilePath();
 		await resources.setNameToIndexFileContent();
 		resources.setNameToConfigData();
+		const graph = Graph.new(resources.nameToDeps);
+		resources.setNodeJsConfigScript(graph.groupToDepthToNodes);
+		await resources.runNodeJsConfigScript();
+
 		return resources;
 	}
 
@@ -218,5 +255,106 @@ export class Resources {
 				}
 			}
 		}
+	}
+
+	public setNodeJsConfigScript(
+		groupToDepthToNames: GraphGroupToDepthToNodes,
+	): void {
+		const functionNames: string[] = [];
+		const functionNameToTrue: Record<string, boolean> = {};
+
+		for (const configData of Object.values(this.nameToConfigData)) {
+			functionNameToTrue[configData.functionName] = true;
+			functionNames.push(configData.functionName);
+		}
+
+		this.nodeJsConfigScript = "import {\n";
+		this.nodeJsConfigScript += functionNames.join(",\n");
+		this.nodeJsConfigScript += "\n} ";
+		this.nodeJsConfigScript += 'from "@gasoline-dev/resources"\n';
+
+		// Configs have to be written in bottom-up dependency order to
+		// avoid Node.js "cannot access 'variable name' before
+		// initialization" errors. For example, given a graph of A->B,
+		// B's config has to be written before A's because A will
+		// reference B's config.
+		for (const group of Object.keys(groupToDepthToNames).map(Number)) {
+			const numOfDepths = Object.keys(groupToDepthToNames[group]).length;
+			for (let depth = numOfDepths - 1; depth >= 0; depth--) {
+				for (const name of groupToDepthToNames[group][depth] || []) {
+					if (this.nameToConfigData[name]) {
+						this.nodeJsConfigScript += this.nameToConfigData[
+							name
+						].exportString.replace(" as const", "");
+						this.nodeJsConfigScript += "\n";
+					}
+				}
+			}
+		}
+
+		this.nodeJsConfigScript += "const resourceNameToConfig = {};\n";
+
+		for (const [name, configData] of Object.entries(this.nameToConfigData)) {
+			this.nodeJsConfigScript += `resourceNameToConfig["${name}"] = ${configData.variableName};\n`;
+		}
+
+		this.nodeJsConfigScript +=
+			"console.log(JSON.stringify(resourceNameToConfig));\n";
+	}
+
+	public async runNodeJsConfigScript(): Promise<void> {
+		return new Promise((resolve, reject) => {
+			const child = spawn("node", ["--input-type=module"], {
+				stdio: ["pipe", "pipe", "pipe"],
+			});
+
+			let stdout = "";
+			let stderr = "";
+
+			child.stdout.on("data", (data) => {
+				stdout += data.toString();
+			});
+
+			child.stderr.on("data", (data) => {
+				stderr += data.toString();
+			});
+
+			child.on("close", (code) => {
+				if (code !== 0) {
+					reject(new Error(`Node.js script execution error: ${stderr}`));
+				} else {
+					try {
+						const strOutput = stdout.trim();
+						this.runNodeJsConfigScriptResult = JSON.parse(strOutput);
+						resolve();
+					} catch (err) {
+						reject(
+							new Error(
+								`Unable to parse Node.js config script result: ${(err as Error).message}`,
+							),
+						);
+					}
+				}
+			});
+
+			child.stdin.write(this.nodeJsConfigScript);
+			child.stdin.end();
+		});
+	}
+
+	public setNameToConfig(): void {
+		for (const [name, config] of Object.entries(
+			this.runNodeJsConfigScriptResult,
+		)) {
+			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+			const c = config as Record<string, any>;
+			const resourceType = c.type as string;
+			this.nameToConfig[name] = resourceConfigs[resourceType](c);
+		}
+	}
+
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	public getNameToConfig(): Record<string, any> {
+		return { ...this.nameToConfig };
 	}
 }
