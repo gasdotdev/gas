@@ -50,7 +50,7 @@ export class Resources {
 	private nodeJsConfigScript: string;
 	private runNodeJsConfigScriptResult: Record<string, ResourceConfig> = {};
 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-	private nameToConfig: Record<string, any> = {};
+	public nameToConfig: Record<string, any> = {};
 
 	public static async new(containerDirPath: string): Promise<Resources> {
 		const resources = new Resources();
@@ -65,7 +65,7 @@ export class Resources {
 		const graph = Graph.new(resources.nameToDeps);
 		resources.setNodeJsConfigScript(graph.groupToDepthToNodes);
 		await resources.runNodeJsConfigScript();
-
+		resources.setNameToConfig();
 		return resources;
 	}
 
@@ -211,10 +211,10 @@ export class Resources {
 			this.nameToIndexFileContent,
 		)) {
 			// Config setters are imported like this:
-			// import { cloudflareKv } from "@gasoline-dev/resources"
+			// import { cloudflareKv } from "@gasdotdev/resources"
 			// They can be distinguished using a camelCase pattern.
 			const configSetterFunctionNameRegex =
-				/import\s+\{[^}]*\b([a-z]+[A-Z][a-zA-Z]*)\b[^}]*\}\s+from\s+['"]@gasoline-dev\/resources['"]/;
+				/import\s+\{[^}]*\b([a-z]+[A-Z][a-zA-Z]*)\b[^}]*\}\s+from\s+['"]@gasdotdev\/resources['"]/;
 			const configSetterFunctionNameMatch = indexFileContent.match(
 				configSetterFunctionNameRegex,
 			);
@@ -260,49 +260,58 @@ export class Resources {
 	public setNodeJsConfigScript(
 		groupToDepthToNames: GraphGroupToDepthToNodes,
 	): void {
-		const functionNames: string[] = [];
-		const functionNameToTrue: Record<string, boolean> = {};
+		if (Object.keys(groupToDepthToNames).length > 0) {
+			const functionNames: string[] = [];
+			const functionNameToTrue: Record<string, boolean> = {};
 
-		for (const configData of Object.values(this.nameToConfigData)) {
-			functionNameToTrue[configData.functionName] = true;
-			functionNames.push(configData.functionName);
-		}
+			for (const configData of Object.values(this.nameToConfigData)) {
+				functionNameToTrue[configData.functionName] = true;
+				functionNames.push(configData.functionName);
+			}
 
-		this.nodeJsConfigScript = "import {\n";
-		this.nodeJsConfigScript += functionNames.join(",\n");
-		this.nodeJsConfigScript += "\n} ";
-		this.nodeJsConfigScript += 'from "@gasoline-dev/resources"\n';
+			this.nodeJsConfigScript = "import {\n";
+			this.nodeJsConfigScript += functionNames.join(",\n");
+			this.nodeJsConfigScript += "\n} ";
+			this.nodeJsConfigScript += 'from "@gasdotdev/resources"\n';
 
-		// Configs have to be written in bottom-up dependency order to
-		// avoid Node.js "cannot access 'variable name' before
-		// initialization" errors. For example, given a graph of A->B,
-		// B's config has to be written before A's because A will
-		// reference B's config.
-		for (const group of Object.keys(groupToDepthToNames).map(Number)) {
-			const numOfDepths = Object.keys(groupToDepthToNames[group]).length;
-			for (let depth = numOfDepths - 1; depth >= 0; depth--) {
-				for (const name of groupToDepthToNames[group][depth] || []) {
-					if (this.nameToConfigData[name]) {
-						this.nodeJsConfigScript += this.nameToConfigData[
-							name
-						].exportString.replace(" as const", "");
-						this.nodeJsConfigScript += "\n";
+			// Configs have to be written in bottom-up dependency order to
+			// avoid Node.js "cannot access 'variable name' before
+			// initialization" errors. For example, given a graph of A->B,
+			// B's config has to be written before A's because A will
+			// reference B's config.
+			for (const group of Object.keys(groupToDepthToNames).map(Number)) {
+				const numOfDepths = Object.keys(groupToDepthToNames[group]).length;
+				for (let depth = numOfDepths - 1; depth >= 0; depth--) {
+					for (const name of groupToDepthToNames[group][depth] || []) {
+						if (this.nameToConfigData[name]) {
+							this.nodeJsConfigScript += this.nameToConfigData[
+								name
+							].exportString.replace(" as const", "");
+							this.nodeJsConfigScript += "\n";
+						}
 					}
 				}
 			}
+
+			this.nodeJsConfigScript += "const resourceNameToConfig = {};\n";
+
+			for (const [name, configData] of Object.entries(this.nameToConfigData)) {
+				this.nodeJsConfigScript += `resourceNameToConfig["${name}"] = ${configData.variableName};\n`;
+			}
+
+			this.nodeJsConfigScript +=
+				"console.log(JSON.stringify(resourceNameToConfig));\n";
+		} else {
+			this.nodeJsConfigScript = "";
 		}
-
-		this.nodeJsConfigScript += "const resourceNameToConfig = {};\n";
-
-		for (const [name, configData] of Object.entries(this.nameToConfigData)) {
-			this.nodeJsConfigScript += `resourceNameToConfig["${name}"] = ${configData.variableName};\n`;
-		}
-
-		this.nodeJsConfigScript +=
-			"console.log(JSON.stringify(resourceNameToConfig));\n";
 	}
 
 	public async runNodeJsConfigScript(): Promise<void> {
+		if (this.nodeJsConfigScript === "") {
+			this.runNodeJsConfigScriptResult = {};
+			return Promise.resolve();
+		}
+
 		return new Promise((resolve, reject) => {
 			const child = spawn("node", ["--input-type=module"], {
 				stdio: ["pipe", "pipe", "pipe"],

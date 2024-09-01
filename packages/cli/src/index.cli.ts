@@ -2,6 +2,7 @@
 import { parseArgs } from "node:util";
 import { Config } from "./config.js";
 import { Resources } from "./resources.js";
+import { add } from "./add.js";
 
 await main();
 
@@ -38,9 +39,7 @@ Options:
 		const command = parsedArgs.positionals[0];
 		switch (command) {
 			case "add": {
-				const config = await Config.new();
-				const resources = await Resources.new(config.containerDirPath);
-				console.log(resources.containerDirPath);
+				await add();
 				break;
 			}
 			default:
