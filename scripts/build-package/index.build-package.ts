@@ -33,7 +33,7 @@ async function main() {
 			platform: "node",
 			format: "esm",
 			target: "node20",
-			sourcemap: "external",
+			sourcemap: "linked",
 			external: dependencies,
 		});
 
