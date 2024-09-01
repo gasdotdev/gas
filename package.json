@@ -1,18 +1,18 @@
 {
-  "name": "root",
-  "scripts": {
-    "build": "turbo run build --filter='./packages/*'",
-    "check": "turbo run check",
-    "dev": "turbo run dev --filter='./packages/*'"
-  },
-  "license": "MIT",
-  "dependencies": {
-    "turbo": "^2.0.12"
-  },
-  "packageManager": "pnpm@9.7.0",
-  "devDependencies": {
-    "@biomejs/biome": "1.8.3",
-    "@types/node": "^20.0.0",
-    "typescript": "^5.5.4"
-  }
+	"name": "root",
+	"scripts": {
+		"build": "turbo run build --filter='./packages/*'",
+		"check:write": "turbo run check:write",
+		"dev": "turbo run dev --filter='./packages/*'"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"turbo": "^2.0.12"
+	},
+	"packageManager": "pnpm@9.7.0",
+	"devDependencies": {
+		"@biomejs/biome": "1.8.3",
+		"@types/node": "^20.0.0",
+		"typescript": "^5.5.4"
+	}
 }
