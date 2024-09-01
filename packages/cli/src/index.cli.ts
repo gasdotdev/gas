@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
-import { Config } from "./config.js";
-import { Resources } from "./resources.js";
 import { add } from "./add.js";
 
 await main();

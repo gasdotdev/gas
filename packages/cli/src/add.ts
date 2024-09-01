@@ -1,6 +1,6 @@
 import { select } from "@inquirer/prompts";
-import { Resources } from "./resources.js";
 import { Config } from "./config.js";
+import { Resources } from "./resources.js";
 
 type State =
 	| "select-which"
@@ -46,7 +46,7 @@ export async function add() {
 		state = "select-entry-resource";
 	}
 
-	let loop = true;
+	const loop = true;
 
 	while (loop) {
 		switch (state) {

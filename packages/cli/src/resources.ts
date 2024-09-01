@@ -1,6 +1,6 @@
+import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { spawn } from "node:child_process";
 import { Graph, type GraphGroupToDepthToNodes } from "./graph.js";
 
 type PackageJson = Record<string, unknown>;

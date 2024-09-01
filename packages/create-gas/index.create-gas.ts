@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { parseArgs } from "node:util";
-import { input, confirm, select } from "@inquirer/prompts";
+import { exec } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { exec } from "node:child_process";
+import { parseArgs } from "node:util";
+import { confirm, input, select } from "@inquirer/prompts";
 
 await main();
 
