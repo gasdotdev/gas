@@ -7,14 +7,13 @@ type ResourceTemplateItem = {
 
 type ResourceTemplatesMap = Map<string, ResourceTemplateItem>;
 
-type ResourceTemplatesSelectPromptListItems = {
+export type ResourceTemplatesSelectPromptListItems = {
 	name: string;
 	value: string;
 }[];
 
 export class ResourceTemplates {
 	public map: ResourceTemplatesMap = new Map();
-	public selectApiPromptListItems: ResourceTemplatesSelectPromptListItems = [];
 
 	public static new(): ResourceTemplates {
 		const resourceTemplates = new ResourceTemplates();

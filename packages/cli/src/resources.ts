@@ -49,8 +49,7 @@ export class Resources {
 	private nameToConfigData: Record<string, ConfigData> = {};
 	private nodeJsConfigScript: string;
 	private runNodeJsConfigScriptResult: Record<string, ResourceConfig> = {};
-	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-	public nameToConfig: Record<string, any> = {};
+	public nameToConfig: Map<string, ResourceConfig> = new Map();
 
 	public static async new(containerDirPath: string): Promise<Resources> {
 		const resources = new Resources();
@@ -214,7 +213,7 @@ export class Resources {
 			// import { cloudflareKv } from "@gasdotdev/resources"
 			// They can be distinguished using a camelCase pattern.
 			const configSetterFunctionNameRegex =
-				/import\s+\{[^}]*\b([a-z]+[A-Z][a-zA-Z]*)\b[^}]*\}\s+from\s+['"]@gasdotdev\/resources['"]/;
+				/import\s+\{[^}]*\b([a-z]+[A-Z][a-zA-Z]*)\b[^}]*\}\s+from\s+['"]resources['"]/;
 			const configSetterFunctionNameMatch = indexFileContent.match(
 				configSetterFunctionNameRegex,
 			);
@@ -272,7 +271,7 @@ export class Resources {
 			this.nodeJsConfigScript = "import {\n";
 			this.nodeJsConfigScript += functionNames.join(",\n");
 			this.nodeJsConfigScript += "\n} ";
-			this.nodeJsConfigScript += 'from "@gasdotdev/resources"\n';
+			this.nodeJsConfigScript += 'from "resources"\n';
 
 			// Configs have to be written in bottom-up dependency order to
 			// avoid Node.js "cannot access 'variable name' before
@@ -358,7 +357,7 @@ export class Resources {
 			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 			const c = config as Record<string, any>;
 			const resourceType = c.type as string;
-			this.nameToConfig[name] = resourceConfigs[resourceType](c);
+			this.nameToConfig.set(name, resourceConfigs[resourceType](c));
 		}
 	}
 
