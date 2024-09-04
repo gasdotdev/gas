@@ -23,7 +23,8 @@
 		"forceConsistentCasingInFileNames": true,
 		"baseUrl": ".",
 		"paths": {
-			"~/*": ["app/*"]
+			"~/*": ["app/*"],
+			"@gasdotdev/resources": ["../../../gas/packages/resources"]
 		},
 		"noEmit": true
 	}

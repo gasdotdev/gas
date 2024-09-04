@@ -1,6 +1,6 @@
-import { cloudflarePages } from "resources";
+import { cloudflarePages } from "@gasdotdev/resources";
 
-export interface Env {}
+export type Env = {};
 
 export const webAppPages = cloudflarePages({
 	name: "WEB_APP_PAGES",
