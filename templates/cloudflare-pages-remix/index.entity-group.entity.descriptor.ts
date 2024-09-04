@@ -2,8 +2,8 @@ import { cloudflarePages } from "@gasdotdev/resources";
 
 export type Env = {};
 
-export const webAppPages = cloudflarePages({
-	name: "WEB_APP_PAGES",
+export const entityGroupEntityDescriptor = cloudflarePages({
+	name: "ENTITY_GROUP_ENTITY_DESCRIPTOR",
 } as const);
 
 type Cloudflare = Omit<PlatformProxy<Env>, "dispose">;

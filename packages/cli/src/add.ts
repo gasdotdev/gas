@@ -221,6 +221,8 @@ export async function add() {
 
 				const ast = mod.exports.$ast;
 
+				mod.exports.entityGroupEntityDescriptor.$args[0].name = "TEST";
+
 				// Note: The ast types aren't working correctly. Thus,
 				// @ts-ignore. In a demo, where magicast is used in a
 				// plain .js file, and with the same version, ast is
@@ -233,7 +235,8 @@ export async function add() {
 						node.type === "ExportNamedDeclaration" &&
 						node.declaration?.type === "VariableDeclaration" &&
 						node.declaration.declarations[0]?.id.type === "Identifier" &&
-						node.declaration.declarations[0].id.name === "webAppPages",
+						node.declaration.declarations[0].id.name ===
+							"entityGroupEntityDescriptor",
 				);
 
 				if (exportDeclaration?.declaration.declarations[0]) {
