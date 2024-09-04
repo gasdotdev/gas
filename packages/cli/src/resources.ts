@@ -59,6 +59,7 @@ export class Resources {
 		resources.setPackageJsonNameToName();
 		resources.setNameToDeps();
 		await resources.setNameToIndexFilePath();
+		console.log(resources.nameToIndexFilePath);
 		await resources.setNameToIndexFileContent();
 		resources.setNameToConfigData();
 		const graph = Graph.new(resources.nameToDeps);
@@ -142,7 +143,7 @@ export class Resources {
 	}
 
 	private async setNameToIndexFilePath(): Promise<void> {
-		const indexFilePathPattern = /^_[^.]+\.[^.]+\.[^.]+\.index\.ts$/;
+		const indexFilePathPattern = /^index\.[^.]+\.[^.]+\.[^.]+\.ts$/;
 
 		const processSubdirPromises = this.containerSubdirPaths.map(
 			async (subdirPath) => {
