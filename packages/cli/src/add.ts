@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { input, select } from "@inquirer/prompts";
 import { downloadTemplate } from "giget";
+import { loadFile, writeFile } from "magicast";
 import { Config } from "./config.js";
 import {
 	ResourceTemplates,
@@ -92,6 +93,19 @@ async function runSelectAnyResourcePrompt() {
 			{ name: "Cloudflare Pages + Remix", value: "cloudflare-pages-remix" },
 		],
 	});
+}
+
+function resourceIdToCamelCase(id: string): string {
+	return id
+		.split("-")
+		.map((part, index) =>
+			index === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1),
+		)
+		.join("");
+}
+
+function resourceIdToUpperSnakeCase(id: string): string {
+	return id.replace(/-/g, "_").toUpperCase();
 }
 
 export async function add() {
@@ -202,6 +216,34 @@ export async function add() {
 				);
 
 				await fs.rename(oldFilePath, newFilePath);
+
+				const mod = await loadFile(newFilePath);
+
+				const ast = mod.exports.$ast;
+
+				// Note: The ast types aren't working correctly. Thus,
+				// @ts-ignore. In a demo, where magicast is used in a
+				// plain .js file, and with the same version, ast is
+				// correctly typed as having a body method. The reason
+				// for this discrepancy is unknown.
+				// @ts-ignore
+				const exportDeclaration = ast.body.find(
+					// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+					(node: any) =>
+						node.type === "ExportNamedDeclaration" &&
+						node.declaration?.type === "VariableDeclaration" &&
+						node.declaration.declarations[0]?.id.type === "Identifier" &&
+						node.declaration.declarations[0].id.name === "webAppPages",
+				);
+
+				if (exportDeclaration?.declaration.declarations[0]) {
+					exportDeclaration.declaration.declarations[0].id.name =
+						resourceIdToCamelCase(resourceId);
+				} else {
+					console.log("export config const not found in the file");
+				}
+
+				await writeFile(mod, newFilePath);
 
 				loop = false;
 
