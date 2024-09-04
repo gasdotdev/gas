@@ -171,7 +171,7 @@ export async function add() {
 					"github:gasdotdev/gas/templates/cloudflare-pages-remix#master";
 				const templateDir = path.join(
 					config.containerDirPath,
-					"cloudflare-pages-remix",
+					`${entryResourceEntityGroup}-${entryResourceEntity}-pages`,
 				);
 
 				await downloadTemplate(templateSrc, {
@@ -190,7 +190,4 @@ export async function add() {
 			}
 		}
 	}
-
-	//const template = await runSelectResourceTemplatePrompt();
-	//console.log(template);
 }
