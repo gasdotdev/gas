@@ -1,7 +1,7 @@
 {
 	"name": "create-gas",
 	"version": "0.0.0",
-	"description": "Create Gas.dev project",
+	"description": "Create Gas.dev projects",
 	"type": "module",
 	"bin": {
 		"create-gas": "build/index.create-gas.js"
