@@ -3,6 +3,7 @@ type ResourceTemplateType = "api" | "db" | "web";
 type ResourceTemplateItem = {
 	name: string;
 	type: ResourceTemplateType;
+	descriptor: string;
 };
 
 type ResourceTemplatesMap = Map<string, ResourceTemplateItem>;
@@ -25,16 +26,19 @@ export class ResourceTemplates {
 		this.map.set("cloudflare-pages-remix", {
 			name: "Cloudflare Pages + Remix",
 			type: "web",
+			descriptor: "pages",
 		});
 
 		this.map.set("cloudflare-workers-hono", {
 			name: "Cloudflare Workers + Hono",
 			type: "api",
+			descriptor: "api",
 		});
 
 		this.map.set("cloudflare-d1", {
 			name: "Cloudflare D1",
 			type: "db",
+			descriptor: "db",
 		});
 	}
 

@@ -55,6 +55,9 @@ importers:
 
   templates/cloudflare-pages-remix:
     dependencies:
+      '@gasdotdev/resources':
+        specifier: file:../../../gas/packages/resources
+        version: link:../../packages/resources
       '@remix-run/cloudflare':
         specifier: '*'
         version: 2.11.2(@cloudflare/workers-types@4.20240821.1)(typescript@5.5.4)
@@ -73,9 +76,6 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
-      resources:
-        specifier: file:../../packages/create-gas/template/npm-tmp/resources
-        version: file:packages/create-gas/template/npm-tmp/resources
     devDependencies:
       '@remix-run/dev':
         specifier: '*'
@@ -2746,9 +2746,6 @@ packages:
   resolve@1.22.8:
     resolution: {integrity: sha512-oKWePCxqpd6FlLvGV1VU0x7bkPmmCNolxzjMf4NczoDnQcIWrAF+cPtZn5i6n+RfD2d9i0tzpKnG6Yk168yIyw==}
     hasBin: true
-
-  resources@file:packages/create-gas/template/npm-tmp/resources:
-    resolution: {directory: packages/create-gas/template/npm-tmp/resources, type: directory}
 
   restore-cursor@3.1.0:
     resolution: {integrity: sha512-l+sSefzHpj5qimhFSE5a8nufZYAM3sBSVMAPtYkmC+4EH2anSGaEMXSD0izRQbu9nfyQ9y5JrVmp7E8oZrUjvA==}
@@ -6117,8 +6114,6 @@ snapshots:
       is-core-module: 2.15.1
       path-parse: 1.0.7
       supports-preserve-symlinks-flag: 1.0.0
-
-  resources@file:packages/create-gas/template/npm-tmp/resources: {}
 
   restore-cursor@3.1.0:
     dependencies:

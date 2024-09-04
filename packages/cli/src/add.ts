@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 import { input, select } from "@inquirer/prompts";
 import { downloadTemplate } from "giget";
@@ -119,11 +120,12 @@ export async function add() {
 				break;
 			}
 			case "add-graph.select-entry-resource": {
-				const entryResource = await runSelectEntryResourcePrompt(
+				const entryResourceId = await runSelectEntryResourcePrompt(
 					resourceTemplates.getSelectPromptListItems(["api", "web"]),
 				);
 
-				const entryResourceTemplate = resourceTemplates.map.get(entryResource);
+				const entryResourceTemplate =
+					resourceTemplates.map.get(entryResourceId);
 
 				const entryResourceEntityGroup =
 					entryResourceTemplate?.type === "web"
@@ -167,17 +169,39 @@ export async function add() {
 					? await runTestLoadPrompt()
 					: "";
 
+				const resourceId = `${entryResourceEntityGroup}-${entryResourceEntity}-${entryResourceTemplate?.descriptor}`;
+
 				const templateSrc =
 					"github:gasdotdev/gas/templates/cloudflare-pages-remix#master";
-				const templateDir = path.join(
-					config.containerDirPath,
-					`${entryResourceEntityGroup}-${entryResourceEntity}-pages`,
-				);
+				const templateDir = path.join(config.containerDirPath, resourceId);
 
 				await downloadTemplate(templateSrc, {
 					dir: templateDir,
 					forceClean: true,
 				});
+
+				const packageJsonPath = path.join(templateDir, "package.json");
+
+				const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
+				const packageJson = JSON.parse(packageJsonContent);
+
+				packageJson.name = resourceId;
+
+				await fs.writeFile(
+					packageJsonPath,
+					JSON.stringify(packageJson, null, 2),
+				);
+
+				const oldFilePath = path.join(
+					templateDir,
+					"index.entity-group.entity.descriptor.ts",
+				);
+				const newFilePath = path.join(
+					templateDir,
+					`index.${entryResourceEntityGroup}.${entryResourceEntity}.${entryResourceTemplate?.descriptor}.ts`,
+				);
+
+				await fs.rename(oldFilePath, newFilePath);
 
 				loop = false;
 
