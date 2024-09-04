@@ -213,7 +213,7 @@ export class Resources {
 			// import { cloudflareKv } from "@gasdotdev/resources"
 			// They can be distinguished using a camelCase pattern.
 			const configSetterFunctionNameRegex =
-				/import\s+\{[^}]*\b([a-z]+[A-Z][a-zA-Z]*)\b[^}]*\}\s+from\s+['"]resources['"]/;
+				/import\s+\{[^}]*\b([a-z]+[A-Z][a-zA-Z]*)\b[^}]*\}\s+from\s+['"]@gasdotdev\/resources['"]/;
 			const configSetterFunctionNameMatch = indexFileContent.match(
 				configSetterFunctionNameRegex,
 			);
@@ -271,7 +271,7 @@ export class Resources {
 			this.nodeJsConfigScript = "import {\n";
 			this.nodeJsConfigScript += functionNames.join(",\n");
 			this.nodeJsConfigScript += "\n} ";
-			this.nodeJsConfigScript += 'from "resources"\n';
+			this.nodeJsConfigScript += 'from "@gasdotdev/resources"\n';
 
 			// Configs have to be written in bottom-up dependency order to
 			// avoid Node.js "cannot access 'variable name' before

@@ -1,0 +1,27 @@
+{
+	"name": "@gasdotdev/resources",
+	"version": "0.0.0",
+	"description": "Gas.dev resource config setters",
+	"main": "build/src/index.resources.js",
+	"types": "build/src/index.resources.d.ts",
+	"type": "module",
+	"engines": {
+		"node": ">=20.0.0"
+	},
+	"files": ["build/"],
+	"homepage": "https://gas.dev",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/gasdotdev/gas",
+		"directory": "packages/resources"
+	},
+	"scripts": {
+		"build": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts src/index.resources.ts && tsc -p tsconfig.json --emitDeclarationOnly --declaration --removeComments --stripInternal --outDir build/src",
+		"check:write": "pnpm biome check ./*.ts --write",
+		"dev": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts src/index.resources.ts --watch"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^4.20240821.1"
+	}
+}

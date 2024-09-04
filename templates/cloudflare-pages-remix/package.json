@@ -15,7 +15,7 @@
 		"isbot": "^4.1.0",
 		"react": "^18.2.0",
 		"react-dom": "^18.2.0",
-		"resources": "file:../../packages/create-gas/template/npm-tmp/resources"
+		"@gasdotdev/resources": "file:../../../gas/packages/resources"
 	},
 	"devDependencies": {
 		"@remix-run/dev": "*",

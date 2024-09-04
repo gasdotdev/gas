@@ -41,6 +41,12 @@ importers:
         specifier: ^20.0.0
         version: 20.16.2
 
+  packages/resources:
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20240821.1
+        version: 4.20240821.1
+
   scripts/build-package:
     dependencies:
       esbuild:

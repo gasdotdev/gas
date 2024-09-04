@@ -3,8 +3,5 @@
 	"private": true,
 	"type": "module",
 	"scripts": {},
-	"workspaces": [
-		"gas/*",
-		"npm-tmp/*"
-	]
+	"workspaces": ["gas/*"]
 }

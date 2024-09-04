@@ -1,4 +1,4 @@
-import { D1Database, Fetcher, Rpc } from "@cloudflare/workers-types";
+import type { D1Database, Fetcher, Rpc } from "@cloudflare/workers-types";
 
 export type D1Bindings<T extends ReadonlyArray<{ readonly binding: string }>> =
 	{
