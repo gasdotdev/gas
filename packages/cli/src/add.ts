@@ -177,7 +177,6 @@ export async function add() {
 				await downloadTemplate(templateSrc, {
 					dir: templateDir,
 					forceClean: true,
-					preferOffline: true,
 				});
 
 				loop = false;
