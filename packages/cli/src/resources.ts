@@ -355,10 +355,7 @@ export class Resources {
 		for (const [name, config] of Object.entries(
 			this.runNodeJsConfigScriptResult,
 		)) {
-			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-			const c = config as Record<string, any>;
-			const resourceType = c.type as string;
-			this.nameToConfig.set(name, resourceConfigs[resourceType](c));
+			this.nameToConfig.set(name, config);
 		}
 	}
 
