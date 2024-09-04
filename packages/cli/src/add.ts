@@ -221,7 +221,8 @@ export async function add() {
 
 				const ast = mod.exports.$ast;
 
-				mod.exports.entityGroupEntityDescriptor.$args[0].name = "TEST";
+				mod.exports.entityGroupEntityDescriptor.$args[0].name =
+					resourceIdToCamelCase(resourceId);
 
 				// Note: The ast types aren't working correctly. Thus,
 				// @ts-ignore. In a demo, where magicast is used in a
