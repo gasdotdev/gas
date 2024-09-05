@@ -1,6 +1,7 @@
 import { exec as execCallback } from "node:child_process";
 import fs from "node:fs/promises";
-import path from "node:path";
+import path, { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import util from "node:util";
 import { confirm, input, select } from "@inquirer/prompts";
 import { downloadTemplate } from "giget";
@@ -209,16 +210,32 @@ export async function add() {
 
 				const resourceId = `${entryResourceEntityGroup}-${entryResourceEntity}-${entryResourceTemplate?.descriptor}`;
 
-				const templateSrc =
-					"github:gasdotdev/gas/templates/cloudflare-pages-remix#master";
-				const templateDir = path.join(config.containerDirPath, resourceId);
+				const __filename = fileURLToPath(import.meta.url);
+				const __dirname = dirname(__filename);
+
+				const templateSrc = "github:gasdotdev/gas/templates#master";
+				const templateDir = join(__dirname, "..", "..", "giget");
 
 				await downloadTemplate(templateSrc, {
 					dir: templateDir,
 					forceClean: true,
 				});
 
-				const packageJsonPath = path.join(templateDir, "package.json");
+				const templateDestinationDir = path.join(
+					config.containerDirPath,
+					resourceId,
+				);
+
+				await fs.cp(
+					path.join(templateDir, "cloudflare-pages-remix"),
+					templateDestinationDir,
+					{ recursive: true },
+				);
+
+				const packageJsonPath = path.join(
+					templateDestinationDir,
+					"package.json",
+				);
 
 				const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
 				const packageJson = JSON.parse(packageJsonContent);
@@ -231,11 +248,11 @@ export async function add() {
 				);
 
 				const oldFilePath = path.join(
-					templateDir,
+					templateDestinationDir,
 					"index.entity-group.entity.descriptor.ts",
 				);
 				const newFilePath = path.join(
-					templateDir,
+					templateDestinationDir,
 					`index.${entryResourceEntityGroup}.${entryResourceEntity}.${entryResourceTemplate?.descriptor}.ts`,
 				);
 
