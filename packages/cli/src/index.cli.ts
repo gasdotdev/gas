@@ -44,6 +44,9 @@ Options:
 				console.log(helpMessage);
 		}
 	} catch (error) {
+		if (error.name === "ExitPromptError") {
+			process.exit(0);
+		}
 		console.error(error);
 	}
 }
