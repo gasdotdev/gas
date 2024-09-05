@@ -1,6 +1,8 @@
+import { exec as execCallback } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { input, select } from "@inquirer/prompts";
+import util from "node:util";
+import { confirm, input, select } from "@inquirer/prompts";
 import { downloadTemplate } from "giget";
 import { loadFile, writeFile } from "magicast";
 import { Config } from "./config.js";
@@ -106,6 +108,28 @@ function resourceIdToCamelCase(id: string): string {
 
 function resourceIdToUpperSnakeCase(id: string): string {
 	return id.replace(/-/g, "_").toUpperCase();
+}
+
+async function runConfirmInstallPackagesPrompt() {
+	return await confirm({
+		message: "Install packages?",
+	});
+}
+
+const exec = util.promisify(execCallback);
+
+async function installPackages(): Promise<void> {
+	console.log("Installing packages...");
+	try {
+		const { stdout, stderr } = await exec("npm install");
+		console.log(stdout);
+		if (stderr) {
+			console.error(stderr);
+		}
+		console.log("Packages installed successfully.");
+	} catch (error) {
+		console.error("Error installing packages:", error);
+	}
 }
 
 export async function add() {
@@ -250,6 +274,12 @@ export async function add() {
 				await writeFile(mod, newFilePath);
 
 				loop = false;
+
+				const confirmInstallPackages = await runConfirmInstallPackagesPrompt();
+
+				if (confirmInstallPackages) {
+					await installPackages();
+				}
 
 				break;
 			}

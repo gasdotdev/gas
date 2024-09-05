@@ -59,7 +59,6 @@ export class Resources {
 		resources.setPackageJsonNameToName();
 		resources.setNameToDeps();
 		await resources.setNameToIndexFilePath();
-		console.log(resources.nameToIndexFilePath);
 		await resources.setNameToIndexFileContent();
 		resources.setNameToConfigData();
 		const graph = Graph.new(resources.nameToDeps);
