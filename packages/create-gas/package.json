@@ -4,7 +4,7 @@
 	"description": "Create Gas.dev projects",
 	"type": "module",
 	"bin": {
-		"create-gas": "build/index.create-gas.js"
+		"create-gas": "build/src/index.create-gas.js"
 	},
 	"engines": {
 		"node": ">=20.0.0"
@@ -18,9 +18,9 @@
 		"directory": "packages/create-gas"
 	},
 	"scripts": {
-		"build": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts index.create-gas.ts",
-		"check:write": "pnpm biome check ./*.ts --write",
-		"dev": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts index.create-gas.ts --watch"
+		"build": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts src/index.create-gas.ts",
+		"check:write": "pnpm biome check ./**/*.ts --write",
+		"dev": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts src/index.create-gas.ts --watch"
 	},
 	"dependencies": {
 		"@inquirer/prompts": "^5.3.8"
