@@ -10,7 +10,8 @@
 	},
 	"scripts": {
 		"build": "tsup index.build-package.ts --format=esm --target=node20 --clean --config=tsconfig.json --sourcemap",
-		"check:write": "pnpm biome check ./*.ts --write"
+		"check:write": "pnpm biome check ./*.ts --write",
+		"clean": "NODE_OPTIONS=--experimental-transform-types node ../clean/index.clean.ts .turbo,node_modules"
 	},
 	"dependencies": {
 		"esbuild": "^0.23.1"

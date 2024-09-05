@@ -20,6 +20,7 @@
 	"scripts": {
 		"build": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts src/index.create-gas.ts",
 		"check:write": "pnpm biome check ./**/*.ts --write",
+		"clean": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/clean/index.clean.ts .turbo,build,node_modules",
 		"dev": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts src/index.create-gas.ts --watch"
 	},
 	"dependencies": {

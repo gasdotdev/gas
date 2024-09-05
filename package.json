@@ -3,6 +3,7 @@
 	"scripts": {
 		"build": "turbo run build --filter='./packages/*'",
 		"check:write": "turbo run check:write",
+		"clean": "turbo run clean && NODE_OPTIONS=--experimental-transform-types node ./scripts/clean/index.clean.ts .turbo,node_modules",
 		"dev": "turbo run dev --filter='./packages/*'"
 	},
 	"license": "MIT",

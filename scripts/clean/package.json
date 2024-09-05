@@ -1,0 +1,10 @@
+{
+	"name": "clean",
+	"private": true,
+	"type": "module",
+	"main": "./index.clean.ts",
+	"types": "./index.clean.ts",
+	"engines": {
+		"node": ">=20.0.0"
+	}
+}

@@ -6,6 +6,9 @@
 			"outputs": ["dist/**"]
 		},
 		"check:write": {},
+		"clean": {
+			"cache": false
+		},
 		"dev": {
 			"cache": false,
 			"persistent": true
