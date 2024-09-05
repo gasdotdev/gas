@@ -1,9 +1,12 @@
 #!/usr/bin/env node
-import { exec } from "node:child_process";
+import { exec as execCallback } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import util from "node:util";
 import { confirm, input, select } from "@inquirer/prompts";
+
+const exec = util.promisify(execCallback);
 
 await main();
 
@@ -165,6 +168,17 @@ async function create() {
 
 	if (installDeps) {
 		console.log("Installing dependencies...");
-		await exec(`${packageManager} install`, { cwd: dir });
+		try {
+			const { stdout, stderr } = await exec(`${packageManager} install`, {
+				cwd: dir,
+			});
+			console.log(stdout);
+			if (stderr) {
+				console.error(stderr);
+			}
+			console.log("Dependencies installed successfully.");
+		} catch (error) {
+			console.error("Error installing dependencies:", error);
+		}
 	}
 }
