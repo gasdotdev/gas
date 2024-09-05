@@ -9,7 +9,6 @@
 		"node": ">=20.0.0"
 	},
 	"scripts": {
-		"build": "tsup index.build-package.ts --format=esm --target=node20 --clean --config=tsconfig.json --sourcemap",
 		"check:write": "pnpm biome check ./*.ts --write",
 		"clean": "NODE_OPTIONS=--experimental-transform-types node ../clean/index.clean.ts .turbo,node_modules"
 	},
