@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
 import { add } from "./add.js";
+import { dev } from "./dev.js";
 
 await main();
 
@@ -25,7 +26,7 @@ gas [command] [options]
 
 Available commands:
   add         Add a new item (placeholder)
-
+  dev         Run the dev server
 Options:
 	--help, -h Print help`;
 
@@ -38,6 +39,10 @@ Options:
 		switch (command) {
 			case "add": {
 				await add();
+				break;
+			}
+			case "dev": {
+				await dev();
 				break;
 			}
 			default:
