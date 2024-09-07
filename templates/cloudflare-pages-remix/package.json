@@ -9,25 +9,20 @@
 		"start": "wrangler pages dev ./build/client"
 	},
 	"dependencies": {
+		"@gasdotdev/resources": "file:../../../gas/packages/resources",
 		"@remix-run/cloudflare": "*",
 		"@remix-run/cloudflare-pages": "*",
 		"@remix-run/react": "*",
 		"isbot": "^4.1.0",
 		"react": "^18.2.0",
-		"react-dom": "^18.2.0",
-		"@gasdotdev/resources": "file:../../../gas/packages/resources"
+		"react-dom": "^18.2.0"
 	},
 	"devDependencies": {
 		"@remix-run/dev": "*",
-		"@remix-run/node": "^2.11.1",
-		"@remix-run/server-runtime": "^2.11.1",
 		"@types/react": "^18.2.20",
 		"@types/react-dom": "^18.2.7",
-		"@types/set-cookie-parser": "^2.4.10",
-		"set-cookie-parser": "^2.7.0",
 		"vite": "^5.1.0",
-		"vite-tsconfig-paths": "^4.2.1",
-		"wrangler": "^3.71.0"
+		"vite-tsconfig-paths": "^4.2.1"
 	},
 	"engines": {
 		"node": ">=20.0.0"
