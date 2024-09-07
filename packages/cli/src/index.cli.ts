@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
 import { add } from "./add.js";
-import { dev } from "./dev.js";
+import { devSetup } from "./dev-setup.js";
+import { devStart } from "./dev-start.js";
 
 await main();
 
@@ -25,8 +26,9 @@ async function main() {
 gas [command] [options]
 
 Available commands:
-  add         Add a new item (placeholder)
-  dev         Run the dev server
+  add         Add new resource(s)
+  dev:setup   Setup dev environment
+  dev:start   Start dev server
 Options:
 	--help, -h Print help`;
 
@@ -41,8 +43,12 @@ Options:
 				await add();
 				break;
 			}
-			case "dev": {
-				await dev();
+			case "dev:setup": {
+				await devSetup();
+				break;
+			}
+			case "dev:start": {
+				await devStart();
 				break;
 			}
 			default:

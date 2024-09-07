@@ -42,7 +42,7 @@ async function findAvailablePort(startPort: number): Promise<number> {
 	return port;
 }
 
-export async function dev() {
+export async function devStart() {
 	const config = await Config.new();
 
 	const resources = await Resources.new(config.containerDirPath);
