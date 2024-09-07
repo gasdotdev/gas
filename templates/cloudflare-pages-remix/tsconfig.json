@@ -27,6 +27,9 @@
 			"@gasdotdev/resources": ["../../../gas/packages/resources"],
 			"@gasdotdev/vite-plugin-cloudflare-remix-dev": [
 				"../../../gas/packages/vite-plugin-cloudflare-remix-dev"
+			],
+			"vite": [
+				"../../../gas/packages/vite-plugin-cloudflare-remix-dev/node_modules/vite"
 			]
 		},
 		"noEmit": true
