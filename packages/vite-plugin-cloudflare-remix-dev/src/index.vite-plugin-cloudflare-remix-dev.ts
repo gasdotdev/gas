@@ -58,9 +58,9 @@ function importWrangler() {
 	}
 }
 
-const NAME = "vite-plugin-remix-cloudflare-proxy";
+const NAME = "vite-plugin-cloudflare-remix-dev";
 
-export const cloudflareDevProxyVitePlugin = <Env, Cf extends CfProperties>({
+export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>({
 	getLoadContext,
 	...options
 }: {
@@ -110,6 +110,7 @@ export const cloudflareDevProxyVitePlugin = <Env, Cf extends CfProperties>({
 					ctx: undefined,
 					caches: undefined,
 				},
+				// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 			} as any;
 
 			return () => {
@@ -279,6 +280,7 @@ export function invariant<T>(
 	message?: string,
 ): asserts value is T;
 
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 export function invariant(value: any, message?: string) {
 	if (value === false || value === null || typeof value === "undefined") {
 		console.error(
