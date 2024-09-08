@@ -60,12 +60,15 @@ function importWrangler() {
 
 const NAME = "vite-plugin-cloudflare-remix-dev";
 
-export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>({
-	getLoadContext,
-	...options
-}: {
-	getLoadContext?: GetLoadContext<Env, Cf>;
-} & GetPlatformProxyOptions = {}): Plugin => {
+export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
+	port: number,
+	{
+		getLoadContext,
+		...options
+	}: {
+		getLoadContext?: GetLoadContext<Env, Cf>;
+	} & GetPlatformProxyOptions = {},
+): Plugin => {
 	return {
 		name: NAME,
 		config: () => ({
