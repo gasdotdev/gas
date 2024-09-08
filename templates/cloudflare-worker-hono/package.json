@@ -1,0 +1,13 @@
+{
+	"name": "@template/cloudflare-worker-hono",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"main": "./src/index.entity-group.entity.descriptor.ts",
+	"types": "./src/index.entity-group.entity.descriptor.ts",
+	"scripts": {},
+	"dependencies": {
+		"@gasdotdev/resources": "file:../../../gas/packages/resources",
+		"hono": "^4.5.11"
+	}
+}
