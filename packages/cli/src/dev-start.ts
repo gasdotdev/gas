@@ -1,48 +1,5 @@
-import http from "node:http";
-import { serve } from "@hono/node-server";
-import { Hono } from "hono";
-import { Miniflare } from "miniflare";
-import { Config } from "./config.js";
-import { Resources } from "./resources.js";
-async function findAvailablePort(startPort: number): Promise<number> {
-	let port = startPort;
-	let isAvailable = false;
-
-	while (!isAvailable) {
-		try {
-			await new Promise((resolve, reject) => {
-				const testServer = http
-					.createServer()
-					.once("error", (err: NodeJS.ErrnoException) => {
-						if (err.code === "EADDRINUSE") {
-							resolve(false);
-						} else {
-							reject(err);
-						}
-					})
-					.once("listening", () => {
-						testServer.close(() => {
-							isAvailable = true;
-							resolve(true);
-						});
-					})
-					.listen(port);
-			});
-		} catch (error) {
-			throw new Error(
-				`An error occurred while checking port availability: ${error}`,
-			);
-		}
-
-		if (!isAvailable) {
-			port++;
-		}
-	}
-
-	return port;
-}
-
 export async function devStart() {
+	/*
 	const config = await Config.new();
 
 	const resources = await Resources.new(config.containerDirPath);
@@ -94,4 +51,5 @@ export async function devStart() {
 			console.log(`Server is running on port ${honoPort}`);
 		},
 	);
+	*/
 }

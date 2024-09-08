@@ -46,7 +46,7 @@ export class Resources {
 	private nameToDeps: Record<string, string[]> = {};
 	private nameToIndexFilePath: Record<string, string> = {};
 	private nameToIndexFileContent: Record<string, string> = {};
-	private nameToConfigData: Record<string, ConfigData> = {};
+	public nameToConfigData: Record<string, ConfigData> = {};
 	private nodeJsConfigScript: string;
 	private runNodeJsConfigScriptResult: Record<string, ResourceConfig> = {};
 	public nameToConfig: Map<string, ResourceConfig> = new Map();
