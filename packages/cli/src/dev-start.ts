@@ -4,12 +4,18 @@ export async function devStart() {
 	const mfPort = 3000;
 
 	const mf = new Miniflare({
-		modules: true,
-		scriptPath: "./gas/core-base-api/build/src/index.core.base.api.js",
 		port: mfPort,
+		workers: [
+			{
+				name: "core-base-api",
+				modules: true,
+				scriptPath: "./gas/core-base-api/build/src/index.core.base.api.js",
+			},
+		],
 	});
 
-	const res = await mf.dispatchFetch("http://localhost:3000");
+	const worker = await mf.getWorker("core-base-api");
+	const res = await worker.fetch("http://localhost:3000");
 	console.log(await res.text());
 
 	/*
