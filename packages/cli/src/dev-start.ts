@@ -1,4 +1,17 @@
+import { Miniflare } from "miniflare";
+
 export async function devStart() {
+	const mfPort = 3000;
+
+	const mf = new Miniflare({
+		modules: true,
+		scriptPath: "./gas/core-base-api/build/src/index.core.base.api.js",
+		port: mfPort,
+	});
+
+	const res = await mf.dispatchFetch("http://localhost:3000");
+	console.log(await res.text());
+
 	/*
 	const config = await Config.new();
 
