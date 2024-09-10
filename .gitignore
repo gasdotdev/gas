@@ -1,5 +1,5 @@
 .dev-setup.json
+.giget
 .turbo
 build
-giget
 node_modules

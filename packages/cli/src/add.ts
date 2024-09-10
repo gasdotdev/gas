@@ -214,7 +214,7 @@ export async function add() {
 				const __dirname = dirname(__filename);
 
 				const templateSrc = "github:gasdotdev/gas/templates#master";
-				const templateDir = join(__dirname, "..", "..", "giget");
+				const templateDir = join(__dirname, "..", "..", ".giget");
 
 				await downloadTemplate(templateSrc, {
 					dir: templateDir,
