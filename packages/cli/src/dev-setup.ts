@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import http from "node:http";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Config } from "./config.js";
 import { Resources } from "./resources.js";
 
@@ -75,6 +76,9 @@ export async function devSetup(): Promise<void> {
 	};
 
 	const devSetupJson = JSON.stringify(devSetupData, null, 2);
+
+	const __filename = fileURLToPath(import.meta.url);
+	const __dirname = dirname(__filename);
 
 	await fs.writeFile(
 		join(__dirname, "..", "..", ".dev-setup.json"),

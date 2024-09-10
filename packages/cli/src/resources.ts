@@ -147,26 +147,29 @@ export class Resources {
 		const processSubdirPromises = this.containerSubdirPaths.map(
 			async (subdirPath) => {
 				const resourceName = this.convertContainerSubdirPathToName(subdirPath);
+				const srcPath = path.join(subdirPath, "src");
 
 				try {
-					const files = await fs.readdir(subdirPath);
+					const srcStats = await fs.stat(srcPath);
+					if (!srcStats.isDirectory()) {
+						return null;
+					}
 
-					const fileStatPromises = files.map(async (file) => {
-						const filePath = path.join(subdirPath, file);
-						const fileStat = await fs.stat(filePath);
-						return { file, fileStat, filePath };
-					});
+					const files = await fs.readdir(srcPath);
 
-					const fileStats = await Promise.all(fileStatPromises);
-
-					for (const { file, fileStat, filePath } of fileStats) {
-						if (!fileStat.isDirectory() && indexFilePathPattern.test(file)) {
+					for (const file of files) {
+						if (indexFilePathPattern.test(file)) {
+							const filePath = path.join(srcPath, file);
 							return { resourceName, indexFilePath: filePath };
 						}
 					}
 				} catch (err) {
+					// If src directory doesn't exist, skip the subdirectory
+					if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+						return null;
+					}
 					throw new Error(
-						`Unable to read dir ${subdirPath}: ${(err as Error).message}`,
+						`Unable to read src dir ${srcPath}: ${(err as Error).message}`,
 					);
 				}
 			},
