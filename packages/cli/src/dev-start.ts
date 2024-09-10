@@ -1,20 +1,37 @@
+import fs from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Miniflare } from "miniflare";
 
 export async function devStart() {
-	const mfPort = 3000;
+	const __filename = fileURLToPath(import.meta.url);
+	const __dirname = dirname(__filename);
+
+	const devSetupJsonPath = join(__dirname, "..", "..", ".dev-setup.json");
+
+	const devSetupData = JSON.parse(await fs.readFile(devSetupJsonPath, "utf-8"));
+
+	const mfPort = devSetupData.miniflarePort;
+
+	const workers = [];
+	for (const name in devSetupData.nameToConfigData) {
+		if (
+			devSetupData.nameToConfigData[name].functionName === "cloudflareWorkerApi"
+		) {
+			workers.push({
+				name,
+				modules: true,
+				scriptPath: devSetupData.nameToBuildIndexFilePath[name],
+			});
+		}
+	}
 
 	const mf = new Miniflare({
 		port: mfPort,
-		workers: [
-			{
-				name: "core-base-api",
-				modules: true,
-				scriptPath: "./gas/core-base-api/build/src/index.core.base.api.js",
-			},
-		],
+		workers,
 	});
 
-	const worker = await mf.getWorker("core-base-api");
+	const worker = await mf.getWorker("CORE_BASE_API");
 	const res = await worker.fetch("http://localhost:3000");
 	console.log(await res.text());
 

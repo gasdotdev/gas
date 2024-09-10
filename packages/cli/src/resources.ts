@@ -45,6 +45,7 @@ export class Resources {
 	private packageJsonNameToName: Map<string, string> = new Map();
 	private nameToDeps: Record<string, string[]> = {};
 	private nameToIndexFilePath: Record<string, string> = {};
+	public nameToBuildIndexFilePath: Record<string, string> = {};
 	private nameToIndexFileContent: Record<string, string> = {};
 	public nameToConfigData: Record<string, ConfigData> = {};
 	private nodeJsConfigScript: string;
@@ -61,6 +62,7 @@ export class Resources {
 		await resources.setNameToIndexFilePath();
 		await resources.setNameToIndexFileContent();
 		resources.setNameToConfigData();
+		resources.setNameToBuildIndexFilePath();
 		const graph = Graph.new(resources.nameToDeps);
 		resources.setNodeJsConfigScript(graph.groupToDepthToNodes);
 		await resources.runNodeJsConfigScript();
@@ -181,6 +183,19 @@ export class Resources {
 			if (result?.indexFilePath) {
 				this.nameToIndexFilePath[result.resourceName] = result.indexFilePath;
 			}
+		}
+	}
+
+	private setNameToBuildIndexFilePath(): void {
+		for (const [name, indexFilePath] of Object.entries(
+			this.nameToIndexFilePath,
+		)) {
+			const relativePath = path.relative(this.containerDirPath, indexFilePath);
+			const parts = relativePath.split(path.sep);
+			parts.splice(1, 0, "build"); // Insert 'build' after the first directory
+			const buildPath = path.join(this.containerDirPath, ...parts);
+			// Change the extension to .js
+			this.nameToBuildIndexFilePath[name] = buildPath.replace(/\.ts$/, ".js");
 		}
 	}
 

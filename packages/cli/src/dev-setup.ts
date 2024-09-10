@@ -71,6 +71,7 @@ export async function devSetup(): Promise<void> {
 		containerDirPath: resources.containerDirPath,
 		nameToConfigData: resources.nameToConfigData,
 		nameToConfig: Object.fromEntries(resources.nameToConfig),
+		nameToBuildIndexFilePath: resources.nameToBuildIndexFilePath,
 		miniflarePort,
 		resourcePorts,
 	};
