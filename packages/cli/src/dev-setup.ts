@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import http from "node:http";
+import { join } from "node:path";
 import { Config } from "./config.js";
 import { Resources } from "./resources.js";
 
@@ -50,10 +51,13 @@ export async function devSetup(): Promise<void> {
 
 	let dotenv = `GAS_DEV_SERVER_PORT=${devServerPort}\n`;
 	let lastPagesPort = devServerPort + 1;
+	const resourcePorts: { [name: string]: number } = {};
+
 	for (const name in resources.nameToConfigData) {
 		if (resources.nameToConfigData[name].functionName === "cloudflarePages") {
 			const pagesPort = await findAvailablePort(lastPagesPort);
 			dotenv += `GAS_${name}_PORT=${pagesPort}\n`;
+			resourcePorts[name] = pagesPort;
 			lastPagesPort = pagesPort + 1;
 		}
 	}
@@ -61,4 +65,19 @@ export async function devSetup(): Promise<void> {
 	const miniflarePort = await findAvailablePort(lastPagesPort + 1);
 
 	await fs.writeFile("./.env.dev", dotenv);
+
+	const devSetupData = {
+		containerDirPath: resources.containerDirPath,
+		nameToConfigData: resources.nameToConfigData,
+		nameToConfig: Object.fromEntries(resources.nameToConfig),
+		miniflarePort,
+		resourcePorts,
+	};
+
+	const devSetupJson = JSON.stringify(devSetupData, null, 2);
+
+	await fs.writeFile(
+		join(__dirname, "..", "..", ".dev-setup.json"),
+		devSetupJson,
+	);
 }
