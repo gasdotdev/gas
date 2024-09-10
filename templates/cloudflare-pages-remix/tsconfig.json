@@ -23,7 +23,7 @@
 		"forceConsistentCasingInFileNames": true,
 		"baseUrl": ".",
 		"paths": {
-			"~/*": ["app/*"],
+			"~/*": ["src/app/*"],
 			"@gasdotdev/resources": ["../../../gas/packages/resources"],
 			"@gasdotdev/vite-plugin-cloudflare-remix-dev": [
 				"../../../gas/packages/vite-plugin-cloudflare-remix-dev"

@@ -7,7 +7,7 @@ export default defineConfig({
 	plugins: [
 		cloudflareRemixDevPlugin(),
 		remix({
-			appDirectory: "app",
+			appDirectory: "src/app",
 			future: {
 				v3_fetcherPersist: true,
 				v3_relativeSplatPath: true,
