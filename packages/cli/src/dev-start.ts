@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
 import { Miniflare } from "miniflare";
 
 export async function devStart() {
@@ -31,31 +33,7 @@ export async function devStart() {
 		workers,
 	});
 
-	const worker = await mf.getWorker("CORE_BASE_API");
-	const res = await worker.fetch("http://localhost:3000");
-	console.log(await res.text());
-
-	/*
-	const config = await Config.new();
-
-	const resources = await Resources.new(config.containerDirPath);
-
 	const api = new Hono();
-
-	const honoPort = await findAvailablePort(8787);
-	const mfPort = await findAvailablePort(honoPort + 1);
-
-	const mf = new Miniflare({
-		modules: true,
-		script: `
-        export default {
-          async fetch(request, env, ctx) {
-            return new Response("Hello Miniflare!");
-          }
-        }
-        `,
-		port: mfPort,
-	});
 
 	// Proxy:
 	// https://github.com/honojs/hono/issues/1491
@@ -73,6 +51,7 @@ export async function devStart() {
 	// return newResponse;
 	api.all("*", async (c) => {
 		const res = await mf.dispatchFetch(`https://localhost:${mfPort}`);
+		const worker = await mf.getWorker("CORE_BASE_API");
 		// @ts-ignore
 		const newResponse = new Response(res.body, res);
 		return newResponse;
@@ -81,11 +60,10 @@ export async function devStart() {
 	serve(
 		{
 			fetch: api.fetch,
-			port: honoPort,
+			port: devSetupData.devServerPort,
 		},
 		() => {
-			console.log(`Server is running on port ${honoPort}`);
+			console.log(`Server is running on port ${devSetupData.devServerPort}`);
 		},
 	);
-	*/
 }
