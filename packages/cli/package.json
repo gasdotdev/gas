@@ -27,10 +27,12 @@
 	},
 	"dependencies": {
 		"@hono/node-server": "^1.12.2",
+		"@hono/zod-validator": "^0.2.2",
 		"@inquirer/prompts": "^5.3.8",
 		"giget": "^1.2.3",
 		"hono": "^4.5.11",
 		"magicast": "^0.3.5",
-		"miniflare": "^3.20240821.1"
+		"miniflare": "^3.20240821.1",
+		"zod": "^3.23.8"
 	}
 }

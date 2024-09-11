@@ -4,10 +4,12 @@ import { Readable } from "node:stream";
 import { createReadableStreamFromReadable } from "@remix-run/node";
 import { createRequestHandler } from "@remix-run/server-runtime";
 import type { AppLoadContext, ServerBuild } from "@remix-run/server-runtime";
+import { hc } from "hono/client";
 import { splitCookiesString } from "set-cookie-parser";
 import type { Plugin } from "vite";
 import type * as Vite from "vite";
 import type { GetPlatformProxyOptions, PlatformProxy } from "wrangler";
+import type { ApiType } from "../../cli/src/dev-start.js";
 
 /**
    * The following code is sourced from:
@@ -105,6 +107,23 @@ export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
       };
         */
 
+			const client = hc<ApiType>(`http://localhost:${devServerPort}`);
+
+			const res = await client.posts.$post({
+				form: {
+					title: "Hello",
+					body: "Hono is a cool project",
+				},
+			});
+
+			if (res.ok) {
+				const data = await res.json();
+				console.log(data.message);
+			} else {
+				console.error(res.status, res.statusText);
+			}
+
+			/*
 			async function getContext() {
 				const res = await fetch(`http://localhost:${devServerPort}`);
 				const data = await res.json();
@@ -112,6 +131,7 @@ export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
 			}
 
 			await getContext();
+			*/
 
 			const context = {
 				cloudflare: {

@@ -27,6 +27,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.12.2
         version: 1.12.2(hono@4.5.11)
+      '@hono/zod-validator':
+        specifier: ^0.2.2
+        version: 0.2.2(hono@4.5.11)(zod@3.23.8)
       '@inquirer/prompts':
         specifier: ^5.3.8
         version: 5.4.0
@@ -42,6 +45,9 @@ importers:
       miniflare:
         specifier: ^3.20240821.1
         version: 3.20240821.1
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
 
   packages/create-gas:
     dependencies:
@@ -67,6 +73,9 @@ importers:
       '@remix-run/server-runtime':
         specifier: ^2.11.1
         version: 2.11.2(typescript@5.5.4)
+      hono:
+        specifier: ^4.5.11
+        version: 4.5.11
       set-cookie-parser:
         specifier: ^2.7.0
         version: 2.7.0
@@ -959,6 +968,12 @@ packages:
     engines: {node: '>=18.14.1'}
     peerDependencies:
       hono: ^4
+
+  '@hono/zod-validator@0.2.2':
+    resolution: {integrity: sha512-dSDxaPV70Py8wuIU2QNpoVEIOSzSXZ/6/B/h4xA7eOMz7+AarKTSGV8E6QwrdcCbBLkpqfJ4Q2TmBO0eP1tCBQ==}
+    peerDependencies:
+      hono: '>=3.9.0'
+      zod: ^3.19.1
 
   '@inquirer/checkbox@2.5.0':
     resolution: {integrity: sha512-sMgdETOfi2dUHT8r7TT1BTKOwNvdDGFDXYWtQ2J69SvlYNntk9I/gJe7r5yvMwwsuKnYbuRs3pNhx4tgNck5aA==}
@@ -3924,6 +3939,11 @@ snapshots:
   '@hono/node-server@1.12.2(hono@4.5.11)':
     dependencies:
       hono: 4.5.11
+
+  '@hono/zod-validator@0.2.2(hono@4.5.11)(zod@3.23.8)':
+    dependencies:
+      hono: 4.5.11
+      zod: 3.23.8
 
   '@inquirer/checkbox@2.5.0':
     dependencies:

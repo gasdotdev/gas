@@ -11,5 +11,8 @@
 		"strictNullChecks": true,
 		"target": "ES2022"
 	},
-	"include": ["src/index.vite-plugin-cloudflare-remix-dev.ts"]
+	"include": [
+		"src/index.vite-plugin-cloudflare-remix-dev.ts",
+		"../cli/src/dev-start.ts"
+	]
 }
