@@ -61,7 +61,8 @@ function importWrangler() {
 const NAME = "vite-plugin-cloudflare-remix-dev";
 
 export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
-	port: number,
+	devServerPort: number,
+	viteServerPort: number,
 	{
 		getLoadContext,
 		...options
@@ -105,9 +106,7 @@ export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
         */
 
 			async function getContext() {
-				const res = await fetch(
-					`http://localhost:${process.env.GAS_DEV_SERVER_PORT}`,
-				);
+				const res = await fetch(`http://localhost:${devServerPort}`);
 				const data = await res.json();
 				return data;
 			}
