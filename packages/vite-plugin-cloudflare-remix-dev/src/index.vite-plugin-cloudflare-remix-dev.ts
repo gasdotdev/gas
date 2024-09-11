@@ -104,6 +104,16 @@ export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
       };
         */
 
+			async function getContext() {
+				const res = await fetch(
+					`http://localhost:${process.env.GAS_DEV_SERVER_PORT}`,
+				);
+				const data = await res.json();
+				return data;
+			}
+
+			await getContext();
+
 			const context = {
 				cloudflare: {
 					env: {
