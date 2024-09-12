@@ -68,10 +68,22 @@ export async function devSetup(): Promise<void> {
 	await fs.writeFile("./.env.dev", dotenv);
 
 	const devSetupData = {
-		containerDirPath: resources.containerDirPath,
-		nameToConfigData: resources.nameToConfigData,
-		nameToConfig: Object.fromEntries(resources.nameToConfig),
-		nameToBuildIndexFilePath: resources.nameToBuildIndexFilePath,
+		resources: {
+			containerDirPath: resources.containerDirPath,
+			containerSubdirPaths: resources.containerSubdirPaths,
+			nameToPackageJson: Object.fromEntries(resources.nameToPackageJson),
+			packageJsonNameToName: Object.fromEntries(
+				resources.packageJsonNameToName,
+			),
+			nameToDeps: resources.nameToDeps,
+			nameToIndexFilePath: resources.nameToIndexFilePath,
+			nameToBuildIndexFilePath: resources.nameToBuildIndexFilePath,
+			nameToIndexFileContent: resources.nameToIndexFileContent,
+			nameToConfigData: resources.nameToConfigData,
+			nodeJsConfigScript: resources.nodeJsConfigScript,
+			runNodeJsConfigScriptResult: resources.runNodeJsConfigScriptResult,
+			nameToConfig: Object.fromEntries(resources.nameToConfig),
+		},
 		devServerPort,
 		miniflarePort,
 		resourcePorts,

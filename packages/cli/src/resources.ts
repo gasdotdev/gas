@@ -40,16 +40,16 @@ const resourceConfigs: Record<string, (config: ResourceConfig) => any> = {
 
 export class Resources {
 	public containerDirPath: string;
-	private containerSubdirPaths: string[];
-	private nameToPackageJson: Map<string, PackageJson> = new Map();
-	private packageJsonNameToName: Map<string, string> = new Map();
-	private nameToDeps: Record<string, string[]> = {};
-	private nameToIndexFilePath: Record<string, string> = {};
+	public containerSubdirPaths: string[];
+	public nameToPackageJson: Map<string, PackageJson> = new Map();
+	public packageJsonNameToName: Map<string, string> = new Map();
+	public nameToDeps: Record<string, string[]> = {};
+	public nameToIndexFilePath: Record<string, string> = {};
 	public nameToBuildIndexFilePath: Record<string, string> = {};
-	private nameToIndexFileContent: Record<string, string> = {};
+	public nameToIndexFileContent: Record<string, string> = {};
 	public nameToConfigData: Record<string, ConfigData> = {};
-	private nodeJsConfigScript: string;
-	private runNodeJsConfigScriptResult: Record<string, ResourceConfig> = {};
+	public nodeJsConfigScript: string;
+	public runNodeJsConfigScriptResult: Record<string, ResourceConfig> = {};
 	public nameToConfig: Map<string, ResourceConfig> = new Map();
 
 	public static async new(containerDirPath: string): Promise<Resources> {
@@ -67,6 +67,36 @@ export class Resources {
 		resources.setNodeJsConfigScript(graph.groupToDepthToNodes);
 		await resources.runNodeJsConfigScript();
 		resources.setNameToConfig();
+		return resources;
+	}
+
+	public static newFromMemory(data: {
+		containerDirPath: string;
+		containerSubdirPaths: string[];
+		nameToPackageJson: Map<string, PackageJson>;
+		packageJsonNameToName: Map<string, string>;
+		nameToDeps: Record<string, string[]>;
+		nameToIndexFilePath: Record<string, string>;
+		nameToBuildIndexFilePath: Record<string, string>;
+		nameToIndexFileContent: Record<string, string>;
+		nameToConfigData: Record<string, ConfigData>;
+		nodeJsConfigScript: string;
+		runNodeJsConfigScriptResult: Record<string, ResourceConfig>;
+		nameToConfig: Map<string, ResourceConfig>;
+	}): Resources {
+		const resources = new Resources();
+		resources.containerDirPath = data.containerDirPath;
+		resources.containerSubdirPaths = data.containerSubdirPaths;
+		resources.nameToPackageJson = data.nameToPackageJson;
+		resources.packageJsonNameToName = data.packageJsonNameToName;
+		resources.nameToDeps = data.nameToDeps;
+		resources.nameToIndexFilePath = data.nameToIndexFilePath;
+		resources.nameToBuildIndexFilePath = data.nameToBuildIndexFilePath;
+		resources.nameToIndexFileContent = data.nameToIndexFileContent;
+		resources.nameToConfigData = data.nameToConfigData;
+		resources.nodeJsConfigScript = data.nodeJsConfigScript;
+		resources.runNodeJsConfigScriptResult = data.runNodeJsConfigScriptResult;
+		resources.nameToConfig = data.nameToConfig;
 		return resources;
 	}
 

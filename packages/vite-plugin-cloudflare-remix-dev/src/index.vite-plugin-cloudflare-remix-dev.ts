@@ -109,6 +109,20 @@ export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
 
 			const client = hc<ApiType>(`http://localhost:${devServerPort}`);
 
+			const res = await client.resources[":name"].$get({
+				param: {
+					name: "WEB_APP_PAGES",
+				},
+			});
+
+			if (res.ok) {
+				const data = await res.json();
+				console.log(data);
+			} else {
+				console.error(res.status, res.statusText);
+			}
+
+			/*
 			const res = await client.posts.$post({
 				form: {
 					title: "Hello",
@@ -122,6 +136,7 @@ export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
 			} else {
 				console.error(res.status, res.statusText);
 			}
+				*/
 
 			/*
 			async function getContext() {

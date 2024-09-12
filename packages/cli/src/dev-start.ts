@@ -2,16 +2,32 @@ import fs from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
-import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { Miniflare } from "miniflare";
-import { z } from "zod";
+import { Resources } from "./resources.js";
 
 let mf: Miniflare;
 let mfPort: number;
 
+let resources: Resources;
+
+const resourcesApi = new Hono().get("/:name", (c) => {
+	const name = c.req.param("name");
+	console.log("It worked!");
+	console.log(JSON.stringify(resources.nameToConfig, null, 2));
+	return c.json({
+		title: "Night",
+		body: "Time to sleep",
+	});
+});
+
 const api = new Hono();
 
+const routes = api.route("/resources", resourcesApi);
+
+export type ApiType = typeof routes;
+
+/*
 const route = api.post(
 	"/posts",
 	zValidator(
@@ -22,7 +38,6 @@ const route = api.post(
 		}),
 	),
 	(c) => {
-		// ...
 		return c.json(
 			{
 				ok: true,
@@ -32,8 +47,7 @@ const route = api.post(
 		);
 	},
 );
-
-export type ApiType = typeof route;
+*/
 
 /*
 const schema = z.object({
@@ -64,7 +78,7 @@ api.post("/author", zValidator("json", schema), (c) => {
 // 	headers: Object.fromEntries(res.headers.entries()),
 // });
 // return newResponse;
-api.all("*", async (c) => {
+routes.all("*", async (c) => {
 	const res = await mf.dispatchFetch(`https://localhost:${mfPort}`);
 	const worker = await mf.getWorker("CORE_BASE_API");
 	// @ts-ignore
@@ -80,17 +94,20 @@ export async function devStart() {
 
 	const devSetupData = JSON.parse(await fs.readFile(devSetupJsonPath, "utf-8"));
 
+	resources = Resources.newFromMemory(devSetupData.resources);
+
 	const mfPort = devSetupData.miniflarePort;
 
 	const workers = [];
-	for (const name in devSetupData.nameToConfigData) {
+	for (const name in devSetupData.resources.nameToConfigData) {
 		if (
-			devSetupData.nameToConfigData[name].functionName === "cloudflareWorkerApi"
+			devSetupData.resources.nameToConfigData[name].functionName ===
+			"cloudflareWorkerApi"
 		) {
 			workers.push({
 				name,
 				modules: true,
-				scriptPath: devSetupData.nameToBuildIndexFilePath[name],
+				scriptPath: devSetupData.resources.nameToBuildIndexFilePath[name],
 			});
 		}
 	}
@@ -102,7 +119,7 @@ export async function devStart() {
 
 	serve(
 		{
-			fetch: api.fetch,
+			fetch: routes.fetch,
 			port: devSetupData.devServerPort,
 		},
 		() => {
