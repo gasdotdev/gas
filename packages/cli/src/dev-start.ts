@@ -2,8 +2,10 @@ import fs from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
+import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { Miniflare } from "miniflare";
+import { z } from "zod";
 import { Resources } from "./resources.js";
 
 let mf: Miniflare;
@@ -30,9 +32,36 @@ const resourcesApi = new Hono().get("/:name", (c) => {
 	});
 });
 
+const ASchema = z.object({ action: z.literal("a"), a: z.string() });
+const BSchema = z.object({ action: z.literal("b"), b: z.string() });
+const ABSchema = z.union([ASchema, BSchema]);
+
+const miniflareApi = new Hono().post(
+	"/",
+	zValidator(
+		"json",
+		z.object({
+			action: z.literal("fetch"),
+			binding: z.string(),
+			fetchParams: z.object({
+				url: z.string(),
+			}),
+		}),
+	),
+	async (c) => {
+		const worker = await mf.getWorker("CORE_BASE_API");
+		const res = await worker.fetch(`https://localhost:${mfPort}`);
+		// @ts-ignore
+		const newResponse = new Response(res.body, res);
+		return newResponse;
+	},
+);
+
 const api = new Hono();
 
-const routes = api.route("/resources", resourcesApi);
+const routes = api
+	.route("/resources", resourcesApi)
+	.route("/miniflare-run", miniflareApi);
 
 export type ApiType = typeof routes;
 
@@ -105,7 +134,7 @@ export async function devStart() {
 
 	resources = Resources.newFromMemory(devSetupData.resources);
 
-	const mfPort = devSetupData.miniflarePort;
+	mfPort = devSetupData.miniflarePort;
 
 	const workers = [];
 	for (const name in devSetupData.resources.nameToConfigData) {

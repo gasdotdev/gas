@@ -156,11 +156,31 @@ export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
 
 			class ServiceFetcher {
 				async fetch(request: any) {
+					const res = await client["miniflare-run"].$post({
+						json: {
+							action: "fetch",
+							binding: "CORE_BASE_API",
+							fetchParams: {
+								url: "test",
+							},
+						},
+					});
+					return res;
+					/*
+					const res = await client.posts.$post({
+						form: {
+							title: "Hello",
+							body: "Hono is a cool project",
+						},
+					});
+					*/
+					/*
 					console.log("fetch", request);
 					const response = await fetch(
 						`http://localhost:${devServerPort}/resources/WEB_APP_PAGES`,
 					);
 					return response;
+					*/
 					// return new Response(JSON.stringify({ message: "Hello World" }));
 				}
 			}
