@@ -3,9 +3,49 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { Graph, type GraphGroupToDepthToNodes } from "./graph.js";
 
+type PackageJson = Record<string, unknown>;
+
+export type ResourceContainerDirPath = string;
+
+export type ResourceContainerSubdirPaths = string[];
+
+export type ResourceNameToPackageJson = Record<string, PackageJson>;
+
+export type ResourcePackageJsonNameToName = Record<string, string>;
+
+export type ResourceNameToDeps = Record<string, string[]>;
+
+export type ResourceNameToIndexFilePath = Record<string, string>;
+
+export type ResourceNameToBuildIndexFilePath = Record<string, string>;
+
+export type ResourceNameToIndexFileContent = Record<string, string>;
+
 export type ResourceNameToConfigData = Record<string, ConfigData>;
 
-type PackageJson = Record<string, unknown>;
+export type ResourceNodeJsConfigScript = string;
+
+export type ResourceNameToConfig = Record<string, ResourceConfig>;
+
+export type ResourceRunNodeJsConfigScriptResult = Record<
+	string,
+	ResourceConfig
+>;
+
+export type ResourceValues = {
+	containerDirPath: ResourceContainerDirPath;
+	containerSubdirPaths: ResourceContainerSubdirPaths;
+	nameToPackageJson: ResourceNameToPackageJson;
+	packageJsonNameToName: ResourcePackageJsonNameToName;
+	nameToDeps: ResourceNameToDeps;
+	nameToIndexFilePath: ResourceNameToIndexFilePath;
+	nameToBuildIndexFilePath: ResourceNameToBuildIndexFilePath;
+	nameToIndexFileContent: ResourceNameToIndexFileContent;
+	nameToConfigData: ResourceNameToConfigData;
+	nodeJsConfigScript: ResourceNodeJsConfigScript;
+	runNodeJsConfigScriptResult: ResourceRunNodeJsConfigScriptResult;
+	nameToConfig: ResourceNameToConfig;
+};
 
 interface ConfigData {
 	variableName: string;
@@ -41,20 +81,22 @@ const resourceConfigs: Record<string, (config: ResourceConfig) => any> = {
 };
 
 export class Resources {
-	public containerDirPath: string;
-	public containerSubdirPaths: string[];
-	public nameToPackageJson: Map<string, PackageJson> = new Map();
-	public packageJsonNameToName: Map<string, string> = new Map();
-	public nameToDeps: Record<string, string[]> = {};
-	public nameToIndexFilePath: Record<string, string> = {};
-	public nameToBuildIndexFilePath: Record<string, string> = {};
-	public nameToIndexFileContent: Record<string, string> = {};
+	public containerDirPath: ResourceContainerDirPath;
+	public containerSubdirPaths: ResourceContainerSubdirPaths;
+	public nameToPackageJson: ResourceNameToPackageJson = {};
+	public packageJsonNameToName: ResourcePackageJsonNameToName = {};
+	public nameToDeps: ResourceNameToDeps = {};
+	public nameToIndexFilePath: ResourceNameToIndexFilePath = {};
+	public nameToBuildIndexFilePath: ResourceNameToBuildIndexFilePath = {};
+	public nameToIndexFileContent: ResourceNameToIndexFileContent = {};
 	public nameToConfigData: ResourceNameToConfigData = {};
-	public nodeJsConfigScript: string;
-	public runNodeJsConfigScriptResult: Record<string, ResourceConfig> = {};
-	public nameToConfig: Map<string, ResourceConfig> = new Map();
+	public nodeJsConfigScript: ResourceNodeJsConfigScript = "";
+	public runNodeJsConfigScriptResult: ResourceRunNodeJsConfigScriptResult = {};
+	public nameToConfig: ResourceNameToConfig = {};
 
-	public static async new(containerDirPath: string): Promise<Resources> {
+	public static async new(
+		containerDirPath: ResourceContainerDirPath,
+	): Promise<Resources> {
 		const resources = new Resources();
 		resources.containerDirPath = containerDirPath;
 		await resources.setContainerSubdirPaths();
@@ -73,18 +115,18 @@ export class Resources {
 	}
 
 	public static newFromMemory(data: {
-		containerDirPath: string;
-		containerSubdirPaths: string[];
-		nameToPackageJson: Map<string, PackageJson>;
-		packageJsonNameToName: Map<string, string>;
-		nameToDeps: Record<string, string[]>;
-		nameToIndexFilePath: Record<string, string>;
-		nameToBuildIndexFilePath: Record<string, string>;
-		nameToIndexFileContent: Record<string, string>;
+		containerDirPath: ResourceContainerDirPath;
+		containerSubdirPaths: ResourceContainerSubdirPaths;
+		nameToPackageJson: ResourceNameToPackageJson;
+		packageJsonNameToName: ResourcePackageJsonNameToName;
+		nameToDeps: ResourceNameToDeps;
+		nameToIndexFilePath: ResourceNameToIndexFilePath;
+		nameToBuildIndexFilePath: ResourceNameToBuildIndexFilePath;
+		nameToIndexFileContent: ResourceNameToIndexFileContent;
 		nameToConfigData: ResourceNameToConfigData;
-		nodeJsConfigScript: string;
-		runNodeJsConfigScriptResult: Record<string, ResourceConfig>;
-		nameToConfig: Map<string, ResourceConfig>;
+		nodeJsConfigScript: ResourceNodeJsConfigScript;
+		runNodeJsConfigScriptResult: ResourceRunNodeJsConfigScriptResult;
+		nameToConfig: ResourceNameToConfig;
 	}): Resources {
 		const resources = new Resources();
 		resources.containerDirPath = data.containerDirPath;
@@ -144,34 +186,36 @@ export class Resources {
 		const results = await Promise.all(readPromises);
 
 		for (const { resourceName, packageJson } of results) {
-			this.nameToPackageJson.set(resourceName, packageJson);
+			this.nameToPackageJson[resourceName] = packageJson;
 		}
 	}
 
 	private setPackageJsonNameToName(): void {
-		for (const [resourceName, packageJson] of this.nameToPackageJson) {
+		for (const [resourceName, packageJson] of Object.entries(
+			this.nameToPackageJson,
+		)) {
 			const name = packageJson.name as string;
-			this.packageJsonNameToName.set(name, resourceName);
+			this.packageJsonNameToName[name] = resourceName;
 		}
 	}
 
 	private setNameToDeps(): void {
-		for (const [resourceName, packageJson] of this.nameToPackageJson) {
+		for (const name in this.nameToPackageJson) {
 			const deps: string[] = [];
 			// Loop over source resource's package.json deps
-			const dependencies = packageJson.dependencies as
+			const dependencies = this.nameToPackageJson[name].dependencies as
 				| Record<string, string>
 				| undefined;
 			if (dependencies) {
 				for (const dep in dependencies) {
-					const internalDep = this.packageJsonNameToName.get(dep);
+					const internalDep = this.packageJsonNameToName[dep];
 					// If package.json dep exists in map then it's an internal dep
 					if (internalDep) {
 						deps.push(internalDep);
 					}
 				}
 			}
-			this.nameToDeps[resourceName] = deps;
+			this.nameToDeps[name] = deps;
 		}
 	}
 
@@ -404,7 +448,7 @@ export class Resources {
 		for (const [name, config] of Object.entries(
 			this.runNodeJsConfigScriptResult,
 		)) {
-			this.nameToConfig.set(name, config);
+			this.nameToConfig[name] = config;
 		}
 	}
 

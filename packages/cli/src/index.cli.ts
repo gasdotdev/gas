@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
 import { add } from "./add.js";
-import { devSetup } from "./dev-setup.js";
+import { runDevSetup } from "./dev-setup.js";
 import { devStart } from "./dev-start.js";
 
 await main();
@@ -44,7 +44,7 @@ Options:
 				break;
 			}
 			case "dev:setup": {
-				await devSetup();
+				await runDevSetup();
 				break;
 			}
 			case "dev:start": {

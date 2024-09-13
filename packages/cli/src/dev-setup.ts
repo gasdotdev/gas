@@ -3,14 +3,19 @@ import http from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Config } from "./config.js";
-import { type ResourceNameToConfigData, Resources } from "./resources.js";
+import {
+	type ResourceNameToConfigData,
+	type ResourceValues,
+	Resources,
+} from "./resources.js";
 
-/**
- * Sets an available port.
- *
- * @param startPort - The port to start checking from.
- * @returns The available port.
- */
+type DevSetup = {
+	resources: ResourceValues;
+	devServerPort: number;
+	miniflarePort: number;
+	resourceNameToPort: ResourceNameToPort;
+};
+
 async function setAvailablePort(startPort: number): Promise<number> {
 	let port = startPort;
 	let isAvailable = false;
@@ -49,19 +54,14 @@ async function setAvailablePort(startPort: number): Promise<number> {
 	return port;
 }
 
-/**
- * Sets the ports for Cloudflare Pages resources.
- *
- * @param startPort - The port to start checking from.
- * @param resourceNameToConfigData - The configuration data for each resource.
- * @returns The dotenv, last port used, and resource name to port.
- */
+type ResourceNameToPort = Record<string, number>;
+
 async function setCloudflarePagesResourcePorts(
 	startPort: number,
 	resourceNameToConfigData: ResourceNameToConfigData,
 ) {
 	let dotenv = "";
-	const resourceNameToPort: { [name: string]: number } = {};
+	const resourceNameToPort: ResourceNameToPort = {};
 	let lastPortUsed = startPort;
 	for (const name in resourceNameToConfigData) {
 		if (resourceNameToConfigData[name].functionName === "cloudflarePages") {
@@ -74,7 +74,39 @@ async function setCloudflarePagesResourcePorts(
 	return { dotenv, lastPortUsed, resourceNameToPort };
 }
 
-export async function devSetup(): Promise<void> {
+function setDevSetup({
+	resources,
+	devServerPort,
+	miniflarePort,
+	resourceNameToPort,
+}: {
+	resources: ResourceValues;
+	devServerPort: number;
+	miniflarePort: number;
+	resourceNameToPort: ResourceNameToPort;
+}): DevSetup {
+	return {
+		resources: {
+			containerDirPath: resources.containerDirPath,
+			containerSubdirPaths: resources.containerSubdirPaths,
+			nameToPackageJson: resources.nameToPackageJson,
+			packageJsonNameToName: resources.packageJsonNameToName,
+			nameToDeps: resources.nameToDeps,
+			nameToIndexFilePath: resources.nameToIndexFilePath,
+			nameToBuildIndexFilePath: resources.nameToBuildIndexFilePath,
+			nameToIndexFileContent: resources.nameToIndexFileContent,
+			nameToConfigData: resources.nameToConfigData,
+			nodeJsConfigScript: resources.nodeJsConfigScript,
+			runNodeJsConfigScriptResult: resources.runNodeJsConfigScriptResult,
+			nameToConfig: resources.nameToConfig,
+		},
+		devServerPort,
+		miniflarePort,
+		resourceNameToPort,
+	};
+}
+
+export async function runDevSetup(): Promise<void> {
 	const config = await Config.new();
 
 	const resources = await Resources.new(config.containerDirPath);
@@ -94,27 +126,12 @@ export async function devSetup(): Promise<void> {
 
 	await fs.writeFile("./.env.dev", dotenv);
 
-	const devSetup = {
-		resources: {
-			containerDirPath: resources.containerDirPath,
-			containerSubdirPaths: resources.containerSubdirPaths,
-			nameToPackageJson: Object.fromEntries(resources.nameToPackageJson),
-			packageJsonNameToName: Object.fromEntries(
-				resources.packageJsonNameToName,
-			),
-			nameToDeps: resources.nameToDeps,
-			nameToIndexFilePath: resources.nameToIndexFilePath,
-			nameToBuildIndexFilePath: resources.nameToBuildIndexFilePath,
-			nameToIndexFileContent: resources.nameToIndexFileContent,
-			nameToConfigData: resources.nameToConfigData,
-			nodeJsConfigScript: resources.nodeJsConfigScript,
-			runNodeJsConfigScriptResult: resources.runNodeJsConfigScriptResult,
-			nameToConfig: Object.fromEntries(resources.nameToConfig),
-		},
+	const devSetup = setDevSetup({
+		resources,
 		devServerPort,
 		miniflarePort,
-		resourcePorts: cloudflarePagesResourcePorts.resourceNameToPort,
-	};
+		resourceNameToPort: cloudflarePagesResourcePorts.resourceNameToPort,
+	});
 
 	const devSetupJson = JSON.stringify(devSetup, null, 2);
 
