@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
-import { add } from "./add.js";
-import { runDevSetup } from "./dev-setup.js";
-import { devStart } from "./dev-start.js";
+import { runAdd } from "./cmds/add.js";
+import { runDevSetup } from "./cmds/dev-setup.js";
+import { runDevStart } from "./cmds/dev-start.js";
 
 await main();
 
@@ -40,7 +40,7 @@ Options:
 		const command = parsedArgs.positionals[0];
 		switch (command) {
 			case "add": {
-				await add();
+				await runAdd();
 				break;
 			}
 			case "dev:setup": {
@@ -48,7 +48,7 @@ Options:
 				break;
 			}
 			case "dev:start": {
-				await devStart();
+				await runDevStart();
 				break;
 			}
 			default:

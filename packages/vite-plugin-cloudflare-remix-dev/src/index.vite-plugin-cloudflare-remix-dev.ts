@@ -9,7 +9,7 @@ import { splitCookiesString } from "set-cookie-parser";
 import type { Plugin } from "vite";
 import type * as Vite from "vite";
 import type { GetPlatformProxyOptions, PlatformProxy } from "wrangler";
-import type { ApiType } from "../../cli/src/dev-start.js";
+import type { ApiType } from "../../cli/src/cmds/dev-start.js";
 
 /**
    * The following code is sourced from:

@@ -6,7 +6,8 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { Miniflare } from "miniflare";
 import { z } from "zod";
-import { Resources } from "./resources.js";
+import { Resources } from "../modules/resources.js";
+import type { DevSetup } from "./dev-setup.js";
 
 let mf: Miniflare;
 let mfPort: number;
@@ -87,28 +88,30 @@ routes.all("*", async (c) => {
 	return newResponse;
 });
 
-export async function devStart() {
+export async function runDevStart() {
 	const __filename = fileURLToPath(import.meta.url);
 	const __dirname = dirname(__filename);
 
 	const devSetupJsonPath = join(__dirname, "..", "..", ".dev-setup.json");
 
-	const devSetupData = JSON.parse(await fs.readFile(devSetupJsonPath, "utf-8"));
+	const devSetup = JSON.parse(
+		await fs.readFile(devSetupJsonPath, "utf-8"),
+	) as DevSetup;
 
-	resources = Resources.newFromMemory(devSetupData.resources);
+	resources = Resources.newFromMemory(devSetup.resources);
 
-	mfPort = devSetupData.miniflarePort;
+	mfPort = devSetup.miniflarePort;
 
 	const workers = [];
-	for (const name in devSetupData.resources.nameToConfigData) {
+	for (const name in devSetup.resources.nameToConfigData) {
 		if (
-			devSetupData.resources.nameToConfigData[name].functionName ===
+			devSetup.resources.nameToConfigData[name].functionName ===
 			"cloudflareWorkerApi"
 		) {
 			workers.push({
 				name,
 				modules: true,
-				scriptPath: devSetupData.resources.nameToBuildIndexFilePath[name],
+				scriptPath: devSetup.resources.nameToBuildIndexFilePath[name],
 			});
 		}
 	}
@@ -121,10 +124,10 @@ export async function devStart() {
 	serve(
 		{
 			fetch: routes.fetch,
-			port: devSetupData.devServerPort,
+			port: devSetup.devServerPort,
 		},
 		() => {
-			console.log(`Server is running on port ${devSetupData.devServerPort}`);
+			console.log(`Server is running on port ${devSetup.devServerPort}`);
 		},
 	);
 }

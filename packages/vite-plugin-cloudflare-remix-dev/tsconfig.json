@@ -13,6 +13,6 @@
 	},
 	"include": [
 		"src/index.vite-plugin-cloudflare-remix-dev.ts",
-		"../cli/src/dev-start.ts"
+		"../cli/src/cmds/dev-start.ts"
 	]
 }

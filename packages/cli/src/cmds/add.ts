@@ -6,12 +6,12 @@ import util from "node:util";
 import { confirm, input, select } from "@inquirer/prompts";
 import { downloadTemplate } from "giget";
 import { loadFile, writeFile } from "magicast";
-import { Config } from "./config.js";
+import { Config } from "../modules/config.js";
 import {
 	ResourceTemplates,
 	type ResourceTemplatesSelectPromptListItems,
-} from "./resource-templates.js";
-import { Resources } from "./resources.js";
+} from "../modules/resource-templates.js";
+import { Resources } from "../modules/resources.js";
 
 type State =
 	| "select-which"
@@ -133,7 +133,7 @@ async function installPackages(): Promise<void> {
 	}
 }
 
-export async function add() {
+export async function runAdd() {
 	let state: State = "select-which";
 
 	const config = await Config.new();
