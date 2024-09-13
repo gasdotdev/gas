@@ -128,32 +128,6 @@ export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
 				console.error(res.status, res.statusText);
 			}
 
-			/*
-			const res = await client.posts.$post({
-				form: {
-					title: "Hello",
-					body: "Hono is a cool project",
-				},
-			});
-
-			if (res.ok) {
-				const data = await res.json();
-				console.log(data.message);
-			} else {
-				console.error(res.status, res.statusText);
-			}
-				*/
-
-			/*
-			async function getContext() {
-				const res = await fetch(`http://localhost:${devServerPort}`);
-				const data = await res.json();
-				return data;
-			}
-
-			await getContext();
-			*/
-
 			class ServiceFetcher {
 				async fetch(request: any) {
 					const res = await client["miniflare-run"].$post({
@@ -166,22 +140,6 @@ export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
 						},
 					});
 					return res;
-					/*
-					const res = await client.posts.$post({
-						form: {
-							title: "Hello",
-							body: "Hono is a cool project",
-						},
-					});
-					*/
-					/*
-					console.log("fetch", request);
-					const response = await fetch(
-						`http://localhost:${devServerPort}/resources/WEB_APP_PAGES`,
-					);
-					return response;
-					*/
-					// return new Response(JSON.stringify({ message: "Hello World" }));
 				}
 			}
 
