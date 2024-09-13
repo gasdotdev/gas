@@ -13,7 +13,7 @@ type DevSetup = {
 	resources: ResourceValues;
 	devServerPort: number;
 	miniflarePort: number;
-	resourceNameToPort: ResourceNameToPort;
+	resourceNameToPort: CloudflarePagesResourceNameToPort;
 };
 
 async function setAvailablePort(startPort: number): Promise<number> {
@@ -54,36 +54,47 @@ async function setAvailablePort(startPort: number): Promise<number> {
 	return port;
 }
 
-type ResourceNameToPort = Record<string, number>;
+type CloudflarePagesResourceNameToPort = Record<string, number>;
 
-async function setCloudflarePagesResourcePorts(
+async function setCloudflarePagesResourceNameToPort(
 	startPort: number,
 	resourceNameToConfigData: ResourceNameToConfigData,
-) {
-	let dotenv = "";
-	const resourceNameToPort: ResourceNameToPort = {};
+): Promise<{
+	nameToPort: CloudflarePagesResourceNameToPort;
+	lastPortUsed: number;
+}> {
+	const nameToPort: CloudflarePagesResourceNameToPort = {};
 	let lastPortUsed = startPort;
 	for (const name in resourceNameToConfigData) {
 		if (resourceNameToConfigData[name].functionName === "cloudflarePages") {
 			const port = await setAvailablePort(lastPortUsed);
-			dotenv += `GAS_${name}_PORT=${port}\n`;
-			resourceNameToPort[name] = port;
+			nameToPort[name] = port;
 			lastPortUsed = port + 1;
 		}
 	}
-	return { dotenv, lastPortUsed, resourceNameToPort };
+	return { nameToPort, lastPortUsed };
+}
+
+function setCloudflarePagesResourcePortsDotEnv(
+	resourceNameToPort: CloudflarePagesResourceNameToPort,
+): string {
+	let dotenv = "";
+	for (const [name, port] of Object.entries(resourceNameToPort)) {
+		dotenv += `GAS_${name}_PORT=${port}\n`;
+	}
+	return dotenv;
 }
 
 function setDevSetup({
 	resources,
 	devServerPort,
 	miniflarePort,
-	resourceNameToPort,
+	cloudflarePagesResourceNameToPort,
 }: {
 	resources: ResourceValues;
 	devServerPort: number;
 	miniflarePort: number;
-	resourceNameToPort: ResourceNameToPort;
+	cloudflarePagesResourceNameToPort: CloudflarePagesResourceNameToPort;
 }): DevSetup {
 	return {
 		resources: {
@@ -102,7 +113,7 @@ function setDevSetup({
 		},
 		devServerPort,
 		miniflarePort,
-		resourceNameToPort,
+		resourceNameToPort: cloudflarePagesResourceNameToPort,
 	};
 }
 
@@ -115,16 +126,17 @@ export async function runDevSetup(): Promise<void> {
 
 	let dotenv = `GAS_DEV_SERVER_PORT=${devServerPort}\n`;
 
-	const cloudflarePagesResourcePorts = await setCloudflarePagesResourcePorts(
-		devServerPort + 1,
-		resources.nameToConfigData,
+	const { nameToPort: cloudflarePagesResourceNameToPort, lastPortUsed } =
+		await setCloudflarePagesResourceNameToPort(
+			devServerPort + 1,
+			resources.nameToConfigData,
+		);
+
+	dotenv += setCloudflarePagesResourcePortsDotEnv(
+		cloudflarePagesResourceNameToPort,
 	);
 
-	dotenv += cloudflarePagesResourcePorts.dotenv;
-
-	const miniflarePort = await setAvailablePort(
-		cloudflarePagesResourcePorts.lastPortUsed + 1,
-	);
+	const miniflarePort = await setAvailablePort(lastPortUsed + 1);
 
 	await fs.writeFile("./.env.dev", dotenv);
 
@@ -132,7 +144,7 @@ export async function runDevSetup(): Promise<void> {
 		resources,
 		devServerPort,
 		miniflarePort,
-		resourceNameToPort: cloudflarePagesResourcePorts.resourceNameToPort,
+		cloudflarePagesResourceNameToPort,
 	});
 
 	const devSetupJson = JSON.stringify(devSetup, null, 2);
