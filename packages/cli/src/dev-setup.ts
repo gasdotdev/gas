@@ -113,12 +113,14 @@ export async function runDevSetup(): Promise<void> {
 
 	const devServerPort = await setAvailablePort(3000);
 
-	const dotenv = `GAS_DEV_SERVER_PORT=${devServerPort}\n`;
+	let dotenv = `GAS_DEV_SERVER_PORT=${devServerPort}\n`;
 
 	const cloudflarePagesResourcePorts = await setCloudflarePagesResourcePorts(
 		devServerPort + 1,
 		resources.nameToConfigData,
 	);
+
+	dotenv += cloudflarePagesResourcePorts.dotenv;
 
 	const miniflarePort = await setAvailablePort(
 		cloudflarePagesResourcePorts.lastPortUsed + 1,
