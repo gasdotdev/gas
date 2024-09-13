@@ -3,6 +3,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { Graph, type GraphGroupToDepthToNodes } from "./graph.js";
 
+export type ResourceNameToConfigData = Record<string, ConfigData>;
+
 type PackageJson = Record<string, unknown>;
 
 interface ConfigData {
@@ -47,7 +49,7 @@ export class Resources {
 	public nameToIndexFilePath: Record<string, string> = {};
 	public nameToBuildIndexFilePath: Record<string, string> = {};
 	public nameToIndexFileContent: Record<string, string> = {};
-	public nameToConfigData: Record<string, ConfigData> = {};
+	public nameToConfigData: ResourceNameToConfigData = {};
 	public nodeJsConfigScript: string;
 	public runNodeJsConfigScriptResult: Record<string, ResourceConfig> = {};
 	public nameToConfig: Map<string, ResourceConfig> = new Map();
@@ -79,7 +81,7 @@ export class Resources {
 		nameToIndexFilePath: Record<string, string>;
 		nameToBuildIndexFilePath: Record<string, string>;
 		nameToIndexFileContent: Record<string, string>;
-		nameToConfigData: Record<string, ConfigData>;
+		nameToConfigData: ResourceNameToConfigData;
 		nodeJsConfigScript: string;
 		runNodeJsConfigScriptResult: Record<string, ResourceConfig>;
 		nameToConfig: Map<string, ResourceConfig>;

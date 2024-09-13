@@ -3,9 +3,15 @@ import http from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Config } from "./config.js";
-import { Resources } from "./resources.js";
+import { type ResourceNameToConfigData, Resources } from "./resources.js";
 
-async function findAvailablePort(startPort: number): Promise<number> {
+/**
+ * Sets an available port.
+ *
+ * @param startPort - The port to start checking from.
+ * @returns The available port.
+ */
+async function setAvailablePort(startPort: number): Promise<number> {
 	let port = startPort;
 	let isAvailable = false;
 
@@ -43,31 +49,52 @@ async function findAvailablePort(startPort: number): Promise<number> {
 	return port;
 }
 
+/**
+ * Sets the ports for Cloudflare Pages resources.
+ *
+ * @param startPort - The port to start checking from.
+ * @param resourceNameToConfigData - The configuration data for each resource.
+ * @returns The dotenv, last port used, and resource name to port.
+ */
+async function setCloudflarePagesResourcePorts(
+	startPort: number,
+	resourceNameToConfigData: ResourceNameToConfigData,
+) {
+	let dotenv = "";
+	const resourceNameToPort: { [name: string]: number } = {};
+	let lastPortUsed = startPort;
+	for (const name in resourceNameToConfigData) {
+		if (resourceNameToConfigData[name].functionName === "cloudflarePages") {
+			const port = await setAvailablePort(lastPortUsed);
+			dotenv += `GAS_${name}_PORT=${port}\n`;
+			resourceNameToPort[name] = port;
+			lastPortUsed = port + 1;
+		}
+	}
+	return { dotenv, lastPortUsed, resourceNameToPort };
+}
+
 export async function devSetup(): Promise<void> {
 	const config = await Config.new();
 
 	const resources = await Resources.new(config.containerDirPath);
 
-	const devServerPort = await findAvailablePort(3000);
+	const devServerPort = await setAvailablePort(3000);
 
-	let dotenv = `GAS_DEV_SERVER_PORT=${devServerPort}\n`;
-	let lastPagesPort = devServerPort + 1;
-	const resourcePorts: { [name: string]: number } = {};
+	const dotenv = `GAS_DEV_SERVER_PORT=${devServerPort}\n`;
 
-	for (const name in resources.nameToConfigData) {
-		if (resources.nameToConfigData[name].functionName === "cloudflarePages") {
-			const pagesPort = await findAvailablePort(lastPagesPort);
-			dotenv += `GAS_${name}_PORT=${pagesPort}\n`;
-			resourcePorts[name] = pagesPort;
-			lastPagesPort = pagesPort + 1;
-		}
-	}
+	const cloudflarePagesResourcePorts = await setCloudflarePagesResourcePorts(
+		devServerPort + 1,
+		resources.nameToConfigData,
+	);
 
-	const miniflarePort = await findAvailablePort(lastPagesPort + 1);
+	const miniflarePort = await setAvailablePort(
+		cloudflarePagesResourcePorts.lastPortUsed + 1,
+	);
 
 	await fs.writeFile("./.env.dev", dotenv);
 
-	const devSetupData = {
+	const devSetup = {
 		resources: {
 			containerDirPath: resources.containerDirPath,
 			containerSubdirPaths: resources.containerSubdirPaths,
@@ -86,10 +113,10 @@ export async function devSetup(): Promise<void> {
 		},
 		devServerPort,
 		miniflarePort,
-		resourcePorts,
+		resourcePorts: cloudflarePagesResourcePorts.resourceNameToPort,
 	};
 
-	const devSetupJson = JSON.stringify(devSetupData, null, 2);
+	const devSetupJson = JSON.stringify(devSetup, null, 2);
 
 	const __filename = fileURLToPath(import.meta.url);
 	const __dirname = dirname(__filename);
