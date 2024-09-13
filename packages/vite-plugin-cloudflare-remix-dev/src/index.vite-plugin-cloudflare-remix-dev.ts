@@ -111,13 +111,19 @@ export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
 
 			const res = await client.resources[":name"].$get({
 				param: {
-					name: "WEB_APP_PAGES",
+					name: "WEB_APP_PAGES", // TODO: Make this dynamic
 				},
 			});
 
 			if (res.ok) {
 				const data = await res.json();
-				console.log(data);
+				for (const name in data.depToConfigData) {
+					if (
+						data.depToConfigData[name].functionName === "cloudflareWorkerApi"
+					) {
+						console.log(data.depToConfigData[name]);
+					}
+				}
 			} else {
 				console.error(res.status, res.statusText);
 			}
@@ -148,10 +154,24 @@ export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
 			await getContext();
 			*/
 
+			class ServiceFetcher {
+				async fetch(request: any) {
+					console.log("fetch", request);
+					const response = await fetch(
+						`http://localhost:${devServerPort}/resources/WEB_APP_PAGES`,
+					);
+					return response;
+					// return new Response(JSON.stringify({ message: "Hello World" }));
+				}
+			}
+
+			const serviceFetcher = new ServiceFetcher();
+
 			const context = {
 				cloudflare: {
 					env: {
 						TEST: "123",
+						CORE_BASE_API: serviceFetcher,
 					},
 					cf: undefined,
 					ctx: undefined,

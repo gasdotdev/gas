@@ -13,11 +13,20 @@ let resources: Resources;
 
 const resourcesApi = new Hono().get("/:name", (c) => {
 	const name = c.req.param("name");
-	console.log("It worked!");
-	console.log(JSON.stringify(resources.nameToConfig, null, 2));
+	const deps = resources.nameToDeps[name] || [];
+
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	const depToConfigData: Record<string, any> = {};
+
+	for (const dep of deps) {
+		if (resources.nameToConfigData[dep]) {
+			depToConfigData[dep] = resources.nameToConfigData[dep];
+		}
+	}
+
 	return c.json({
-		title: "Night",
-		body: "Time to sleep",
+		name,
+		depToConfigData,
 	});
 });
 
