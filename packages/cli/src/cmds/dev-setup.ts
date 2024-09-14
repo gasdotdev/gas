@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import http from "node:http";
-import { dirname, join } from "node:path";
+import path, { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Config } from "../modules/config.js";
 import {
@@ -62,14 +62,29 @@ async function setCloudflarePagesResourceNameToPort(
 	return { nameToPort, lastPortUsed };
 }
 
-function setCloudflarePagesResourcePortsDotEnv(
-	resourceNameToPort: CloudflarePagesResourceNameToPort,
-): string {
-	let dotenv = "";
-	for (const [name, port] of Object.entries(resourceNameToPort)) {
-		dotenv += `GAS_${name}_PORT=${port}\n`;
+async function writeCloudflarePagesResourceDotEnvFiles(
+	cloudflarePagesResourceNameToPort: Record<string, number>,
+	resources: Resources,
+	devServerPort: number,
+): Promise<void> {
+	const writeEnvPromises = [];
+
+	for (const [resourceName, port] of Object.entries(
+		cloudflarePagesResourceNameToPort,
+	)) {
+		const indexFilePath = resources.nameToIndexFilePath[resourceName];
+		if (indexFilePath) {
+			const envContent = `GAS_DEV_SERVER_PORT=${devServerPort}\nGAS_${resourceName}_PORT=${port}\n`;
+			const envFilePath = path.join(
+				path.dirname(indexFilePath),
+				"..",
+				".env.dev",
+			);
+			writeEnvPromises.push(fs.writeFile(envFilePath, envContent));
+		}
 	}
-	return dotenv;
+
+	await Promise.all(writeEnvPromises);
 }
 
 export type DevSetup = {
@@ -118,21 +133,19 @@ export async function runDevSetup(): Promise<void> {
 
 	const devServerPort = await setAvailablePort(3000);
 
-	let dotenv = `GAS_DEV_SERVER_PORT=${devServerPort}\n`;
-
 	const { nameToPort: cloudflarePagesResourceNameToPort, lastPortUsed } =
 		await setCloudflarePagesResourceNameToPort(
 			devServerPort + 1,
 			resources.nameToConfigData,
 		);
 
-	dotenv += setCloudflarePagesResourcePortsDotEnv(
-		cloudflarePagesResourceNameToPort,
-	);
-
 	const miniflarePort = await setAvailablePort(lastPortUsed + 1);
 
-	await fs.writeFile("./.env.dev", dotenv);
+	await writeCloudflarePagesResourceDotEnvFiles(
+		cloudflarePagesResourceNameToPort,
+		resources,
+		devServerPort,
+	);
 
 	const devSetup = setDevSetup({
 		resources,
