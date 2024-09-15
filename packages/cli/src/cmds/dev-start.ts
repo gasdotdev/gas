@@ -7,7 +7,7 @@ import { Hono } from "hono";
 import { Miniflare } from "miniflare";
 import { z } from "zod";
 import { Resources } from "../modules/resources.js";
-import type { DevSetup } from "./dev-setup.js";
+import type { DevManifest } from "./dev-setup.js";
 
 let mf: Miniflare;
 let mfPort: number;
@@ -92,26 +92,26 @@ export async function runDevStart() {
 	const __filename = fileURLToPath(import.meta.url);
 	const __dirname = dirname(__filename);
 
-	const devSetupJsonPath = join(__dirname, "..", "..", ".dev-setup.json");
+	const devManifestJsonPath = join(__dirname, "..", "..", ".dev-manifest.json");
 
-	const devSetup = JSON.parse(
-		await fs.readFile(devSetupJsonPath, "utf-8"),
-	) as DevSetup;
+	const devManifest = JSON.parse(
+		await fs.readFile(devManifestJsonPath, "utf-8"),
+	) as DevManifest;
 
-	resources = Resources.newFromMemory(devSetup.resources);
+	resources = Resources.newFromMemory(devManifest.resources);
 
-	mfPort = devSetup.miniflarePort;
+	mfPort = devManifest.miniflarePort;
 
 	const workers = [];
-	for (const name in devSetup.resources.nameToConfigData) {
+	for (const name in devManifest.resources.nameToConfigData) {
 		if (
-			devSetup.resources.nameToConfigData[name].functionName ===
+			devManifest.resources.nameToConfigData[name].functionName ===
 			"cloudflareWorkerApi"
 		) {
 			workers.push({
 				name,
 				modules: true,
-				scriptPath: devSetup.resources.nameToBuildIndexFilePath[name],
+				scriptPath: devManifest.resources.nameToBuildIndexFilePath[name],
 			});
 		}
 	}
@@ -124,10 +124,10 @@ export async function runDevStart() {
 	serve(
 		{
 			fetch: routes.fetch,
-			port: devSetup.devServerPort,
+			port: devManifest.devServerPort,
 		},
 		() => {
-			console.log(`Server is running on port ${devSetup.devServerPort}`);
+			console.log(`Server is running on port ${devManifest.devServerPort}`);
 		},
 	);
 }

@@ -87,14 +87,14 @@ async function writeCloudflarePagesResourceDotEnvFiles(
 	await Promise.all(writeEnvPromises);
 }
 
-export type DevSetup = {
+export type DevManifest = {
 	resources: ResourceValues;
 	devServerPort: number;
 	miniflarePort: number;
 	resourceNameToPort: CloudflarePagesResourceNameToPort;
 };
 
-function setDevSetup({
+function setDevManifest({
 	resources,
 	devServerPort,
 	miniflarePort,
@@ -104,7 +104,7 @@ function setDevSetup({
 	devServerPort: number;
 	miniflarePort: number;
 	cloudflarePagesResourceNameToPort: CloudflarePagesResourceNameToPort;
-}): DevSetup {
+}): DevManifest {
 	return {
 		resources: {
 			containerDirPath: resources.containerDirPath,
@@ -147,20 +147,20 @@ export async function runDevSetup(): Promise<void> {
 		devServerPort,
 	);
 
-	const devSetup = setDevSetup({
+	const devManifest = setDevManifest({
 		resources,
 		devServerPort,
 		miniflarePort,
 		cloudflarePagesResourceNameToPort,
 	});
 
-	const devSetupJson = JSON.stringify(devSetup, null, 2);
+	const devManifestJson = JSON.stringify(devManifest, null, 2);
 
 	const __filename = fileURLToPath(import.meta.url);
 	const __dirname = dirname(__filename);
 
 	await fs.writeFile(
-		join(__dirname, "..", "..", ".dev-setup.json"),
-		devSetupJson,
+		join(__dirname, "..", "..", ".dev-manifest.json"),
+		devManifestJson,
 	);
 }
