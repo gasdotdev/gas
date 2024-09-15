@@ -83,58 +83,62 @@ export const cloudflareRemixDevPlugin = <Env>(
 
 			const client = hc<ApiType>(`http://localhost:${devServerPort}`);
 
-			const res = await client.resources[":name"].$get({
-				param: {
-					name: "WEB_APP_PAGES", // TODO: Make this dynamic
-				},
-			});
-
-			if (res.ok) {
-				const data = await res.json();
-				for (const name in data.depToConfigData) {
-					if (
-						data.depToConfigData[name].functionName === "cloudflareWorkerApi"
-					) {
-						console.log(data.depToConfigData[name]);
-					}
-				}
-			} else {
-				console.error(res.status, res.statusText);
-			}
-
 			class ServiceFetcher {
+				private resourceName: string;
+
+				constructor(resourceName: string) {
+					this.resourceName = resourceName;
+				}
+
 				async fetch(request: any) {
 					const res = await client["miniflare-run"].$post({
 						json: {
 							action: "fetch",
-							binding: "CORE_BASE_API",
-							fetchParams: {
-								url: "test",
-							},
+							resourceName: this.resourceName,
+							fetchParams: {},
 						},
 					});
 					return res;
 				}
 			}
 
-			const serviceFetcher = new ServiceFetcher();
-
 			async function setEnv() {
+				const env = {};
+
 				const res = await client["dev-manifest"].$get();
+
 				if (res.ok) {
 					const data = await res.json();
-					console.log(data);
+
+					const cloudflarePagesResourceName =
+						data.devManifest.portToCloudflarePagesResourceName[viteServerPort];
+
+					const cloudflarePagesResourceDependencies =
+						data.devManifest.resources.nameToDeps[cloudflarePagesResourceName];
+
+					for (const dependencyName of cloudflarePagesResourceDependencies) {
+						if (
+							data.devManifest.resources.nameToConfigData[dependencyName]
+								.functionName === "cloudflareWorkerApi"
+						) {
+							const serviceFetcher = new ServiceFetcher(dependencyName);
+							// @ts-ignore
+							env[dependencyName] = serviceFetcher;
+						}
+					}
 				} else {
 					console.error(res.status, res.statusText);
 				}
+
+				return env;
 			}
 
-			await setEnv();
+			const env = await setEnv();
 
 			const context = {
 				cloudflare: {
 					env: {
-						CORE_BASE_API: serviceFetcher,
+						...env,
 					},
 					cf: undefined,
 					ctx: undefined,

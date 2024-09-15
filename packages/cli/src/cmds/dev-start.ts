@@ -14,25 +14,6 @@ let mfPort: number;
 
 let resources: Resources;
 
-const resourcesApi = new Hono().get("/:name", (c) => {
-	const name = c.req.param("name");
-	const deps = resources.nameToDeps[name] || [];
-
-	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-	const depToConfigData: Record<string, any> = {};
-
-	for (const dep of deps) {
-		if (resources.nameToConfigData[dep]) {
-			depToConfigData[dep] = resources.nameToConfigData[dep];
-		}
-	}
-
-	return c.json({
-		name,
-		depToConfigData,
-	});
-});
-
 let devManifest: DevManifest;
 
 const devManifestApi = new Hono().get("/", (c) => {
@@ -51,14 +32,13 @@ const miniflareApi = new Hono().post(
 		"json",
 		z.object({
 			action: z.literal("fetch"),
-			binding: z.string(),
-			fetchParams: z.object({
-				url: z.string(),
-			}),
+			resourceName: z.string(),
+			fetchParams: z.object({}),
 		}),
 	),
 	async (c) => {
-		const worker = await mf.getWorker("CORE_BASE_API");
+		const { resourceName } = c.req.valid("json");
+		const worker = await mf.getWorker(resourceName);
 		const res = await worker.fetch(`https://localhost:${mfPort}`);
 		// Proxy:
 		// https://github.com/honojs/hono/issues/1491
@@ -84,7 +64,6 @@ const api = new Hono();
 
 const routes = api
 	.route("/dev-manifest", devManifestApi)
-	.route("/resources", resourcesApi)
 	.route("/miniflare-run", miniflareApi);
 
 export type ApiType = typeof routes;
