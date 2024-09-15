@@ -3,12 +3,11 @@ import type { IncomingHttpHeaders, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { createReadableStreamFromReadable } from "@remix-run/node";
 import { createRequestHandler } from "@remix-run/server-runtime";
-import type { AppLoadContext, ServerBuild } from "@remix-run/server-runtime";
+import type { ServerBuild } from "@remix-run/server-runtime";
 import { hc } from "hono/client";
 import { splitCookiesString } from "set-cookie-parser";
 import type { Plugin } from "vite";
 import type * as Vite from "vite";
-import type { GetPlatformProxyOptions, PlatformProxy } from "wrangler";
 import type { ApiType } from "../../cli/src/cmds/dev-start.js";
 
 /**
@@ -41,36 +40,11 @@ import type { ApiType } from "../../cli/src/cmds/dev-start.js";
 
 const serverBuildId = "virtual:remix/server-build";
 
-type CfProperties = Record<string, unknown>;
-
-type LoadContext<Env, Cf extends CfProperties> = {
-	cloudflare: Omit<PlatformProxy<Env, Cf>, "dispose">;
-};
-
-type GetLoadContext<Env, Cf extends CfProperties> = (args: {
-	request: Request;
-	context: LoadContext<Env, Cf>;
-}) => AppLoadContext | Promise<AppLoadContext>;
-
-function importWrangler() {
-	try {
-		return import("wrangler");
-	} catch (_) {
-		throw Error("Could not import `wrangler`. Do you have it installed?");
-	}
-}
-
 const NAME = "vite-plugin-cloudflare-remix-dev";
 
-export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
+export const cloudflareRemixDevPlugin = <Env>(
 	devServerPort: number,
 	viteServerPort: number,
-	{
-		getLoadContext,
-		...options
-	}: {
-		getLoadContext?: GetLoadContext<Env, Cf>;
-	} & GetPlatformProxyOptions = {},
 ): Plugin => {
 	return {
 		name: NAME,
@@ -148,7 +122,6 @@ export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
 			const context = {
 				cloudflare: {
 					env: {
-						TEST: "123",
 						CORE_BASE_API: serviceFetcher,
 					},
 					cf: undefined,
@@ -168,10 +141,7 @@ export const cloudflareRemixDevPlugin = <Env, Cf extends CfProperties>(
 
 							const handler = createRequestHandler(build, "development");
 							const req = fromNodeRequest(nodeReq);
-							const loadContext = getLoadContext
-								? await getLoadContext({ request: req, context })
-								: context;
-							const res = await handler(req, loadContext);
+							const res = await handler(req, context);
 							await toNodeRequest(res, nodeRes);
 						} catch (error) {
 							next(error);

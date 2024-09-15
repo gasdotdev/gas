@@ -29,8 +29,7 @@
 		"@remix-run/server-runtime": "^2.11.1",
 		"hono": "^4.5.11",
 		"set-cookie-parser": "^2.7.0",
-		"vite": "^5.1.0",
-		"wrangler": "^3.71.0"
+		"vite": "^5.1.0"
 	},
 	"devDependencies": {
 		"@types/set-cookie-parser": "^2.4.10"
