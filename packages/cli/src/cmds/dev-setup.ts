@@ -41,36 +41,37 @@ async function setAvailablePort(startPort: number): Promise<number> {
 	return port;
 }
 
-type CloudflarePagesResourceNameToPort = Record<string, number>;
+type PortToCloudflarePagesResourceName = Record<number, string>;
 
-async function setCloudflarePagesResourceNameToPort(
+async function setPortToCloudflarePagesResourceName(
 	startPort: number,
 	resourceNameToConfigData: ResourceNameToConfigData,
 ): Promise<{
-	nameToPort: CloudflarePagesResourceNameToPort;
+	portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName;
 	lastPortUsed: number;
 }> {
-	const nameToPort: CloudflarePagesResourceNameToPort = {};
+	const portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName =
+		{};
 	let lastPortUsed = startPort;
 	for (const name in resourceNameToConfigData) {
 		if (resourceNameToConfigData[name].functionName === "cloudflarePages") {
 			const port = await setAvailablePort(lastPortUsed);
-			nameToPort[name] = port;
+			portToCloudflarePagesResourceName[port] = name;
 			lastPortUsed = port + 1;
 		}
 	}
-	return { nameToPort, lastPortUsed };
+	return { portToCloudflarePagesResourceName, lastPortUsed };
 }
 
 async function writeCloudflarePagesResourceDotEnvFiles(
-	cloudflarePagesResourceNameToPort: Record<string, number>,
+	portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName,
 	resources: Resources,
 	devServerPort: number,
 ): Promise<void> {
 	const writeEnvPromises = [];
 
-	for (const [resourceName, port] of Object.entries(
-		cloudflarePagesResourceNameToPort,
+	for (const [port, resourceName] of Object.entries(
+		portToCloudflarePagesResourceName,
 	)) {
 		const indexFilePath = resources.nameToIndexFilePath[resourceName];
 		if (indexFilePath) {
@@ -91,19 +92,19 @@ export type DevManifest = {
 	resources: ResourceValues;
 	devServerPort: number;
 	miniflarePort: number;
-	resourceNameToPort: CloudflarePagesResourceNameToPort;
+	portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName;
 };
 
 function setDevManifest({
 	resources,
 	devServerPort,
 	miniflarePort,
-	cloudflarePagesResourceNameToPort,
+	portToCloudflarePagesResourceName,
 }: {
 	resources: ResourceValues;
 	devServerPort: number;
 	miniflarePort: number;
-	cloudflarePagesResourceNameToPort: CloudflarePagesResourceNameToPort;
+	portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName;
 }): DevManifest {
 	return {
 		resources: {
@@ -122,7 +123,7 @@ function setDevManifest({
 		},
 		devServerPort,
 		miniflarePort,
-		resourceNameToPort: cloudflarePagesResourceNameToPort,
+		portToCloudflarePagesResourceName,
 	};
 }
 
@@ -133,8 +134,8 @@ export async function runDevSetup(): Promise<void> {
 
 	const devServerPort = await setAvailablePort(3000);
 
-	const { nameToPort: cloudflarePagesResourceNameToPort, lastPortUsed } =
-		await setCloudflarePagesResourceNameToPort(
+	const { portToCloudflarePagesResourceName, lastPortUsed } =
+		await setPortToCloudflarePagesResourceName(
 			devServerPort + 1,
 			resources.nameToConfigData,
 		);
@@ -142,7 +143,7 @@ export async function runDevSetup(): Promise<void> {
 	const miniflarePort = await setAvailablePort(lastPortUsed + 1);
 
 	await writeCloudflarePagesResourceDotEnvFiles(
-		cloudflarePagesResourceNameToPort,
+		portToCloudflarePagesResourceName,
 		resources,
 		devServerPort,
 	);
@@ -151,7 +152,7 @@ export async function runDevSetup(): Promise<void> {
 		resources,
 		devServerPort,
 		miniflarePort,
-		cloudflarePagesResourceNameToPort,
+		portToCloudflarePagesResourceName,
 	});
 
 	const devManifestJson = JSON.stringify(devManifest, null, 2);
