@@ -119,6 +119,18 @@ export const cloudflareRemixDevPlugin = <Env>(
 
 			const serviceFetcher = new ServiceFetcher();
 
+			async function setEnv() {
+				const res = await client["dev-manifest"].$get();
+				if (res.ok) {
+					const data = await res.json();
+					console.log(data);
+				} else {
+					console.error(res.status, res.statusText);
+				}
+			}
+
+			await setEnv();
+
 			const context = {
 				cloudflare: {
 					env: {

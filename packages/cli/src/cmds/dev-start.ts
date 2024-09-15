@@ -33,6 +33,14 @@ const resourcesApi = new Hono().get("/:name", (c) => {
 	});
 });
 
+let devManifest: DevManifest;
+
+const devManifestApi = new Hono().get("/", (c) => {
+	return c.json({
+		devManifest,
+	});
+});
+
 const ASchema = z.object({ action: z.literal("a"), a: z.string() });
 const BSchema = z.object({ action: z.literal("b"), b: z.string() });
 const ABSchema = z.union([ASchema, BSchema]);
@@ -75,6 +83,7 @@ const miniflareApi = new Hono().post(
 const api = new Hono();
 
 const routes = api
+	.route("/dev-manifest", devManifestApi)
 	.route("/resources", resourcesApi)
 	.route("/miniflare-run", miniflareApi);
 
@@ -94,7 +103,7 @@ export async function runDevStart() {
 
 	const devManifestJsonPath = join(__dirname, "..", "..", ".dev-manifest.json");
 
-	const devManifest = JSON.parse(
+	devManifest = JSON.parse(
 		await fs.readFile(devManifestJsonPath, "utf-8"),
 	) as DevManifest;
 
