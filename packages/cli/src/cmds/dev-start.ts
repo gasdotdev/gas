@@ -104,10 +104,12 @@ export async function runDevStart() {
 		}
 	}
 
-	mf = new Miniflare({
-		port: mfPort,
-		workers,
-	});
+	if (workers.length > 0) {
+		mf = new Miniflare({
+			port: mfPort,
+			workers,
+		});
+	}
 
 	serve(
 		{
