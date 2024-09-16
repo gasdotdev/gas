@@ -220,7 +220,8 @@ export class Resources {
 	}
 
 	private async setNameToIndexFilePath(): Promise<void> {
-		const indexFilePathPattern = /^index\.[^.]+\.[^.]+\.[^.]+\.ts$/;
+		const indexFilePathPattern =
+			/^index\.[^.]+\.[^.]+\.[^.]+\.[^.]+\.[^.]+\.ts$/;
 
 		const processSubdirPromises = this.containerSubdirPaths.map(
 			async (subdirPath) => {
