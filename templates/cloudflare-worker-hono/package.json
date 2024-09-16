@@ -5,7 +5,10 @@
 	"type": "module",
 	"main": "./src/index.entity-group.entity.descriptor.ts",
 	"types": "./src/index.entity-group.entity.descriptor.ts",
-	"scripts": {},
+	"scripts": {
+		"build": "esbuild src/index.entity-group.entity.descriptor.ts --platform=browser --bundle --outfile=build/src/index.entity-group.entity.descriptor.js --sourcemap --format=esm --minify",
+		"dev": "esbuild src/index.entity-group.entity.descriptor.ts --platform=browser --bundle --outfile=build/src/index.entity-group.entity.descriptor.js --sourcemap --format=esm --watch"
+	},
 	"dependencies": {
 		"@gasdotdev/resources": "file:../../../gas/packages/resources",
 		"hono": "^4.5.11"
