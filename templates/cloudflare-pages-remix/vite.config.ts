@@ -5,7 +5,10 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
 	plugins: [
-		cloudflareRemixDevPlugin(),
+		cloudflareRemixDevPlugin(
+			Number(process.env.GAS_DEV_SERVER_PORT),
+			Number(process.env.GAS_WEB_APP_PAGES_PORT),
+		),
 		remix({
 			appDirectory: "src/app",
 			future: {
@@ -16,4 +19,7 @@ export default defineConfig({
 		}),
 		tsconfigPaths(),
 	],
+	server: {
+		port: Number(process.env.GAS_WEB_APP_PAGES_PORT),
+	},
 });
