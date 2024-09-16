@@ -8,9 +8,16 @@ import { downloadTemplate } from "giget";
 import { loadFile, writeFile } from "magicast";
 import { Config } from "../modules/config.js";
 import {
-	ResourceTemplates,
 	type ResourceTemplatesSelectPromptListItems,
+	getResourceTemplateSelectPromptListItems,
+	setResourceTemplates,
 } from "../modules/resource-templates.js";
+import {
+	setResource,
+	setResourceCamelCaseName,
+	setResourceKebabCaseName,
+	setResourceUpperSnakeCaseName,
+} from "../modules/resource.js";
 import { Resources } from "../modules/resources.js";
 
 type State =
@@ -98,19 +105,6 @@ async function runSelectAnyResourcePrompt() {
 	});
 }
 
-function resourceIdToCamelCase(id: string): string {
-	return id
-		.split("-")
-		.map((part, index) =>
-			index === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1),
-		)
-		.join("");
-}
-
-function resourceIdToUpperSnakeCase(id: string): string {
-	return id.replace(/-/g, "_").toUpperCase();
-}
-
 async function runConfirmInstallPackagesPrompt() {
 	return await confirm({
 		message: "Install packages?",
@@ -146,7 +140,7 @@ export async function runAdd() {
 
 	let loop = true;
 
-	const resourceTemplates = ResourceTemplates.new();
+	const resourceTemplates = setResourceTemplates();
 
 	while (loop) {
 		switch (state) {
@@ -160,11 +154,13 @@ export async function runAdd() {
 			}
 			case "add-graph.select-entry-resource": {
 				const entryResourceId = await runSelectEntryResourcePrompt(
-					resourceTemplates.getSelectPromptListItems(["api", "web"]),
+					getResourceTemplateSelectPromptListItems(resourceTemplates, [
+						"api",
+						"web",
+					]),
 				);
 
-				const entryResourceTemplate =
-					resourceTemplates.map.get(entryResourceId);
+				const entryResourceTemplate = resourceTemplates[entryResourceId];
 
 				const entryResourceEntityGroup =
 					entryResourceTemplate?.type === "web"
@@ -179,7 +175,9 @@ export async function runAdd() {
 				const apiResourceTemplateId =
 					entryResourceTemplate?.type === "web"
 						? await runSelectApiResourcePrompt(
-								resourceTemplates.getSelectPromptListItems(["api"]),
+								getResourceTemplateSelectPromptListItems(resourceTemplates, [
+									"api",
+								]),
 							)
 						: "";
 
@@ -195,7 +193,9 @@ export async function runAdd() {
 				const dbResourceTemplateId =
 					apiResourceTemplateId && apiResourceTemplateId !== "skip"
 						? await runSelectDbResourcePrompt(
-								resourceTemplates.getSelectPromptListItems(["db"]),
+								getResourceTemplateSelectPromptListItems(resourceTemplates, [
+									"db",
+								]),
 							)
 						: "";
 
@@ -208,7 +208,13 @@ export async function runAdd() {
 					? await runTestLoadPrompt()
 					: "";
 
-				const resourceId = `${entryResourceEntityGroup}-${entryResourceEntity}-${entryResourceTemplate?.descriptor}`;
+				const resource = setResource({
+					entityGroup: entryResourceEntityGroup,
+					entity: entryResourceEntity,
+					cloud: "cloudflare",
+					cloudService: "pages",
+					descriptor: entryResourceTemplate.descriptor,
+				});
 
 				const __filename = fileURLToPath(import.meta.url);
 				const __dirname = dirname(__filename);
@@ -221,9 +227,11 @@ export async function runAdd() {
 					forceClean: true,
 				});
 
+				const resourceKebabCaseName = setResourceKebabCaseName(resource);
+
 				const templateDestinationDir = path.join(
 					config.containerDirPath,
-					resourceId,
+					resourceKebabCaseName,
 				);
 
 				await fs.cp(
@@ -240,7 +248,7 @@ export async function runAdd() {
 				const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
 				const packageJson = JSON.parse(packageJsonContent);
 
-				packageJson.name = resourceId;
+				packageJson.name = resourceKebabCaseName;
 
 				await fs.writeFile(
 					packageJsonPath,
@@ -249,12 +257,21 @@ export async function runAdd() {
 
 				const oldFilePath = path.join(
 					templateDestinationDir,
-					"index.entity-group.entity.descriptor.ts",
+					"index.entity-group.entity.cloud.cloud-service.descriptor.ts",
 				);
-				const newFilePath = path.join(
-					templateDestinationDir,
-					`index.${entryResourceEntityGroup}.${entryResourceEntity}.${entryResourceTemplate?.descriptor}.ts`,
-				);
+
+				const newFileName =
+					// biome-ignore lint/style/useTemplate: <explanation>
+					[
+						"index",
+						entryResourceEntityGroup,
+						entryResourceEntity,
+						entryResourceTemplate.cloud,
+						entryResourceTemplate.cloudService,
+						entryResourceTemplate.descriptor,
+					].join(".") + ".ts";
+
+				const newFilePath = path.join(templateDestinationDir, newFileName);
 
 				await fs.rename(oldFilePath, newFilePath);
 
@@ -262,8 +279,8 @@ export async function runAdd() {
 
 				const ast = mod.exports.$ast;
 
-				mod.exports.entityGroupEntityDescriptor.$args[0].name =
-					resourceIdToUpperSnakeCase(resourceId);
+				mod.exports.entityGroupEntityCloudCloudServiceDescriptor.$args[0].name =
+					setResourceUpperSnakeCaseName(resource);
 
 				// Note: The ast types aren't working correctly. Thus,
 				// @ts-ignore. In a demo, where magicast is used in a
@@ -278,12 +295,12 @@ export async function runAdd() {
 						node.declaration?.type === "VariableDeclaration" &&
 						node.declaration.declarations[0]?.id.type === "Identifier" &&
 						node.declaration.declarations[0].id.name ===
-							"entityGroupEntityDescriptor",
+							"entityGroupEntityCloudCloudServiceDescriptor",
 				);
 
 				if (exportDeclaration?.declaration.declarations[0]) {
 					exportDeclaration.declaration.declarations[0].id.name =
-						resourceIdToCamelCase(resourceId);
+						setResourceCamelCaseName(resource);
 				} else {
 					console.log("export config const not found in the file");
 				}
