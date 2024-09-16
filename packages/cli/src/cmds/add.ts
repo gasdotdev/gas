@@ -211,7 +211,7 @@ export async function runAdd() {
 				const resource = setResource({
 					entityGroup: entryResourceEntityGroup,
 					entity: entryResourceEntity,
-					cloud: "cloudflare",
+					cloud: "cf",
 					cloudService: "pages",
 					descriptor: entryResourceTemplate.descriptor,
 				});
@@ -257,6 +257,7 @@ export async function runAdd() {
 
 				const oldFilePath = path.join(
 					templateDestinationDir,
+					"src",
 					"index.entity-group.entity.cloud.cloud-service.descriptor.ts",
 				);
 
@@ -271,7 +272,11 @@ export async function runAdd() {
 						entryResourceTemplate.descriptor,
 					].join(".") + ".ts";
 
-				const newFilePath = path.join(templateDestinationDir, newFileName);
+				const newFilePath = path.join(
+					templateDestinationDir,
+					"src",
+					newFileName,
+				);
 
 				await fs.rename(oldFilePath, newFilePath);
 
