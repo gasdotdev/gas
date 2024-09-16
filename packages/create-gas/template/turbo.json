@@ -1,5 +1,19 @@
 {
 	"$schema": "https://turborepo.org/schema.json",
-	"tasks": {},
-	"extends": ["//"]
+	"tasks": {
+		"//#dev:setup": {
+			"cache": false,
+			"dependsOn": ["^//#dev:setup"]
+		},
+		"//#dev:start": {
+			"cache": false,
+			"dependsOn": ["//#dev:setup"],
+			"persistent": true
+		},
+		"dev": {
+			"dependsOn": ["//#dev:setup"],
+			"cache": false,
+			"persistent": true
+		}
+	}
 }

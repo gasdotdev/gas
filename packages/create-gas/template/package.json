@@ -2,6 +2,10 @@
 	"name": "@template/new-project-npm",
 	"private": true,
 	"type": "module",
-	"scripts": {},
+	"scripts": {
+		"dev": "turbo dev dev:start",
+		"dev:setup": "gas dev:setup",
+		"dev:start": "gas dev:start"
+	},
 	"workspaces": ["gas/*"]
 }
