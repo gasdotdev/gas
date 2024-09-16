@@ -7,7 +7,7 @@ export default defineConfig({
 	plugins: [
 		cloudflareRemixDevPlugin(
 			Number(process.env.GAS_DEV_SERVER_PORT),
-			Number(process.env.GAS_WEB_APP_PAGES_PORT),
+			Number(process.env.VITE_SERVER_PORT),
 		),
 		remix({
 			appDirectory: "src/app",
@@ -20,6 +20,6 @@ export default defineConfig({
 		tsconfigPaths(),
 	],
 	server: {
-		port: Number(process.env.GAS_WEB_APP_PAGES_PORT),
+		port: Number(process.env.VITE_SERVER_PORT),
 	},
 });

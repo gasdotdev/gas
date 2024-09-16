@@ -312,6 +312,33 @@ export async function runAdd() {
 
 				await writeFile(mod, newFilePath);
 
+				const viteConfigFilePath = path.join(
+					templateDestinationDir,
+					"vite.config.ts",
+				);
+
+				const viteConfigContent = await fs.readFile(
+					viteConfigFilePath,
+					"utf-8",
+				);
+
+				const newEnvVarName = `GAS_${[
+					entryResourceEntityGroup,
+					entryResourceEntity,
+					entryResourceTemplate.cloud,
+					entryResourceTemplate.cloudService,
+					entryResourceTemplate.descriptor,
+				]
+					.join("_")
+					.toUpperCase()}_PORT`;
+
+				const updatedViteConfigContent = viteConfigContent.replace(
+					/process\.env\.VITE_SERVER_PORT/g,
+					`process.env.${newEnvVarName}`,
+				);
+
+				await fs.writeFile(viteConfigFilePath, updatedViteConfigContent);
+
 				loop = false;
 
 				const confirmInstallPackages = await runConfirmInstallPackagesPrompt();
@@ -321,6 +348,7 @@ export async function runAdd() {
 				}
 
 				break;
+				// ... existing code ...
 			}
 			case "add-single.select-any-resource": {
 				const selectedOption = await runSelectAnyResourcePrompt();
