@@ -110,6 +110,7 @@ function setDevManifest({
 		resources: {
 			containerDirPath: resources.containerDirPath,
 			containerSubdirPaths: resources.containerSubdirPaths,
+			resourceList: resources.resourceList,
 			entities: resources.entities,
 			nameToPackageJson: resources.nameToPackageJson,
 			packageJsonNameToName: resources.packageJsonNameToName,

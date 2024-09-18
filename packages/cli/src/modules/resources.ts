@@ -9,6 +9,16 @@ export type ResourceContainerDirPath = string;
 
 export type ResourceContainerSubdirPaths = string[];
 
+export type Resource = {
+	entityGroup: string;
+	entity: string;
+	cloud: string;
+	cloudService: string;
+	descriptor: string;
+};
+
+export type ResourceList = Resource[];
+
 export type ResourceEntityGroups = string[];
 
 export type ResourceEntityNames = string[];
@@ -44,6 +54,7 @@ export type ResourceRunNodeJsConfigScriptResult = Record<
 export type ResourceValues = {
 	containerDirPath: ResourceContainerDirPath;
 	containerSubdirPaths: ResourceContainerSubdirPaths;
+	resourceList: ResourceList;
 	entities: ResourceEntities;
 	nameToPackageJson: ResourceNameToPackageJson;
 	packageJsonNameToName: ResourcePackageJsonNameToName;
@@ -93,6 +104,7 @@ const resourceConfigs: Record<string, (config: ResourceConfig) => any> = {
 export class Resources {
 	public containerDirPath: ResourceContainerDirPath;
 	public containerSubdirPaths: ResourceContainerSubdirPaths;
+	public resourceList: ResourceList = [];
 	public entities: ResourceEntities = { groups: [], names: [] };
 	public nameToPackageJson: ResourceNameToPackageJson = {};
 	public packageJsonNameToName: ResourcePackageJsonNameToName = {};
@@ -111,6 +123,7 @@ export class Resources {
 		const resources = new Resources();
 		resources.containerDirPath = containerDirPath;
 		await resources.setContainerSubdirPaths();
+		resources.setResourceList();
 		resources.setEntities();
 		await resources.setNameToPackageJson();
 		resources.setPackageJsonNameToName();
@@ -129,6 +142,8 @@ export class Resources {
 	public static newFromMemory(data: {
 		containerDirPath: ResourceContainerDirPath;
 		containerSubdirPaths: ResourceContainerSubdirPaths;
+		resourceList: ResourceList;
+		entities: ResourceEntities;
 		nameToPackageJson: ResourceNameToPackageJson;
 		packageJsonNameToName: ResourcePackageJsonNameToName;
 		nameToDeps: ResourceNameToDeps;
@@ -143,6 +158,8 @@ export class Resources {
 		const resources = new Resources();
 		resources.containerDirPath = data.containerDirPath;
 		resources.containerSubdirPaths = data.containerSubdirPaths;
+		resources.resourceList = data.resourceList;
+		resources.entities = data.entities;
 		resources.nameToPackageJson = data.nameToPackageJson;
 		resources.packageJsonNameToName = data.packageJsonNameToName;
 		resources.nameToDeps = data.nameToDeps;
@@ -171,6 +188,20 @@ export class Resources {
 			throw new Error(
 				`Unable to read resource container dir ${this.containerDirPath}: ${(err as Error).message}`,
 			);
+		}
+	}
+
+	private setResourceList(): void {
+		for (const subdirPath of this.containerSubdirPaths) {
+			const subdirName = path.basename(subdirPath);
+			const subdirNameParts = subdirName.split("-");
+			this.resourceList.push({
+				entityGroup: subdirNameParts[0],
+				entity: subdirNameParts[1],
+				cloud: subdirNameParts[2],
+				cloudService: subdirNameParts[3],
+				descriptor: subdirNameParts[4],
+			});
 		}
 	}
 
@@ -479,14 +510,6 @@ export class Resources {
 		return { ...this.nameToConfig };
 	}
 }
-
-export type Resource = {
-	entityGroup: string;
-	entity: string;
-	cloud: string;
-	cloudService: string;
-	descriptor: string;
-};
 
 export function setResource(input: Resource): Resource {
 	return {
