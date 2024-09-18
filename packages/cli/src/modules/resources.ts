@@ -71,7 +71,7 @@ export async function setResources(
 	containerDirPath: ResourceContainerDirPath,
 ): Promise<Resources> {
 	const containerSubdirPaths = await setContainerSubdirPaths(containerDirPath);
-	const list = setResourceList(containerSubdirPaths);
+	const list = setList(containerSubdirPaths);
 	const nameToPackageJson = await setNameToPackageJson(containerSubdirPaths);
 	const packageJsonNameToName = setPackageJsonNameToName(nameToPackageJson);
 	const nameToDeps = setNameToDeps(nameToPackageJson, packageJsonNameToName);
@@ -130,7 +130,7 @@ async function setContainerSubdirPaths(
 	}
 }
 
-function setResourceList(
+function setList(
 	containerSubdirPaths: ResourceContainerSubdirPaths,
 ): ResourceList {
 	return containerSubdirPaths.map((subdirPath) => {
