@@ -6,44 +6,35 @@ interface ConfigJson {
 	[key: string]: any;
 }
 
-export class Config {
-	private json: ConfigJson;
-	public containerDirPath: string;
+export interface Config {
+	containerDirPath: string;
+}
 
-	private constructor() {
-		this.json = {};
-		this.containerDirPath = "";
-	}
+export async function setConfig(): Promise<Config> {
+	const json = await setJson();
+	const containerDirPath = setContainerDirPath(json);
+	return { containerDirPath };
+}
 
-	public static async new(): Promise<Config> {
-		const config = new Config();
-		await config.setJson();
-		config.setContainerDirPath();
-		return config;
-	}
+async function setJson(): Promise<ConfigJson> {
+	const configPath = "gas.config.json";
 
-	private async setJson(): Promise<void> {
-		const configPath = "gas.config.json";
-
-		try {
-			const data = await fs.readFile(configPath, "utf8");
-			this.json = JSON.parse(data) as ConfigJson;
-		} catch (err) {
-			if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-				this.json = {};
-			} else {
-				throw new Error(
-					`Failed to read gas.config.json: ${(err as Error).message}`,
-				);
-			}
+	try {
+		const data = await fs.readFile(configPath, "utf8");
+		return JSON.parse(data) as ConfigJson;
+	} catch (err) {
+		if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+			return {};
 		}
+		throw new Error(
+			`Failed to read gas.config.json: ${(err as Error).message}`,
+		);
 	}
+}
 
-	private setContainerDirPath(): void {
-		if (typeof this.json.resourceContainerDirPath === "string") {
-			this.containerDirPath = this.json.resourceContainerDirPath;
-		} else {
-			this.containerDirPath = "./gas";
-		}
+function setContainerDirPath(json: ConfigJson): string {
+	if (typeof json.resourceContainerDirPath === "string") {
+		return json.resourceContainerDirPath;
 	}
+	return "./gas";
 }

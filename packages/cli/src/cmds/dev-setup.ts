@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import http from "node:http";
 import path, { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Config } from "../modules/config.js";
+import { setConfig } from "../modules/config.js";
 import {
 	type ResourceNameToConfigData,
 	type Resources,
@@ -129,7 +129,7 @@ function setDevManifest({
 }
 
 export async function runDevSetup(): Promise<void> {
-	const config = await Config.new();
+	const config = await setConfig();
 
 	const resources = await setResources(config.containerDirPath);
 

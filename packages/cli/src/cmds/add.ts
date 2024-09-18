@@ -6,7 +6,7 @@ import util from "node:util";
 import { confirm, input, select } from "@inquirer/prompts";
 import { downloadTemplate } from "giget";
 import { loadFile, writeFile } from "magicast";
-import { Config } from "../modules/config.js";
+import { type Config, setConfig } from "../modules/config.js";
 import {
 	type ResourceTemplates,
 	type ResourceTemplatesSelectPromptListItems,
@@ -438,7 +438,7 @@ async function existingGraph() {
 export async function runAdd() {
 	let state: State = "select-which";
 
-	const config = await Config.new();
+	const config = await setConfig();
 
 	const resources = await setResources(config.containerDirPath);
 
