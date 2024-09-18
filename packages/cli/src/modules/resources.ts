@@ -19,15 +19,6 @@ export type Resource = {
 
 export type ResourceList = Resource[];
 
-export type ResourceEntityGroups = string[];
-
-export type ResourceEntityNames = string[];
-
-export type ResourceEntities = {
-	groups: ResourceEntityGroups;
-	names: ResourceEntityNames;
-};
-
 export type ResourceNameToPackageJson = Record<string, PackageJson>;
 
 export type ResourcePackageJsonNameToName = Record<string, string>;
@@ -54,8 +45,7 @@ export type ResourceRunNodeJsConfigScriptResult = Record<
 export type ResourceValues = {
 	containerDirPath: ResourceContainerDirPath;
 	containerSubdirPaths: ResourceContainerSubdirPaths;
-	resourceList: ResourceList;
-	entities: ResourceEntities;
+	list: ResourceList;
 	nameToPackageJson: ResourceNameToPackageJson;
 	packageJsonNameToName: ResourcePackageJsonNameToName;
 	nameToDeps: ResourceNameToDeps;
@@ -104,8 +94,7 @@ const resourceConfigs: Record<string, (config: ResourceConfig) => any> = {
 export class Resources {
 	public containerDirPath: ResourceContainerDirPath;
 	public containerSubdirPaths: ResourceContainerSubdirPaths;
-	public resourceList: ResourceList = [];
-	public entities: ResourceEntities = { groups: [], names: [] };
+	public list: ResourceList = [];
 	public nameToPackageJson: ResourceNameToPackageJson = {};
 	public packageJsonNameToName: ResourcePackageJsonNameToName = {};
 	public nameToDeps: ResourceNameToDeps = {};
@@ -124,7 +113,6 @@ export class Resources {
 		resources.containerDirPath = containerDirPath;
 		await resources.setContainerSubdirPaths();
 		resources.setResourceList();
-		resources.setEntities();
 		await resources.setNameToPackageJson();
 		resources.setPackageJsonNameToName();
 		resources.setNameToDeps();
@@ -143,7 +131,6 @@ export class Resources {
 		containerDirPath: ResourceContainerDirPath;
 		containerSubdirPaths: ResourceContainerSubdirPaths;
 		resourceList: ResourceList;
-		entities: ResourceEntities;
 		nameToPackageJson: ResourceNameToPackageJson;
 		packageJsonNameToName: ResourcePackageJsonNameToName;
 		nameToDeps: ResourceNameToDeps;
@@ -158,8 +145,7 @@ export class Resources {
 		const resources = new Resources();
 		resources.containerDirPath = data.containerDirPath;
 		resources.containerSubdirPaths = data.containerSubdirPaths;
-		resources.resourceList = data.resourceList;
-		resources.entities = data.entities;
+		resources.list = data.resourceList;
 		resources.nameToPackageJson = data.nameToPackageJson;
 		resources.packageJsonNameToName = data.packageJsonNameToName;
 		resources.nameToDeps = data.nameToDeps;
@@ -195,22 +181,13 @@ export class Resources {
 		for (const subdirPath of this.containerSubdirPaths) {
 			const subdirName = path.basename(subdirPath);
 			const subdirNameParts = subdirName.split("-");
-			this.resourceList.push({
+			this.list.push({
 				entityGroup: subdirNameParts[0],
 				entity: subdirNameParts[1],
 				cloud: subdirNameParts[2],
 				cloudService: subdirNameParts[3],
 				descriptor: subdirNameParts[4],
 			});
-		}
-	}
-
-	private setEntities(): void {
-		for (const subdirPath of this.containerSubdirPaths) {
-			const subdirName = path.basename(subdirPath);
-			const subdirNameParts = subdirName.split("-");
-			this.entities.groups.push(subdirNameParts[0]);
-			this.entities.names.push(subdirNameParts[1]);
 		}
 	}
 
@@ -549,4 +526,44 @@ export function setResourceUpperSnakeCaseName(resource: Resource): string {
 	]
 		.map((part) => part.toUpperCase())
 		.join("_");
+}
+
+export type ResourceEntityGroups = string[];
+
+export function setResourceEntityGroups(
+	resourceList: ResourceList,
+	descriptorFilters?: string[],
+): ResourceEntityGroups {
+	const entityGroupSet = new Set<string>();
+	for (const resource of resourceList) {
+		if (
+			(!descriptorFilters ||
+				descriptorFilters.length === 0 ||
+				descriptorFilters.includes(resource.descriptor)) &&
+			!entityGroupSet.has(resource.entityGroup)
+		) {
+			entityGroupSet.add(resource.entityGroup);
+		}
+	}
+	return Array.from(entityGroupSet);
+}
+
+export type ResourceEntities = string[];
+
+export function setResourceEntities(
+	resourceList: ResourceList,
+	descriptorFilters?: string[],
+): ResourceEntities {
+	const entitySet = new Set<string>();
+	for (const resource of resourceList) {
+		if (
+			(!descriptorFilters ||
+				descriptorFilters.length === 0 ||
+				descriptorFilters.includes(resource.descriptor)) &&
+			!entitySet.has(resource.entity)
+		) {
+			entitySet.add(resource.entity);
+		}
+	}
+	return Array.from(entitySet);
 }

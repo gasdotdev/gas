@@ -15,11 +15,13 @@ import {
 } from "../modules/resource-templates.js";
 import {
 	type Resource,
+	type ResourceEntities,
 	type ResourceEntityGroups,
-	type ResourceEntityNames,
 	Resources,
 	setResource,
 	setResourceCamelCaseName,
+	setResourceEntities,
+	setResourceEntityGroups,
 	setResourceKebabCaseName,
 	setResourceUpperSnakeCaseName,
 } from "../modules/resources.js";
@@ -58,16 +60,19 @@ async function runSelectApiResourcePrompt(
 }
 
 async function runSelectApiEntityGroupPrompt(
-	resourceEntityGroups: ResourceEntityGroups,
+	apiResourceEntityGroups: ResourceEntityGroups,
 ) {
-	const choices = [];
+	const choices: { name: string; value: string }[] = [];
 
-	const nonWebEntityGroups = resourceEntityGroups
-		.filter((group) => group !== "web")
-		.map((group) => ({ name: group, value: group }));
+	const apiResourceEntityGroupChoices = apiResourceEntityGroups.map(
+		(group) => ({
+			name: group,
+			value: group,
+		}),
+	);
 
-	if (nonWebEntityGroups.length > 0) {
-		choices.push(...nonWebEntityGroups);
+	if (apiResourceEntityGroupChoices.length > 0) {
+		choices.push(...apiResourceEntityGroupChoices);
 		choices.push({ name: "create new", value: "new" });
 	} else {
 		choices.push({
@@ -83,18 +88,16 @@ async function runSelectApiEntityGroupPrompt(
 	});
 }
 
-async function runSelectApiEntityPrompt(
-	resourceEntityNames: ResourceEntityNames,
-) {
+async function runSelectApiEntityPrompt(resourceEntityNames: ResourceEntities) {
 	const choices = [];
 
-	const entities = resourceEntityNames.map((entity) => ({
+	const entityChoices = resourceEntityNames.map((entity) => ({
 		name: entity,
 		value: entity,
 	}));
 
-	if (entities.length > 0) {
-		choices.push(...entities);
+	if (entityChoices.length > 0) {
+		choices.push(...entityChoices);
 		choices.push({ name: "create new", value: "new" });
 	} else {
 		choices.push({ name: "base (suggested)", value: "base" });
@@ -194,7 +197,7 @@ async function newGraph(
 		entryResourceEntityGroup = "web";
 	} else if (entryResourceTemplate.type === "api") {
 		entryResourceEntityGroup = await runSelectApiEntityGroupPrompt(
-			resources.entities.groups,
+			setResourceEntityGroups(resources.list, ["api"]),
 		);
 
 		if (entryResourceEntityGroup === "new") {
@@ -205,7 +208,18 @@ async function newGraph(
 	entryResourceEntityGroup === "web" &&
 		console.log("✔ Entity group set to web");
 
-	const entryResourceEntity = await runInputEntityPrompt();
+	let entryResourceEntity = "";
+	if (entryResourceEntityGroup && entryResourceTemplate.type === "web") {
+		entryResourceEntity = await runInputEntityPrompt();
+	} else if (entryResourceEntityGroup && entryResourceTemplate.type === "api") {
+		entryResourceEntity = await runSelectApiEntityPrompt(
+			setResourceEntities(resources.list, ["api"]),
+		);
+
+		if (entryResourceEntity === "new") {
+			entryResourceEntity = await runInputEntityPrompt();
+		}
+	}
 
 	let apiResourceTemplateId = "";
 	if (entryResourceTemplate.type === "web") {
@@ -221,7 +235,7 @@ async function newGraph(
 	let apiResourceEntityGroup = "";
 	if (apiResourceTemplateId) {
 		apiResourceEntityGroup = await runSelectApiEntityGroupPrompt(
-			resources.entities.groups,
+			setResourceEntityGroups(resources.list, ["api"]),
 		);
 
 		if (apiResourceEntityGroup === "new") {
@@ -232,7 +246,7 @@ async function newGraph(
 	let apiResourceEntity = "";
 	if (apiResourceEntityGroup) {
 		apiResourceEntity = await runSelectApiEntityPrompt(
-			resources.entities.names,
+			setResourceEntities(resources.list, ["api"]),
 		);
 
 		if (apiResourceEntity === "new") {
