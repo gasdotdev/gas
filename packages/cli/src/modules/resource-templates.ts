@@ -1,6 +1,6 @@
 type ResourceTemplateType = "api" | "db" | "web";
 
-type ResourceTemplateItem = {
+export type ResourceTemplate = {
 	name: string;
 	type: ResourceTemplateType;
 	cloud: string;
@@ -8,7 +8,7 @@ type ResourceTemplateItem = {
 	descriptor: string;
 };
 
-type ResourceTemplates = Record<string, ResourceTemplateItem>;
+export type ResourceTemplates = Record<string, ResourceTemplate>;
 
 export function setResourceTemplates(): ResourceTemplates {
 	return {

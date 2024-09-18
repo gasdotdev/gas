@@ -1,6 +1,6 @@
 import { exec as execCallback } from "node:child_process";
 import fs from "node:fs/promises";
-import path, { dirname, join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import util from "node:util";
 import { confirm, input, select } from "@inquirer/prompts";
@@ -8,22 +8,20 @@ import { downloadTemplate } from "giget";
 import { loadFile, writeFile } from "magicast";
 import { Config } from "../modules/config.js";
 import {
+	type ResourceTemplates,
 	type ResourceTemplatesSelectPromptListItems,
 	getResourceTemplateSelectPromptListItems,
 	setResourceTemplates,
 } from "../modules/resource-templates.js";
 import {
+	type Resource,
 	setResource,
 	setResourceCamelCaseName,
 	setResourceKebabCaseName,
 	setResourceUpperSnakeCaseName,
 } from "../modules/resource.js";
 import { Resources } from "../modules/resources.js";
-
-type State =
-	| "select-which"
-	| "add-graph.select-entry-resource"
-	| "add-single.select-any-resource";
+type State = "select-which" | "new-graph" | "existing-graph";
 
 async function runSelectWhichPrompt() {
 	return await select({
@@ -35,7 +33,7 @@ async function runSelectWhichPrompt() {
 	});
 }
 
-async function runSelectEntryResourcePrompt(
+async function runSelectEntryResource(
 	resourceTemplatesSelectPromptListItems: ResourceTemplatesSelectPromptListItems,
 ) {
 	return await select({
@@ -50,7 +48,7 @@ async function runSelectApiResourcePrompt(
 	return await select({
 		message: "Select API resource:",
 		choices: [
-			{ name: "Skip", value: "skip" },
+			{ name: "Skip", value: "" },
 			...resourceTemplatesSelectPromptListItems,
 		],
 	});
@@ -62,13 +60,13 @@ async function runSelectDbResourcePrompt(
 	return await select({
 		message: "Select DB resource:",
 		choices: [
-			{ name: "Skip", value: "skip" },
+			{ name: "Skip", value: "" },
 			...resourceTemplatesSelectPromptListItems,
 		],
 	});
 }
 
-async function runInputEntityGroupPrompt() {
+async function runInputEntityGroup() {
 	return await input({
 		message: "Entity group: (e.g. core)",
 		required: true,
@@ -127,6 +125,224 @@ async function installPackages(): Promise<void> {
 	}
 }
 
+async function newGraph(
+	config: Config,
+	resources: Resources,
+	resourceTemplates: ResourceTemplates,
+) {
+	const entryResourceTemplateId = await runSelectEntryResource(
+		getResourceTemplateSelectPromptListItems(resourceTemplates, ["api", "web"]),
+	);
+
+	const entryResourceTemplate = resourceTemplates[entryResourceTemplateId];
+
+	let entryResourceEntityGroup = "";
+	if (entryResourceTemplate.type === "web") {
+		entryResourceEntityGroup = "web";
+	} else {
+		entryResourceEntityGroup = await runInputEntityGroup();
+	}
+
+	entryResourceEntityGroup === "web" &&
+		console.log("✔ Entity group set to web");
+
+	const entryResourceEntity = await runInputEntityPrompt();
+
+	let apiResourceTemplateId = "";
+	if (entryResourceTemplate.type === "web") {
+		apiResourceTemplateId = await runSelectApiResourcePrompt(
+			getResourceTemplateSelectPromptListItems(resourceTemplates, ["api"]),
+		);
+	}
+
+	const apiResourceTemplate = apiResourceTemplateId
+		? resourceTemplates[apiResourceTemplateId]
+		: undefined;
+
+	let apiResourceEntityGroup = "";
+	if (apiResourceTemplateId) {
+		apiResourceEntityGroup = await runInputEntityGroup();
+	}
+
+	let apiResourceEntity = "";
+	if (apiResourceEntityGroup) {
+		apiResourceEntity = await runInputEntityPrompt();
+	}
+
+	let dbResourceTemplateId = "";
+	if (apiResourceTemplateId) {
+		dbResourceTemplateId = await runSelectDbResourcePrompt(
+			getResourceTemplateSelectPromptListItems(resourceTemplates, ["db"]),
+		);
+	}
+
+	const dbResourceTemplate = dbResourceTemplateId
+		? resourceTemplates[dbResourceTemplateId]
+		: undefined;
+
+	let dbResourceEntityGroup = "";
+	if (dbResourceTemplateId) {
+		dbResourceEntityGroup = await runInputEntityGroup();
+	}
+
+	let dbResourceEntity = "";
+	if (dbResourceEntityGroup) {
+		dbResourceEntity = await runInputEntityPrompt();
+	}
+
+	const entryResource = setResource({
+		entityGroup: entryResourceEntityGroup,
+		entity: entryResourceEntity,
+		cloud: entryResourceTemplate.cloud,
+		cloudService: entryResourceTemplate.cloudService,
+		descriptor: entryResourceTemplate.descriptor,
+	});
+
+	let apiResource: Resource | undefined = undefined;
+	if (apiResourceTemplate) {
+		apiResource = setResource({
+			entityGroup: apiResourceEntityGroup,
+			entity: apiResourceEntity,
+			cloud: apiResourceTemplate.cloud,
+			cloudService: apiResourceTemplate.cloudService,
+			descriptor: apiResourceTemplate.descriptor,
+		});
+	}
+
+	let dbResource: Resource | undefined = undefined;
+	if (dbResourceTemplate) {
+		dbResource = setResource({
+			entityGroup: dbResourceEntityGroup,
+			entity: dbResourceEntity,
+			cloud: dbResourceTemplate.cloud,
+			cloudService: dbResourceTemplate.cloudService,
+			descriptor: dbResourceTemplate.descriptor,
+		});
+	}
+
+	const __filename = fileURLToPath(import.meta.url);
+	const __dirname = dirname(__filename);
+
+	const templateSrc = "github:gasdotdev/gas/templates#master";
+	const templateDir = join(__dirname, "..", "..", ".giget");
+
+	await downloadTemplate(templateSrc, {
+		dir: templateDir,
+		forceClean: true,
+	});
+
+	const processResource = async (resource: Resource, templateId: string) => {
+		const resourceKebabCaseName = setResourceKebabCaseName(resource);
+		const templateDestinationDir = join(
+			config.containerDirPath,
+			resourceKebabCaseName,
+		);
+
+		await fs.cp(join(templateDir, templateId), templateDestinationDir, {
+			recursive: true,
+		});
+
+		const packageJsonPath = join(templateDestinationDir, "package.json");
+		const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
+		const packageJson = JSON.parse(packageJsonContent);
+		packageJson.name = resourceKebabCaseName;
+		await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
+
+		const oldFilePath = join(
+			templateDestinationDir,
+			"src",
+			"index.entity-group.entity.cloud.cloud-service.descriptor.ts",
+		);
+
+		const newFileName =
+			// biome-ignore lint/style/useTemplate: <explanation>
+			[
+				"index",
+				resource.entityGroup,
+				resource.entity,
+				resource.cloud,
+				resource.cloudService,
+				resource.descriptor,
+			].join(".") + ".ts";
+
+		const newFilePath = join(templateDestinationDir, "src", newFileName);
+		await fs.rename(oldFilePath, newFilePath);
+
+		const mod = await loadFile(newFilePath);
+		const ast = mod.exports.$ast;
+
+		mod.exports.entityGroupEntityCloudCloudServiceDescriptor.$args[0].name =
+			setResourceUpperSnakeCaseName(resource);
+
+		// @ts-ignore
+		const exportDeclaration = ast.body.find(
+			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+			(node: any) =>
+				node.type === "ExportNamedDeclaration" &&
+				node.declaration?.type === "VariableDeclaration" &&
+				node.declaration.declarations[0]?.id.type === "Identifier" &&
+				node.declaration.declarations[0].id.name ===
+					"entityGroupEntityCloudCloudServiceDescriptor",
+		);
+
+		if (exportDeclaration?.declaration.declarations[0]) {
+			exportDeclaration.declaration.declarations[0].id.name =
+				setResourceCamelCaseName(resource);
+		} else {
+			console.log("export config const not found in the file");
+		}
+
+		await writeFile(mod, newFilePath);
+	};
+
+	const resourceProcessingPromises = [
+		processResource(entryResource, entryResourceTemplateId),
+		apiResource && apiResourceTemplateId
+			? processResource(apiResource, apiResourceTemplateId)
+			: null,
+		dbResource && dbResourceTemplateId
+			? processResource(dbResource, dbResourceTemplateId)
+			: null,
+	].filter(Boolean);
+
+	await Promise.all(resourceProcessingPromises);
+
+	if (
+		entryResourceTemplate.type === "web" &&
+		entryResourceTemplate.cloud === "cf" &&
+		entryResourceTemplate.cloudService === "pages"
+	) {
+		const viteConfigFilePath = join(
+			config.containerDirPath,
+			setResourceKebabCaseName(entryResource),
+			"vite.config.ts",
+		);
+
+		const viteConfigContent = await fs.readFile(viteConfigFilePath, "utf-8");
+
+		const newEnvVarName = `GAS_${[
+			entryResourceEntityGroup,
+			entryResourceEntity,
+			entryResourceTemplate.cloud,
+			entryResourceTemplate.cloudService,
+			entryResourceTemplate.descriptor,
+		]
+			.join("_")
+			.toUpperCase()}_PORT`;
+
+		const updatedViteConfigContent = viteConfigContent.replace(
+			/process\.env\.VITE_SERVER_PORT/g,
+			`process.env.${newEnvVarName}`,
+		);
+
+		await fs.writeFile(viteConfigFilePath, updatedViteConfigContent);
+	}
+}
+
+async function existingGraph() {
+	//
+}
+
 export async function runAdd() {
 	let state: State = "select-which";
 
@@ -135,225 +351,23 @@ export async function runAdd() {
 	const resources = await Resources.new(config.containerDirPath);
 
 	if (Object.keys(resources.nameToConfig).length === 0) {
-		state = "add-graph.select-entry-resource";
+		state = "new-graph";
 	}
-
-	let loop = true;
 
 	const resourceTemplates = setResourceTemplates();
 
-	while (loop) {
-		switch (state) {
-			case "select-which": {
-				const which = await runSelectWhichPrompt();
-				state =
-					which === "graph"
-						? "add-graph.select-entry-resource"
-						: "add-single.select-any-resource";
-				break;
-			}
-			case "add-graph.select-entry-resource": {
-				const entryResourceId = await runSelectEntryResourcePrompt(
-					getResourceTemplateSelectPromptListItems(resourceTemplates, [
-						"api",
-						"web",
-					]),
-				);
+	const which = await runSelectWhichPrompt();
 
-				const entryResourceTemplate = resourceTemplates[entryResourceId];
+	state = which === "graph" ? "new-graph" : "existing-graph";
 
-				const entryResourceEntityGroup =
-					entryResourceTemplate?.type === "web"
-						? "web"
-						: await runInputEntityGroupPrompt();
-
-				entryResourceEntityGroup === "web" &&
-					console.log("✔ Entity group set to web");
-
-				const entryResourceEntity = await runInputEntityPrompt();
-
-				const apiResourceTemplateId =
-					entryResourceTemplate?.type === "web"
-						? await runSelectApiResourcePrompt(
-								getResourceTemplateSelectPromptListItems(resourceTemplates, [
-									"api",
-								]),
-							)
-						: "";
-
-				const apiResourceEntityGroup =
-					apiResourceTemplateId !== "" && apiResourceTemplateId !== "skip"
-						? await runInputEntityGroupPrompt()
-						: "";
-
-				const apiResourceEntity = apiResourceEntityGroup
-					? await runInputEntityPrompt()
-					: "";
-
-				const dbResourceTemplateId =
-					apiResourceTemplateId && apiResourceTemplateId !== "skip"
-						? await runSelectDbResourcePrompt(
-								getResourceTemplateSelectPromptListItems(resourceTemplates, [
-									"db",
-								]),
-							)
-						: "";
-
-				const dbResourceEntityGroup =
-					dbResourceTemplateId !== "" && dbResourceTemplateId !== "skip"
-						? await runInputEntityGroupPrompt()
-						: "";
-
-				const dbResourceEntity = dbResourceEntityGroup
-					? await runTestLoadPrompt()
-					: "";
-
-				const resource = setResource({
-					entityGroup: entryResourceEntityGroup,
-					entity: entryResourceEntity,
-					cloud: "cf",
-					cloudService: "pages",
-					descriptor: entryResourceTemplate.descriptor,
-				});
-
-				const __filename = fileURLToPath(import.meta.url);
-				const __dirname = dirname(__filename);
-
-				const templateSrc = "github:gasdotdev/gas/templates#master";
-				const templateDir = join(__dirname, "..", "..", ".giget");
-
-				await downloadTemplate(templateSrc, {
-					dir: templateDir,
-					forceClean: true,
-				});
-
-				const resourceKebabCaseName = setResourceKebabCaseName(resource);
-
-				const templateDestinationDir = path.join(
-					config.containerDirPath,
-					resourceKebabCaseName,
-				);
-
-				await fs.cp(
-					path.join(templateDir, "cloudflare-pages-remix"),
-					templateDestinationDir,
-					{ recursive: true },
-				);
-
-				const packageJsonPath = path.join(
-					templateDestinationDir,
-					"package.json",
-				);
-
-				const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
-				const packageJson = JSON.parse(packageJsonContent);
-
-				packageJson.name = resourceKebabCaseName;
-
-				await fs.writeFile(
-					packageJsonPath,
-					JSON.stringify(packageJson, null, 2),
-				);
-
-				const oldFilePath = path.join(
-					templateDestinationDir,
-					"src",
-					"index.entity-group.entity.cloud.cloud-service.descriptor.ts",
-				);
-
-				const newFileName =
-					// biome-ignore lint/style/useTemplate: <explanation>
-					[
-						"index",
-						entryResourceEntityGroup,
-						entryResourceEntity,
-						entryResourceTemplate.cloud,
-						entryResourceTemplate.cloudService,
-						entryResourceTemplate.descriptor,
-					].join(".") + ".ts";
-
-				const newFilePath = path.join(
-					templateDestinationDir,
-					"src",
-					newFileName,
-				);
-
-				await fs.rename(oldFilePath, newFilePath);
-
-				const mod = await loadFile(newFilePath);
-
-				const ast = mod.exports.$ast;
-
-				mod.exports.entityGroupEntityCloudCloudServiceDescriptor.$args[0].name =
-					setResourceUpperSnakeCaseName(resource);
-
-				// Note: The ast types aren't working correctly. Thus,
-				// @ts-ignore. In a demo, where magicast is used in a
-				// plain .js file, and with the same version, ast is
-				// correctly typed as having a body method. The reason
-				// for this discrepancy is unknown.
-				// @ts-ignore
-				const exportDeclaration = ast.body.find(
-					// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-					(node: any) =>
-						node.type === "ExportNamedDeclaration" &&
-						node.declaration?.type === "VariableDeclaration" &&
-						node.declaration.declarations[0]?.id.type === "Identifier" &&
-						node.declaration.declarations[0].id.name ===
-							"entityGroupEntityCloudCloudServiceDescriptor",
-				);
-
-				if (exportDeclaration?.declaration.declarations[0]) {
-					exportDeclaration.declaration.declarations[0].id.name =
-						setResourceCamelCaseName(resource);
-				} else {
-					console.log("export config const not found in the file");
-				}
-
-				await writeFile(mod, newFilePath);
-
-				const viteConfigFilePath = path.join(
-					templateDestinationDir,
-					"vite.config.ts",
-				);
-
-				const viteConfigContent = await fs.readFile(
-					viteConfigFilePath,
-					"utf-8",
-				);
-
-				const newEnvVarName = `GAS_${[
-					entryResourceEntityGroup,
-					entryResourceEntity,
-					entryResourceTemplate.cloud,
-					entryResourceTemplate.cloudService,
-					entryResourceTemplate.descriptor,
-				]
-					.join("_")
-					.toUpperCase()}_PORT`;
-
-				const updatedViteConfigContent = viteConfigContent.replace(
-					/process\.env\.VITE_SERVER_PORT/g,
-					`process.env.${newEnvVarName}`,
-				);
-
-				await fs.writeFile(viteConfigFilePath, updatedViteConfigContent);
-
-				loop = false;
-
-				const confirmInstallPackages = await runConfirmInstallPackagesPrompt();
-
-				if (confirmInstallPackages) {
-					await installPackages();
-				}
-
-				break;
-				// ... existing code ...
-			}
-			case "add-single.select-any-resource": {
-				const selectedOption = await runSelectAnyResourcePrompt();
-				break;
-			}
+	switch (state) {
+		case "new-graph": {
+			await newGraph(config, resources, resourceTemplates);
+			break;
+		}
+		case "existing-graph": {
+			await existingGraph();
+			break;
 		}
 	}
 }

@@ -1,4 +1,4 @@
-type Resource = {
+export type Resource = {
 	entityGroup: string;
 	entity: string;
 	cloud: string;
