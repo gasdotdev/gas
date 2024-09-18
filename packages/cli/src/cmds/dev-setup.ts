@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 import { Config } from "../modules/config.js";
 import {
 	type ResourceNameToConfigData,
-	type ResourceValues,
-	Resources,
+	type Resources,
+	setResources,
 } from "../modules/resources.js";
 
 async function setAvailablePort(startPort: number): Promise<number> {
@@ -89,7 +89,7 @@ async function writeCloudflarePagesResourceDotEnvFiles(
 }
 
 export type DevManifest = {
-	resources: ResourceValues;
+	resources: Resources;
 	devServerPort: number;
 	miniflarePort: number;
 	portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName;
@@ -101,7 +101,7 @@ function setDevManifest({
 	miniflarePort,
 	portToCloudflarePagesResourceName,
 }: {
-	resources: ResourceValues;
+	resources: Resources;
 	devServerPort: number;
 	miniflarePort: number;
 	portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName;
@@ -131,7 +131,7 @@ function setDevManifest({
 export async function runDevSetup(): Promise<void> {
 	const config = await Config.new();
 
-	const resources = await Resources.new(config.containerDirPath);
+	const resources = await setResources(config.containerDirPath);
 
 	const devServerPort = await setAvailablePort(3000);
 

@@ -17,13 +17,14 @@ import {
 	type Resource,
 	type ResourceEntities,
 	type ResourceEntityGroups,
-	Resources,
+	type Resources,
 	setResource,
 	setResourceCamelCaseName,
 	setResourceEntities,
 	setResourceEntityGroups,
 	setResourceKebabCaseName,
 	setResourceUpperSnakeCaseName,
+	setResources,
 } from "../modules/resources.js";
 
 type State = "select-which" | "new-graph" | "existing-graph";
@@ -439,7 +440,7 @@ export async function runAdd() {
 
 	const config = await Config.new();
 
-	const resources = await Resources.new(config.containerDirPath);
+	const resources = await setResources(config.containerDirPath);
 
 	if (Object.keys(resources.nameToConfig).length === 0) {
 		state = "new-graph";

@@ -6,7 +6,10 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { Miniflare } from "miniflare";
 import { z } from "zod";
-import { Resources } from "../modules/resources.js";
+import {
+	type Resources,
+	setResourcesFromMemory,
+} from "../modules/resources.js";
 import type { DevManifest } from "./dev-setup.js";
 
 let mf: Miniflare;
@@ -86,7 +89,7 @@ export async function runDevStart() {
 		await fs.readFile(devManifestJsonPath, "utf-8"),
 	) as DevManifest;
 
-	resources = Resources.newFromMemory(devManifest.resources);
+	resources = setResourcesFromMemory(devManifest.resources);
 
 	mfPort = devManifest.miniflarePort;
 
