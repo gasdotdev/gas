@@ -9,6 +9,15 @@ export type ResourceContainerDirPath = string;
 
 export type ResourceContainerSubdirPaths = string[];
 
+export type ResourceEntityGroups = string[];
+
+export type ResourceEntityNames = string[];
+
+export type ResourceEntities = {
+	groups: ResourceEntityGroups;
+	names: ResourceEntityNames;
+};
+
 export type ResourceNameToPackageJson = Record<string, PackageJson>;
 
 export type ResourcePackageJsonNameToName = Record<string, string>;
@@ -35,6 +44,7 @@ export type ResourceRunNodeJsConfigScriptResult = Record<
 export type ResourceValues = {
 	containerDirPath: ResourceContainerDirPath;
 	containerSubdirPaths: ResourceContainerSubdirPaths;
+	entities: ResourceEntities;
 	nameToPackageJson: ResourceNameToPackageJson;
 	packageJsonNameToName: ResourcePackageJsonNameToName;
 	nameToDeps: ResourceNameToDeps;
@@ -83,6 +93,7 @@ const resourceConfigs: Record<string, (config: ResourceConfig) => any> = {
 export class Resources {
 	public containerDirPath: ResourceContainerDirPath;
 	public containerSubdirPaths: ResourceContainerSubdirPaths;
+	public entities: ResourceEntities = { groups: [], names: [] };
 	public nameToPackageJson: ResourceNameToPackageJson = {};
 	public packageJsonNameToName: ResourcePackageJsonNameToName = {};
 	public nameToDeps: ResourceNameToDeps = {};
@@ -100,6 +111,7 @@ export class Resources {
 		const resources = new Resources();
 		resources.containerDirPath = containerDirPath;
 		await resources.setContainerSubdirPaths();
+		resources.setEntities();
 		await resources.setNameToPackageJson();
 		resources.setPackageJsonNameToName();
 		resources.setNameToDeps();
@@ -159,6 +171,15 @@ export class Resources {
 			throw new Error(
 				`Unable to read resource container dir ${this.containerDirPath}: ${(err as Error).message}`,
 			);
+		}
+	}
+
+	private setEntities(): void {
+		for (const subdirPath of this.containerSubdirPaths) {
+			const subdirName = path.basename(subdirPath);
+			const subdirNameParts = subdirName.split("-");
+			this.entities.groups.push(subdirNameParts[0]);
+			this.entities.names.push(subdirNameParts[1]);
 		}
 	}
 

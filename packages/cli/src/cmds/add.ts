@@ -20,7 +20,12 @@ import {
 	setResourceKebabCaseName,
 	setResourceUpperSnakeCaseName,
 } from "../modules/resource.js";
-import { Resources } from "../modules/resources.js";
+import {
+	type ResourceEntityGroups,
+	type ResourceEntityNames,
+	Resources,
+} from "../modules/resources.js";
+
 type State = "select-which" | "new-graph" | "existing-graph";
 
 async function runSelectWhichPrompt() {
@@ -33,7 +38,7 @@ async function runSelectWhichPrompt() {
 	});
 }
 
-async function runSelectEntryResource(
+async function runSelectEntryResourcePrompt(
 	resourceTemplatesSelectPromptListItems: ResourceTemplatesSelectPromptListItems,
 ) {
 	return await select({
@@ -54,6 +59,56 @@ async function runSelectApiResourcePrompt(
 	});
 }
 
+async function runSelectApiEntityGroupPrompt(
+	resourceEntityGroups: ResourceEntityGroups,
+) {
+	const choices = [];
+
+	const nonWebEntityGroups = resourceEntityGroups
+		.filter((group) => group !== "web")
+		.map((group) => ({ name: group, value: group }));
+
+	if (nonWebEntityGroups.length > 0) {
+		choices.push(...nonWebEntityGroups);
+		choices.push({ name: "create new", value: "new" });
+	} else {
+		choices.push({
+			name: "core (suggested)",
+			value: "core",
+		});
+		choices.push({ name: "create new", value: "new" });
+	}
+
+	return await select({
+		message: "Select API entity group:",
+		choices,
+	});
+}
+
+async function runSelectApiEntityPrompt(
+	resourceEntityNames: ResourceEntityNames,
+) {
+	const choices = [];
+
+	const entities = resourceEntityNames.map((entity) => ({
+		name: entity,
+		value: entity,
+	}));
+
+	if (entities.length > 0) {
+		choices.push(...entities);
+		choices.push({ name: "create new", value: "new" });
+	} else {
+		choices.push({ name: "base (suggested)", value: "base" });
+		choices.push({ name: "create new", value: "new" });
+	}
+
+	return await select({
+		message: "Select API entity:",
+		choices,
+	});
+}
+
 async function runSelectDbResourcePrompt(
 	resourceTemplatesSelectPromptListItems: ResourceTemplatesSelectPromptListItems,
 ) {
@@ -66,9 +121,9 @@ async function runSelectDbResourcePrompt(
 	});
 }
 
-async function runInputEntityGroup() {
+async function runInputEntityGroupPrompt() {
 	return await input({
-		message: "Entity group: (e.g. core)",
+		message: "Entity group:",
 		required: true,
 	});
 }
@@ -130,7 +185,7 @@ async function newGraph(
 	resources: Resources,
 	resourceTemplates: ResourceTemplates,
 ) {
-	const entryResourceTemplateId = await runSelectEntryResource(
+	const entryResourceTemplateId = await runSelectEntryResourcePrompt(
 		getResourceTemplateSelectPromptListItems(resourceTemplates, ["api", "web"]),
 	);
 
@@ -139,8 +194,14 @@ async function newGraph(
 	let entryResourceEntityGroup = "";
 	if (entryResourceTemplate.type === "web") {
 		entryResourceEntityGroup = "web";
-	} else {
-		entryResourceEntityGroup = await runInputEntityGroup();
+	} else if (entryResourceTemplate.type === "api") {
+		entryResourceEntityGroup = await runSelectApiEntityGroupPrompt(
+			resources.entities.groups,
+		);
+
+		if (entryResourceEntityGroup === "new") {
+			entryResourceEntityGroup = await runInputEntityGroupPrompt();
+		}
 	}
 
 	entryResourceEntityGroup === "web" &&
@@ -161,12 +222,24 @@ async function newGraph(
 
 	let apiResourceEntityGroup = "";
 	if (apiResourceTemplateId) {
-		apiResourceEntityGroup = await runInputEntityGroup();
+		apiResourceEntityGroup = await runSelectApiEntityGroupPrompt(
+			resources.entities.groups,
+		);
+
+		if (apiResourceEntityGroup === "new") {
+			apiResourceEntityGroup = await runInputEntityGroupPrompt();
+		}
 	}
 
 	let apiResourceEntity = "";
 	if (apiResourceEntityGroup) {
-		apiResourceEntity = await runInputEntityPrompt();
+		apiResourceEntity = await runSelectApiEntityPrompt(
+			resources.entities.names,
+		);
+
+		if (apiResourceEntity === "new") {
+			apiResourceEntity = await runInputEntityPrompt();
+		}
 	}
 
 	let dbResourceTemplateId = "";
@@ -182,7 +255,7 @@ async function newGraph(
 
 	let dbResourceEntityGroup = "";
 	if (dbResourceTemplateId) {
-		dbResourceEntityGroup = await runInputEntityGroup();
+		dbResourceEntityGroup = await runInputEntityGroupPrompt();
 	}
 
 	let dbResourceEntity = "";
