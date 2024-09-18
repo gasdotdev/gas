@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { Graph, type GraphGroupToDepthToNodes } from "./graph.js";
+import { type GraphGroupToDepthToNodes, setGraph } from "./graph.js";
 
 type PackageJson = Record<string, unknown>;
 
@@ -85,7 +85,7 @@ export async function setResources(
 		nameToIndexFilePath,
 	);
 
-	const graph = Graph.new(nameToDeps);
+	const graph = setGraph(nameToDeps);
 	const nodeJsConfigScript = setNodeJsConfigScript(
 		nameToConfigData,
 		graph.groupToDepthToNodes,
