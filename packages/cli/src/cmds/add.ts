@@ -103,7 +103,7 @@ async function runSelectAnyResourcePrompt() {
 	});
 }
 
-async function runConfirmInstallPackagesPrompt() {
+async function runConfirmInstallPackages() {
 	return await confirm({
 		message: "Install packages?",
 	});
@@ -336,6 +336,12 @@ async function newGraph(
 		);
 
 		await fs.writeFile(viteConfigFilePath, updatedViteConfigContent);
+	}
+
+	const confirmInstallPackages = await runConfirmInstallPackages();
+
+	if (confirmInstallPackages) {
+		await installPackages();
 	}
 }
 
