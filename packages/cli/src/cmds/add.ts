@@ -15,15 +15,13 @@ import {
 } from "../modules/resource-templates.js";
 import {
 	type Resource,
+	type ResourceEntityGroups,
+	type ResourceEntityNames,
+	Resources,
 	setResource,
 	setResourceCamelCaseName,
 	setResourceKebabCaseName,
 	setResourceUpperSnakeCaseName,
-} from "../modules/resource.js";
-import {
-	type ResourceEntityGroups,
-	type ResourceEntityNames,
-	Resources,
 } from "../modules/resources.js";
 
 type State = "select-which" | "new-graph" | "existing-graph";
