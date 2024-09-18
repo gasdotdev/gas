@@ -10,7 +10,7 @@ import { Config } from "../modules/config.js";
 import {
 	type ResourceTemplates,
 	type ResourceTemplatesSelectPromptListItems,
-	getResourceTemplateSelectPromptListItems,
+	setResourceTemplateSelectPromptListItems,
 	setResourceTemplates,
 } from "../modules/resource-templates.js";
 import {
@@ -188,7 +188,7 @@ async function newGraph(
 	resourceTemplates: ResourceTemplates,
 ) {
 	const entryResourceTemplateId = await runSelectEntryResourcePrompt(
-		getResourceTemplateSelectPromptListItems(resourceTemplates, ["api", "web"]),
+		setResourceTemplateSelectPromptListItems(resourceTemplates, ["api", "web"]),
 	);
 
 	const entryResourceTemplate = resourceTemplates[entryResourceTemplateId];
@@ -225,7 +225,7 @@ async function newGraph(
 	let apiResourceTemplateId = "";
 	if (entryResourceTemplate.type === "web") {
 		apiResourceTemplateId = await runSelectApiResourcePrompt(
-			getResourceTemplateSelectPromptListItems(resourceTemplates, ["api"]),
+			setResourceTemplateSelectPromptListItems(resourceTemplates, ["api"]),
 		);
 	}
 
@@ -258,7 +258,7 @@ async function newGraph(
 	let dbResourceTemplateId = "";
 	if (apiResourceTemplateId) {
 		dbResourceTemplateId = await runSelectDbResourcePrompt(
-			getResourceTemplateSelectPromptListItems(resourceTemplates, ["db"]),
+			setResourceTemplateSelectPromptListItems(resourceTemplates, ["db"]),
 		);
 	}
 
