@@ -18,11 +18,11 @@ const resourceTemplates: ResourceTemplates = {
 		cloudService: "pages",
 		descriptor: "ssr",
 	},
-	"cloudflare-workers-hono": {
-		name: "Cloudflare Workers + Hono",
+	"cloudflare-worker-hono": {
+		name: "Cloudflare Worker + Hono",
 		type: "api",
 		cloud: "cf",
-		cloudService: "workers",
+		cloudService: "worker",
 		descriptor: "api",
 	},
 	"cloudflare-d1": {
