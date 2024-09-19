@@ -8,15 +8,13 @@ import { downloadTemplate } from "giget";
 import { loadFile, writeFile } from "magicast";
 import { type Config, setConfig } from "../modules/config.js";
 import {
+	type ResourceTemplateType,
 	type ResourceTemplates,
-	type ResourceTemplatesSelectPromptListItems,
-	setResourceTemplateSelectPromptListItems,
 	setResourceTemplates,
 } from "../modules/resource-templates.js";
 import {
 	type Resource,
-	type ResourceEntities,
-	type ResourceEntityGroups,
+	type ResourceList,
 	type Resources,
 	setResource,
 	setResourceCamelCaseName,
@@ -39,31 +37,43 @@ async function runSelectWhichPrompt() {
 	});
 }
 
+export type ResourceTemplatesSelectPromptListItems = {
+	name: string;
+	value: string;
+}[];
+
+export const setResourceTemplateSelectPromptListItems = (
+	record: ResourceTemplates,
+	types?: ResourceTemplateType[],
+): ResourceTemplatesSelectPromptListItems => {
+	const entries = Object.entries(record);
+	return types
+		? entries
+				.filter(([_, value]) => types.includes(value.type))
+				.map(([key, value]) => ({ name: value.name, value: key }))
+		: entries.map(([key, value]) => ({ name: value.name, value: key }));
+};
+
 async function runSelectEntryResourcePrompt(
-	resourceTemplatesSelectPromptListItems: ResourceTemplatesSelectPromptListItems,
+	resourceTemplates: ResourceTemplates,
 ) {
+	const choices = setResourceTemplateSelectPromptListItems(resourceTemplates, [
+		"api",
+		"web",
+	]);
+
 	return await select({
 		message: "Select entry resource:",
-		choices: resourceTemplatesSelectPromptListItems,
+		choices,
 	});
 }
 
-async function runSelectApiResourcePrompt(
-	resourceTemplatesSelectPromptListItems: ResourceTemplatesSelectPromptListItems,
-) {
-	return await select({
-		message: "Select API resource:",
-		choices: [
-			{ name: "Skip", value: "" },
-			...resourceTemplatesSelectPromptListItems,
-		],
-	});
-}
-
-async function runSelectApiEntityGroupPrompt(
-	apiResourceEntityGroups: ResourceEntityGroups,
-) {
+async function runSelectApiEntityGroupPrompt(resourceList: ResourceList) {
 	const choices: { name: string; value: string }[] = [];
+
+	const apiResourceEntityGroups = setResourceEntityGroups(resourceList, [
+		"api",
+	]);
 
 	const apiResourceEntityGroupChoices = apiResourceEntityGroups.map(
 		(group) => ({
@@ -74,13 +84,13 @@ async function runSelectApiEntityGroupPrompt(
 
 	if (apiResourceEntityGroupChoices.length > 0) {
 		choices.push(...apiResourceEntityGroupChoices);
-		choices.push({ name: "create new", value: "new" });
+		choices.push({ name: "Create new", value: "new" });
 	} else {
 		choices.push({
-			name: "core (suggested)",
+			name: "Core (suggested)",
 			value: "core",
 		});
-		choices.push({ name: "create new", value: "new" });
+		choices.push({ name: "Create new", value: "new" });
 	}
 
 	return await select({
@@ -89,20 +99,36 @@ async function runSelectApiEntityGroupPrompt(
 	});
 }
 
-async function runSelectApiEntityPrompt(resourceEntityNames: ResourceEntities) {
+async function runInputApiEntityGroupPrompt() {
+	return await input({
+		message: "Enter API entity group:",
+		required: true,
+	});
+}
+
+async function runInputWebEntityPrompt() {
+	return await input({
+		message: "Enter web resource entity: (e.g. app, dash, landing)",
+		required: true,
+	});
+}
+
+async function runSelectApiEntityPrompt(resourceList: ResourceList) {
 	const choices = [];
 
-	const entityChoices = resourceEntityNames.map((entity) => ({
+	const resourceEntities = setResourceEntities(resourceList, ["api"]);
+
+	const entityChoices = resourceEntities.map((entity) => ({
 		name: entity,
 		value: entity,
 	}));
 
 	if (entityChoices.length > 0) {
 		choices.push(...entityChoices);
-		choices.push({ name: "create new", value: "new" });
+		choices.push({ name: "Create new", value: "new" });
 	} else {
-		choices.push({ name: "base (suggested)", value: "base" });
-		choices.push({ name: "create new", value: "new" });
+		choices.push({ name: "Base (suggested)", value: "base" });
+		choices.push({ name: "Create new", value: "new" });
 	}
 
 	return await select({
@@ -111,15 +137,42 @@ async function runSelectApiEntityPrompt(resourceEntityNames: ResourceEntities) {
 	});
 }
 
-async function runSelectDbResourcePrompt(
-	resourceTemplatesSelectPromptListItems: ResourceTemplatesSelectPromptListItems,
+async function runInputApiEntityPrompt() {
+	return await input({
+		message: "Enter API entity:",
+		required: true,
+	});
+}
+
+async function runSelectApiResourcePrompt(
+	resourceTemplates: ResourceTemplates,
 ) {
+	const resourceTemplatesSelectPromptListItems =
+		setResourceTemplateSelectPromptListItems(resourceTemplates, ["api"]);
+
+	const choices = [
+		{ name: "Skip", value: "" },
+		...resourceTemplatesSelectPromptListItems,
+	];
+
+	return await select({
+		message: "Select API resource:",
+		choices,
+	});
+}
+
+async function runSelectDbResourcePrompt(resourceTemplates: ResourceTemplates) {
+	const resourceTemplatesSelectPromptListItems =
+		setResourceTemplateSelectPromptListItems(resourceTemplates, ["db"]);
+
+	const choices = [
+		{ name: "Skip", value: "" },
+		...resourceTemplatesSelectPromptListItems,
+	];
+
 	return await select({
 		message: "Select DB resource:",
-		choices: [
-			{ name: "Skip", value: "" },
-			...resourceTemplatesSelectPromptListItems,
-		],
+		choices,
 	});
 }
 
@@ -132,31 +185,8 @@ async function runInputEntityGroupPrompt() {
 
 async function runInputEntityPrompt() {
 	return await input({
-		message: "Entity: (e.g. app, dash, landing)",
+		message: "Entity:",
 		required: true,
-	});
-}
-
-async function runTestLoadPrompt() {
-	return await input({
-		message: "test",
-		required: true,
-		validate: () => {
-			return new Promise((resolve) => {
-				setTimeout(() => {
-					resolve(true);
-				}, 1000);
-			});
-		},
-	});
-}
-
-async function runSelectAnyResourcePrompt() {
-	return await select({
-		message: "Select resource",
-		choices: [
-			{ name: "Cloudflare Pages + Remix", value: "cloudflare-pages-remix" },
-		],
 	});
 }
 
@@ -187,22 +217,22 @@ async function newGraph(
 	resources: Resources,
 	resourceTemplates: ResourceTemplates,
 ) {
-	const entryResourceTemplateId = await runSelectEntryResourcePrompt(
-		setResourceTemplateSelectPromptListItems(resourceTemplates, ["api", "web"]),
-	);
+	const entryResourceTemplateId =
+		await runSelectEntryResourcePrompt(resourceTemplates);
 
 	const entryResourceTemplate = resourceTemplates[entryResourceTemplateId];
 
 	let entryResourceEntityGroup = "";
+
 	if (entryResourceTemplate.type === "web") {
 		entryResourceEntityGroup = "web";
 	} else if (entryResourceTemplate.type === "api") {
 		entryResourceEntityGroup = await runSelectApiEntityGroupPrompt(
-			setResourceEntityGroups(resources.list, ["api"]),
+			resources.list,
 		);
 
 		if (entryResourceEntityGroup === "new") {
-			entryResourceEntityGroup = await runInputEntityGroupPrompt();
+			entryResourceEntityGroup = await runInputApiEntityGroupPrompt();
 		}
 	}
 
@@ -210,23 +240,21 @@ async function newGraph(
 		console.log("✔ Entity group set to web");
 
 	let entryResourceEntity = "";
+
 	if (entryResourceEntityGroup && entryResourceTemplate.type === "web") {
-		entryResourceEntity = await runInputEntityPrompt();
+		entryResourceEntity = await runInputWebEntityPrompt();
 	} else if (entryResourceEntityGroup && entryResourceTemplate.type === "api") {
-		entryResourceEntity = await runSelectApiEntityPrompt(
-			setResourceEntities(resources.list, ["api"]),
-		);
+		entryResourceEntity = await runSelectApiEntityPrompt(resources.list);
 
 		if (entryResourceEntity === "new") {
-			entryResourceEntity = await runInputEntityPrompt();
+			entryResourceEntity = await runInputApiEntityPrompt();
 		}
 	}
 
 	let apiResourceTemplateId = "";
+
 	if (entryResourceTemplate.type === "web") {
-		apiResourceTemplateId = await runSelectApiResourcePrompt(
-			setResourceTemplateSelectPromptListItems(resourceTemplates, ["api"]),
-		);
+		apiResourceTemplateId = await runSelectApiResourcePrompt(resourceTemplates);
 	}
 
 	const apiResourceTemplate = apiResourceTemplateId
@@ -236,30 +264,28 @@ async function newGraph(
 	let apiResourceEntityGroup = "";
 	if (apiResourceTemplateId) {
 		apiResourceEntityGroup = await runSelectApiEntityGroupPrompt(
-			setResourceEntityGroups(resources.list, ["api"]),
+			resources.list,
 		);
 
 		if (apiResourceEntityGroup === "new") {
-			apiResourceEntityGroup = await runInputEntityGroupPrompt();
+			apiResourceEntityGroup = await runInputApiEntityGroupPrompt();
 		}
 	}
 
 	let apiResourceEntity = "";
+
 	if (apiResourceEntityGroup) {
-		apiResourceEntity = await runSelectApiEntityPrompt(
-			setResourceEntities(resources.list, ["api"]),
-		);
+		apiResourceEntity = await runSelectApiEntityPrompt(resources.list);
 
 		if (apiResourceEntity === "new") {
-			apiResourceEntity = await runInputEntityPrompt();
+			apiResourceEntity = await runInputApiEntityPrompt();
 		}
 	}
 
 	let dbResourceTemplateId = "";
+
 	if (apiResourceTemplateId) {
-		dbResourceTemplateId = await runSelectDbResourcePrompt(
-			setResourceTemplateSelectPromptListItems(resourceTemplates, ["db"]),
-		);
+		dbResourceTemplateId = await runSelectDbResourcePrompt(resourceTemplates);
 	}
 
 	const dbResourceTemplate = dbResourceTemplateId
@@ -267,11 +293,13 @@ async function newGraph(
 		: undefined;
 
 	let dbResourceEntityGroup = "";
+
 	if (dbResourceTemplateId) {
 		dbResourceEntityGroup = await runInputEntityGroupPrompt();
 	}
 
 	let dbResourceEntity = "";
+
 	if (dbResourceEntityGroup) {
 		dbResourceEntity = await runInputEntityPrompt();
 	}
@@ -285,6 +313,7 @@ async function newGraph(
 	});
 
 	let apiResource: Resource | undefined = undefined;
+
 	if (apiResourceTemplate) {
 		apiResource = setResource({
 			entityGroup: apiResourceEntityGroup,
@@ -296,6 +325,7 @@ async function newGraph(
 	}
 
 	let dbResource: Resource | undefined = undefined;
+
 	if (dbResourceTemplate) {
 		dbResource = setResource({
 			entityGroup: dbResourceEntityGroup,

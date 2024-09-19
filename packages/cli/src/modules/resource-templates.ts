@@ -1,4 +1,4 @@
-type ResourceTemplateType = "api" | "db" | "web";
+export type ResourceTemplateType = "api" | "db" | "web";
 
 export type ResourceTemplate = {
 	name: string;
@@ -35,20 +35,3 @@ const resourceTemplates: ResourceTemplates = {
 };
 
 export const setResourceTemplates = (): ResourceTemplates => resourceTemplates;
-
-export type ResourceTemplatesSelectPromptListItems = {
-	name: string;
-	value: string;
-}[];
-
-export const setResourceTemplateSelectPromptListItems = (
-	record: ResourceTemplates,
-	types?: ResourceTemplateType[],
-): ResourceTemplatesSelectPromptListItems => {
-	const entries = Object.entries(record);
-	return types
-		? entries
-				.filter(([_, value]) => types.includes(value.type))
-				.map(([key, value]) => ({ name: value.name, value: key }))
-		: entries.map(([key, value]) => ({ name: value.name, value: key }));
-};
