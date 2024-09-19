@@ -394,13 +394,6 @@ function setNameToConfig(
 	return { ...runNodeJsConfigScriptResult };
 }
 
-export function getNameToConfig(
-	resources: Resources,
-	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-): Record<string, any> {
-	return { ...resources.nameToConfig };
-}
-
 export function setResource(input: Resource): Resource {
 	return {
 		entityGroup: input.entityGroup.toLowerCase(),
