@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import util from "node:util";
 import { confirm, input, select } from "@inquirer/prompts";
 import { downloadTemplate } from "giget";
-import { loadFile, writeFile } from "magicast";
+import { builders, loadFile, writeFile } from "magicast";
 import { type Config, setConfig } from "../modules/config.js";
 import {
 	type ResourceTemplateType,
@@ -15,6 +15,8 @@ import {
 import {
 	type Resource,
 	type ResourceList,
+	type ResourceNameToDeps,
+	type ResourceNameToIndexFilePath,
 	type Resources,
 	setResource,
 	setResourceCamelCaseName,
@@ -453,6 +455,112 @@ async function newGraph(
 
 		await fs.writeFile(viteConfigFilePath, updatedViteConfigContent);
 	}
+
+	const addedResourceNameToDeps: ResourceNameToDeps = {};
+
+	if (
+		entryResource.cloud === "cf" &&
+		entryResource.cloudService === "pages" &&
+		entryResource.descriptor === "ssr" &&
+		apiResource
+	) {
+		addedResourceNameToDeps[setResourceUpperSnakeCaseName(entryResource)] = [
+			setResourceUpperSnakeCaseName(apiResource),
+		];
+	}
+
+	if (
+		entryResource.cloud === "cf" &&
+		entryResource.cloudService === "workers" &&
+		entryResource.descriptor === "api" &&
+		dbResource
+	) {
+		addedResourceNameToDeps[setResourceUpperSnakeCaseName(entryResource)] = [
+			setResourceUpperSnakeCaseName(dbResource),
+		];
+	}
+
+	if (apiResource && dbResource) {
+		addedResourceNameToDeps[setResourceUpperSnakeCaseName(apiResource)] = [
+			setResourceUpperSnakeCaseName(dbResource),
+		];
+	}
+
+	const addedResourceNameToIndexFilePath: ResourceNameToIndexFilePath = {};
+
+	if (entryResource)
+		addedResourceNameToIndexFilePath[
+			setResourceUpperSnakeCaseName(entryResource)
+		] = join(
+			config.containerDirPath,
+			setResourceKebabCaseName(entryResource),
+			"src",
+			`index.${setResourceKebabCaseName(entryResource).replace(/-/g, ".")}.ts`,
+		);
+
+	if (apiResource)
+		addedResourceNameToIndexFilePath[
+			setResourceUpperSnakeCaseName(apiResource)
+		] = join(
+			config.containerDirPath,
+			setResourceKebabCaseName(apiResource),
+			"src",
+			`index.${setResourceKebabCaseName(apiResource).replace(/-/g, ".")}.ts`,
+		);
+
+	if (dbResource)
+		addedResourceNameToIndexFilePath[
+			setResourceUpperSnakeCaseName(dbResource)
+		] = join(
+			config.containerDirPath,
+			setResourceKebabCaseName(dbResource),
+			"src",
+			`index.${setResourceKebabCaseName(dbResource).replace(/-/g, ".")}.ts`,
+		);
+
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	const updateResourceIndexFilePromises: any = [];
+
+	async function updateResourceIndexFile(
+		resourceName: string,
+		resourceDeps: string[],
+	) {
+		const mod = await loadFile(addedResourceNameToIndexFilePath[resourceName]);
+
+		for (const depName in resourceDeps) {
+			mod.imports.$append({
+				// biome-ignore lint/style/noNonNullAssertion: <explanation>
+				from: setResourceKebabCaseName(apiResource!),
+				// biome-ignore lint/style/noNonNullAssertion: <explanation>
+				imported: setResourceCamelCaseName(apiResource!),
+			});
+
+			const params =
+				mod.exports[setResourceCamelCaseName(entryResource)].$args[0];
+
+			if (!params.services) {
+				params.services = [];
+				params.services.push({
+					binding: builders.raw(
+						`${
+							// biome-ignore lint/style/noNonNullAssertion: <explanation>
+							setResourceCamelCaseName(apiResource!)
+						}.name`,
+					),
+				});
+			}
+		}
+
+		writeFile(mod, addedResourceNameToIndexFilePath[resourceName]);
+	}
+
+	for (const name in addedResourceNameToDeps) {
+		updateResourceIndexFilePromises.push(
+			updateResourceIndexFile(name, addedResourceNameToDeps[name]),
+		);
+	}
+
+	await Promise.all(updateResourceIndexFilePromises);
 
 	const confirmInstallPackages = await runConfirmInstallPackages();
 
