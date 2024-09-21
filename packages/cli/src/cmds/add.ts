@@ -536,7 +536,7 @@ async function newGraph(
 		apiResource
 	) {
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${setResourceKebabCaseName(apiResource)}@* -w ${setResourceKebabCaseName(entryResource)}`,
+			`npm install --no-fund --no-audit ${setResourceKebabCaseName(apiResource)}@0.0.0 --save-exact -w ${setResourceKebabCaseName(entryResource)}`,
 		);
 	}
 
@@ -547,13 +547,13 @@ async function newGraph(
 		dbResource
 	) {
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${setResourceKebabCaseName(dbResource)}@* -w ${setResourceKebabCaseName(entryResource)}`,
+			`npm install --no-fund --no-audit ${setResourceKebabCaseName(dbResource)}@0.0.0 --save-exact -w ${setResourceKebabCaseName(entryResource)}`,
 		);
 	}
 
 	if (apiResource && dbResource) {
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${setResourceKebabCaseName(dbResource)}@* -w ${setResourceKebabCaseName(entryResource)}`,
+			`npm install --no-fund --no-audit ${setResourceKebabCaseName(dbResource)}@0.0.0 --save-exact -w ${setResourceKebabCaseName(entryResource)}`,
 		);
 	}
 
