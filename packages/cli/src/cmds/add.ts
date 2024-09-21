@@ -15,8 +15,6 @@ import {
 import {
 	type Resource,
 	type ResourceList,
-	type ResourceNameToDeps,
-	type ResourceNameToIndexFilePath,
 	type Resources,
 	setResource,
 	setResourceCamelCaseName,
@@ -243,6 +241,8 @@ async function newGraph(
 	resources: Resources,
 	resourceTemplates: ResourceTemplates,
 ) {
+	const addedResourceNames: string[] = [];
+
 	const entryResourceTemplateId =
 		await runSelectEntryResourcePrompt(resourceTemplates);
 
@@ -277,6 +277,20 @@ async function newGraph(
 		}
 	}
 
+	addedResourceNames.push(
+		(
+			entryResourceEntityGroup +
+			"_" +
+			entryResourceEntity +
+			"_" +
+			entryResourceTemplate.cloud +
+			"_" +
+			entryResourceTemplate.cloudService +
+			"_" +
+			entryResourceTemplate.descriptor
+		).toUpperCase(),
+	);
+
 	let apiResourceTemplateId = "";
 
 	if (entryResourceTemplate.type === "web") {
@@ -306,6 +320,23 @@ async function newGraph(
 		if (apiResourceEntity === "new") {
 			apiResourceEntity = await runInputApiEntityPrompt();
 		}
+
+		addedResourceNames.push(
+			(
+				apiResourceEntityGroup +
+				"_" +
+				apiResourceEntity +
+				"_" +
+				// biome-ignore lint/style/noNonNullAssertion: <explanation>
+				apiResourceTemplate!.cloud +
+				"_" +
+				// biome-ignore lint/style/noNonNullAssertion: <explanation>
+				apiResourceTemplate!.cloudService +
+				"_" +
+				// biome-ignore lint/style/noNonNullAssertion: <explanation>
+				apiResourceTemplate!.descriptor
+			).toUpperCase(),
+		);
 	}
 
 	let dbResourceTemplateId = "";
@@ -328,6 +359,23 @@ async function newGraph(
 
 	if (dbResourceEntityGroup) {
 		dbResourceEntity = await runInputEntityPrompt();
+
+		addedResourceNames.push(
+			(
+				dbResourceEntityGroup +
+				"_" +
+				dbResourceEntity +
+				"_" +
+				// biome-ignore lint/style/noNonNullAssertion: <explanation>
+				dbResourceTemplate!.cloud +
+				"_" +
+				// biome-ignore lint/style/noNonNullAssertion: <explanation>
+				dbResourceTemplate!.cloudService +
+				"_" +
+				// biome-ignore lint/style/noNonNullAssertion: <explanation>
+				dbResourceTemplate!.descriptor
+			).toUpperCase(),
+		);
 	}
 
 	const entryResource = setResource({
@@ -397,7 +445,6 @@ async function newGraph(
 		);
 
 		const newFileName =
-			// biome-ignore lint/style/useTemplate: <explanation>
 			[
 				"index",
 				resource.entityGroup,
@@ -512,67 +559,9 @@ async function newGraph(
 
 	await installingResources(resourceNpmInstallCommands);
 
-	const addedResourceNameToDeps: ResourceNameToDeps = {};
-
-	if (
-		entryResource.cloud === "cf" &&
-		entryResource.cloudService === "pages" &&
-		entryResource.descriptor === "ssr" &&
-		apiResource
-	) {
-		addedResourceNameToDeps[setResourceUpperSnakeCaseName(entryResource)] = [
-			setResourceUpperSnakeCaseName(apiResource),
-		];
-	}
-
-	if (
-		entryResource.cloud === "cf" &&
-		entryResource.cloudService === "workers" &&
-		entryResource.descriptor === "api" &&
-		dbResource
-	) {
-		addedResourceNameToDeps[setResourceUpperSnakeCaseName(entryResource)] = [
-			setResourceUpperSnakeCaseName(dbResource),
-		];
-	}
-
-	if (apiResource && dbResource) {
-		addedResourceNameToDeps[setResourceUpperSnakeCaseName(apiResource)] = [
-			setResourceUpperSnakeCaseName(dbResource),
-		];
-	}
-
-	const addedResourceNameToIndexFilePath: ResourceNameToIndexFilePath = {};
-
-	if (entryResource)
-		addedResourceNameToIndexFilePath[
-			setResourceUpperSnakeCaseName(entryResource)
-		] = join(
-			config.containerDirPath,
-			setResourceKebabCaseName(entryResource),
-			"src",
-			`index.${setResourceKebabCaseName(entryResource).replace(/-/g, ".")}.ts`,
-		);
-
-	if (apiResource)
-		addedResourceNameToIndexFilePath[
-			setResourceUpperSnakeCaseName(apiResource)
-		] = join(
-			config.containerDirPath,
-			setResourceKebabCaseName(apiResource),
-			"src",
-			`index.${setResourceKebabCaseName(apiResource).replace(/-/g, ".")}.ts`,
-		);
-
-	if (dbResource)
-		addedResourceNameToIndexFilePath[
-			setResourceUpperSnakeCaseName(dbResource)
-		] = join(
-			config.containerDirPath,
-			setResourceKebabCaseName(dbResource),
-			"src",
-			`index.${setResourceKebabCaseName(dbResource).replace(/-/g, ".")}.ts`,
-		);
+	const addedResources = await setResources(config.containerDirPath, {
+		resourceNames: addedResourceNames,
+	});
 
 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	const updateResourceIndexFilePromises: any = [];
@@ -581,7 +570,9 @@ async function newGraph(
 		resourceName: string,
 		resourceDeps: string[],
 	) {
-		const mod = await loadFile(addedResourceNameToIndexFilePath[resourceName]);
+		const mod = await loadFile(
+			addedResources.nameToIndexFilePath[resourceName],
+		);
 
 		for (const depName in resourceDeps) {
 			mod.imports.$append({
@@ -607,12 +598,12 @@ async function newGraph(
 			}
 		}
 
-		writeFile(mod, addedResourceNameToIndexFilePath[resourceName]);
+		writeFile(mod, addedResources.nameToIndexFilePath[resourceName]);
 	}
 
-	for (const name in addedResourceNameToDeps) {
+	for (const name in addedResources.nameToDeps) {
 		updateResourceIndexFilePromises.push(
-			updateResourceIndexFile(name, addedResourceNameToDeps[name]),
+			updateResourceIndexFile(name, addedResources.nameToDeps[name]),
 		);
 	}
 

@@ -67,31 +67,55 @@ interface ConfigData {
 	exportString: string;
 }
 
+type SetResourcesOptions = {
+	resourceNames: string[];
+};
+
 export async function setResources(
 	containerDirPath: ResourceContainerDirPath,
+	options?: SetResourcesOptions,
 ): Promise<Resources> {
-	const containerSubdirPaths = await setContainerSubdirPaths(containerDirPath);
+	let containerSubdirPaths: ResourceContainerSubdirPaths = [];
+
+	if (options?.resourceNames) {
+		containerSubdirPaths = options.resourceNames.map((name) => {
+			return path.join(containerDirPath, convertResourceNameToKebabCase(name));
+		});
+	} else {
+		containerSubdirPaths = await setContainerSubdirPaths(containerDirPath);
+	}
+
 	const list = setList(containerSubdirPaths);
+
 	const nameToPackageJson = await setNameToPackageJson(containerSubdirPaths);
+
 	const packageJsonNameToName = setPackageJsonNameToName(nameToPackageJson);
+
 	const nameToDeps = setNameToDeps(nameToPackageJson, packageJsonNameToName);
+
 	const nameToIndexFilePath =
 		await setNameToIndexFilePath(containerSubdirPaths);
+
 	const nameToIndexFileContent =
 		await setNameToIndexFileContent(nameToIndexFilePath);
+
 	const nameToConfigData = setNameToConfigData(nameToIndexFileContent);
+
 	const nameToBuildIndexFilePath = setNameToBuildIndexFilePath(
 		containerDirPath,
 		nameToIndexFilePath,
 	);
 
 	const graph = setGraph(nameToDeps);
+
 	const nodeJsConfigScript = setNodeJsConfigScript(
 		nameToConfigData,
 		graph.groupToDepthToNodes,
 	);
+
 	const runNodeJsConfigScriptResult =
 		await runNodeJsConfigScript(nodeJsConfigScript);
+
 	const nameToConfig = setNameToConfig(runNodeJsConfigScriptResult);
 
 	return {
@@ -472,4 +496,8 @@ export function setResourceEntities(
 		}
 	}
 	return Array.from(entitySet);
+}
+
+function convertResourceNameToKebabCase(resourceName: string): string {
+	return resourceName.replace(/_/g, "-").toLowerCase();
 }
