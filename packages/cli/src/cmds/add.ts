@@ -214,6 +214,30 @@ async function installPackages(): Promise<void> {
 	}
 }
 
+async function installingResources(
+	resourceNpmInstallCommands: string[],
+): Promise<void> {
+	console.log("Installing resources...");
+	try {
+		const installPromises = resourceNpmInstallCommands.map((command) =>
+			exec(command),
+		);
+		const results = await Promise.all(installPromises);
+
+		results.forEach(({ stdout, stderr }, index) => {
+			console.log(`Output for command: ${resourceNpmInstallCommands[index]}`);
+			console.log(stdout);
+			if (stderr) {
+				console.error(stderr);
+			}
+		});
+
+		console.log("All resources installed successfully.");
+	} catch (error) {
+		console.error("Error installing resources:", error);
+	}
+}
+
 async function newGraph(
 	config: Config,
 	resources: Resources,
@@ -455,6 +479,38 @@ async function newGraph(
 
 		await fs.writeFile(viteConfigFilePath, updatedViteConfigContent);
 	}
+
+	const resourceNpmInstallCommands: string[] = [];
+
+	if (
+		entryResource.cloud === "cf" &&
+		entryResource.cloudService === "pages" &&
+		entryResource.descriptor === "ssr" &&
+		apiResource
+	) {
+		resourceNpmInstallCommands.push(
+			`npm install --no-fund --no-audit ${setResourceKebabCaseName(apiResource)}@* -w ${setResourceKebabCaseName(entryResource)}`,
+		);
+	}
+
+	if (
+		entryResource.cloud === "cf" &&
+		entryResource.cloudService === "workers" &&
+		entryResource.descriptor === "api" &&
+		dbResource
+	) {
+		resourceNpmInstallCommands.push(
+			`npm install --no-fund --no-audit ${setResourceKebabCaseName(dbResource)}@* -w ${setResourceKebabCaseName(entryResource)}`,
+		);
+	}
+
+	if (apiResource && dbResource) {
+		resourceNpmInstallCommands.push(
+			`npm install --no-fund --no-audit ${setResourceKebabCaseName(dbResource)}@* -w ${setResourceKebabCaseName(entryResource)}`,
+		);
+	}
+
+	await installingResources(resourceNpmInstallCommands);
 
 	const addedResourceNameToDeps: ResourceNameToDeps = {};
 
