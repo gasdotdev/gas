@@ -15,11 +15,8 @@ import {
 import {
 	type ResourceList,
 	type Resources,
-	setResourceCamelCaseName,
 	setResourceEntities,
 	setResourceEntityGroups,
-	setResourceKebabCaseName,
-	setResourceUpperSnakeCaseName,
 	setResources,
 } from "../modules/resources.js";
 import {
@@ -425,8 +422,12 @@ async function newGraph(
 		forceClean: true,
 	});
 
-	const processResource = async (pendingResource: PendingResource) => {
-		const resourceKebabCaseName = setResourceKebabCaseName(pendingResource);
+	const processResource = async (
+		pendingResourceName: string,
+		pendingResource: PendingResource,
+	) => {
+		const resourceKebabCaseName =
+			setUpperSnakeCaseAsKebabStr(pendingResourceName);
 		const templateDestinationDir = join(
 			config.containerDirPath,
 			resourceKebabCaseName,
@@ -469,7 +470,7 @@ async function newGraph(
 		const ast = mod.exports.$ast;
 
 		mod.exports.entityGroupEntityCloudCloudServiceDescriptor.$args[0].name =
-			setResourceUpperSnakeCaseName(pendingResource);
+			setUpperSnakeCaseAsKebabStr(pendingResourceName);
 
 		// Note: The ast types aren't working correctly. Thus,
 		// @ts-ignore. In a demo, where magicast is used in a
@@ -489,7 +490,7 @@ async function newGraph(
 
 		if (exportDeclaration?.declaration.declarations[0]) {
 			exportDeclaration.declaration.declarations[0].id.name =
-				setResourceCamelCaseName(pendingResource);
+				pendingResourceName;
 		} else {
 			console.log("export config const not found in the file");
 		}
@@ -497,8 +498,9 @@ async function newGraph(
 		await writeFile(mod, newFilePath);
 	};
 
-	const processPendingResourcesPromises =
-		Object.values(pendingResources).map(processResource);
+	const processPendingResourcesPromises = Object.entries(pendingResources).map(
+		([name, pendingResource]) => processResource(name, pendingResource),
+	);
 
 	await Promise.all(processPendingResourcesPromises);
 
@@ -509,7 +511,7 @@ async function newGraph(
 	) {
 		const viteConfigFilePath = join(
 			config.containerDirPath,
-			setResourceKebabCaseName(pendingResources[entryResourceName]),
+			setUpperSnakeCaseAsKebabStr(entryResourceName),
 			"vite.config.ts",
 		);
 
@@ -543,7 +545,7 @@ async function newGraph(
 	) {
 		const apiResourceName = Object.keys(pendingResources)[1];
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${setResourceKebabCaseName(pendingResources[apiResourceName])}@0.0.0 --save-exact -w ${setResourceKebabCaseName(pendingResources[entryResourceName])}`,
+			`npm install --no-fund --no-audit ${setUpperSnakeCaseAsKebabStr(apiResourceName)}@0.0.0 --save-exact -w ${setUpperSnakeCaseAsKebabStr(entryResourceName)}`,
 		);
 	}
 
@@ -555,23 +557,21 @@ async function newGraph(
 	) {
 		const dbResourceName = Object.keys(pendingResources)[2];
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${setResourceKebabCaseName(pendingResources[dbResourceName])}@0.0.0 --save-exact -w ${setResourceKebabCaseName(pendingResources[entryResourceName])}`,
+			`npm install --no-fund --no-audit ${setUpperSnakeCaseAsKebabStr(dbResourceName)}@0.0.0 --save-exact -w ${setUpperSnakeCaseAsKebabStr(entryResourceName)}`,
 		);
 	}
 
 	if (apiResourceTemplateId && dbResourceTemplateId) {
 		const dbResourceName = Object.keys(pendingResources)[2];
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${setResourceKebabCaseName(pendingResources[dbResourceName])}@0.0.0 --save-exact -w ${setResourceKebabCaseName(pendingResources[entryResourceName])}`,
+			`npm install --no-fund --no-audit ${setUpperSnakeCaseAsKebabStr(dbResourceName)}@0.0.0 --save-exact -w ${setUpperSnakeCaseAsKebabStr(entryResourceName)}`,
 		);
 	}
 
 	await installingResources(resourceNpmInstallCommands);
 
 	const addedResources = await setResources(config.containerDirPath, {
-		resourceNames: Object.values(pendingResources).map((resource) =>
-			setResourceKebabCaseName(resource),
-		),
+		resourceNames: Object.keys(pendingResources),
 	});
 
 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>

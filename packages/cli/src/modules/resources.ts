@@ -429,36 +429,6 @@ export function setResource(input: Resource): Resource {
 	};
 }
 
-export function setResourceCamelCaseName(resource: Resource): string {
-	return [
-		resource.entityGroup,
-		resource.entity,
-		resource.cloud,
-		resource.cloudService,
-		resource.descriptor,
-	]
-		.map((part, index) =>
-			index === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1),
-		)
-		.join("");
-}
-
-export function setResourceKebabCaseName(resource: Resource): string {
-	return `${resource.entityGroup}-${resource.entity}-${resource.cloud}-${resource.cloudService}-${resource.descriptor}`;
-}
-
-export function setResourceUpperSnakeCaseName(resource: Resource): string {
-	return [
-		resource.entityGroup,
-		resource.entity,
-		resource.cloud,
-		resource.cloudService,
-		resource.descriptor,
-	]
-		.map((part) => part.toUpperCase())
-		.join("_");
-}
-
 export type ResourceEntityGroups = string[];
 
 export function setResourceEntityGroups(
