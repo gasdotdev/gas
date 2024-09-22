@@ -138,7 +138,7 @@ importers:
         specifier: ^4.2.1
         version: 4.3.2(typescript@5.5.4)(vite@5.4.3(@types/node@22.5.3))
 
-  templates/cloudflare-workers-hono:
+  templates/cloudflare-worker-hono:
     dependencies:
       '@gasdotdev/resources':
         specifier: file:../../../gas/packages/resources

@@ -13,10 +13,8 @@ import {
 	setResourceTemplates,
 } from "../modules/resource-templates.js";
 import {
-	type Resource,
 	type ResourceList,
 	type Resources,
-	setResource,
 	setResourceCamelCaseName,
 	setResourceEntities,
 	setResourceEntityGroups,
@@ -24,6 +22,11 @@ import {
 	setResourceUpperSnakeCaseName,
 	setResources,
 } from "../modules/resources.js";
+import {
+	setObjAsUpperSnakeCaseStr,
+	setUpperCaseSnakeAsCamelStr,
+	setUpperSnakeCaseAsKebabStr,
+} from "../modules/strings.js";
 
 type State = "select-which" | "new-graph" | "existing-graph";
 
@@ -236,12 +239,43 @@ async function installingResources(
 	}
 }
 
+type PendingResource = {
+	entityGroup: string;
+	entity: string;
+	cloud: string;
+	cloudService: string;
+	descriptor: string;
+	templateId: string;
+};
+
+type PendingResources = {
+	[name: string]: PendingResource;
+};
+
+function setPendingResource(input: {
+	entityGroup: string;
+	entity: string;
+	cloud: string;
+	cloudService: string;
+	descriptor: string;
+	templateId: string;
+}): PendingResource {
+	return {
+		entityGroup: input.entityGroup,
+		entity: input.entity,
+		cloud: input.cloud,
+		cloudService: input.cloudService,
+		descriptor: input.descriptor,
+		templateId: input.templateId,
+	};
+}
+
 async function newGraph(
 	config: Config,
 	resources: Resources,
 	resourceTemplates: ResourceTemplates,
 ) {
-	const addedResourceNames: string[] = [];
+	const pendingResources: PendingResources = {};
 
 	const entryResourceTemplateId =
 		await runSelectEntryResourcePrompt(resourceTemplates);
@@ -277,22 +311,24 @@ async function newGraph(
 		}
 	}
 
-	addedResourceNames.push(
-		(
-			entryResourceEntityGroup +
-			"_" +
-			entryResourceEntity +
-			"_" +
-			entryResourceTemplate.cloud +
-			"_" +
-			entryResourceTemplate.cloudService +
-			"_" +
-			entryResourceTemplate.descriptor
-		).toUpperCase(),
-	);
+	const entryResourceName = setObjAsUpperSnakeCaseStr({
+		entityGroup: entryResourceEntityGroup,
+		entity: entryResourceEntity,
+		cloud: entryResourceTemplate.cloud,
+		cloudService: entryResourceTemplate.cloudService,
+		descriptor: entryResourceTemplate.descriptor,
+	});
+
+	pendingResources[entryResourceName] = setPendingResource({
+		entityGroup: entryResourceEntityGroup,
+		entity: entryResourceEntity,
+		cloud: entryResourceTemplate.cloud,
+		cloudService: entryResourceTemplate.cloudService,
+		descriptor: entryResourceTemplate.descriptor,
+		templateId: entryResourceTemplateId,
+	});
 
 	let apiResourceTemplateId = "";
-
 	if (entryResourceTemplate.type === "web") {
 		apiResourceTemplateId = await runSelectApiResourcePrompt(resourceTemplates);
 	}
@@ -321,22 +357,22 @@ async function newGraph(
 			apiResourceEntity = await runInputApiEntityPrompt();
 		}
 
-		addedResourceNames.push(
-			(
-				apiResourceEntityGroup +
-				"_" +
-				apiResourceEntity +
-				"_" +
-				// biome-ignore lint/style/noNonNullAssertion: <explanation>
-				apiResourceTemplate!.cloud +
-				"_" +
-				// biome-ignore lint/style/noNonNullAssertion: <explanation>
-				apiResourceTemplate!.cloudService +
-				"_" +
-				// biome-ignore lint/style/noNonNullAssertion: <explanation>
-				apiResourceTemplate!.descriptor
-			).toUpperCase(),
-		);
+		const apiResourceName = setObjAsUpperSnakeCaseStr({
+			entityGroup: apiResourceEntityGroup,
+			entity: apiResourceEntity,
+			cloud: apiResourceTemplate!.cloud,
+			cloudService: apiResourceTemplate!.cloudService,
+			descriptor: apiResourceTemplate!.descriptor,
+		});
+
+		pendingResources[apiResourceName] = setPendingResource({
+			entityGroup: apiResourceEntityGroup,
+			entity: apiResourceEntity,
+			cloud: apiResourceTemplate!.cloud,
+			cloudService: apiResourceTemplate!.cloudService,
+			descriptor: apiResourceTemplate!.descriptor,
+			templateId: apiResourceTemplateId,
+		});
 	}
 
 	let dbResourceTemplateId = "";
@@ -360,53 +396,21 @@ async function newGraph(
 	if (dbResourceEntityGroup) {
 		dbResourceEntity = await runInputEntityPrompt();
 
-		addedResourceNames.push(
-			(
-				dbResourceEntityGroup +
-				"_" +
-				dbResourceEntity +
-				"_" +
-				// biome-ignore lint/style/noNonNullAssertion: <explanation>
-				dbResourceTemplate!.cloud +
-				"_" +
-				// biome-ignore lint/style/noNonNullAssertion: <explanation>
-				dbResourceTemplate!.cloudService +
-				"_" +
-				// biome-ignore lint/style/noNonNullAssertion: <explanation>
-				dbResourceTemplate!.descriptor
-			).toUpperCase(),
-		);
-	}
-
-	const entryResource = setResource({
-		entityGroup: entryResourceEntityGroup,
-		entity: entryResourceEntity,
-		cloud: entryResourceTemplate.cloud,
-		cloudService: entryResourceTemplate.cloudService,
-		descriptor: entryResourceTemplate.descriptor,
-	});
-
-	let apiResource: Resource | undefined = undefined;
-
-	if (apiResourceTemplate) {
-		apiResource = setResource({
-			entityGroup: apiResourceEntityGroup,
-			entity: apiResourceEntity,
-			cloud: apiResourceTemplate.cloud,
-			cloudService: apiResourceTemplate.cloudService,
-			descriptor: apiResourceTemplate.descriptor,
-		});
-	}
-
-	let dbResource: Resource | undefined = undefined;
-
-	if (dbResourceTemplate) {
-		dbResource = setResource({
+		const dbResourceName = setObjAsUpperSnakeCaseStr({
 			entityGroup: dbResourceEntityGroup,
 			entity: dbResourceEntity,
-			cloud: dbResourceTemplate.cloud,
-			cloudService: dbResourceTemplate.cloudService,
-			descriptor: dbResourceTemplate.descriptor,
+			cloud: dbResourceTemplate!.cloud,
+			cloudService: dbResourceTemplate!.cloudService,
+			descriptor: dbResourceTemplate!.descriptor,
+		});
+
+		pendingResources[dbResourceName] = setPendingResource({
+			entityGroup: dbResourceEntityGroup,
+			entity: dbResourceEntity,
+			cloud: dbResourceTemplate!.cloud,
+			cloudService: dbResourceTemplate!.cloudService,
+			descriptor: dbResourceTemplate!.descriptor,
+			templateId: dbResourceTemplateId,
 		});
 	}
 
@@ -421,16 +425,20 @@ async function newGraph(
 		forceClean: true,
 	});
 
-	const processResource = async (resource: Resource, templateId: string) => {
-		const resourceKebabCaseName = setResourceKebabCaseName(resource);
+	const processResource = async (pendingResource: PendingResource) => {
+		const resourceKebabCaseName = setResourceKebabCaseName(pendingResource);
 		const templateDestinationDir = join(
 			config.containerDirPath,
 			resourceKebabCaseName,
 		);
 
-		await fs.cp(join(templateDir, templateId), templateDestinationDir, {
-			recursive: true,
-		});
+		await fs.cp(
+			join(templateDir, pendingResource.templateId),
+			templateDestinationDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const packageJsonPath = join(templateDestinationDir, "package.json");
 		const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
@@ -447,11 +455,11 @@ async function newGraph(
 		const newFileName =
 			[
 				"index",
-				resource.entityGroup,
-				resource.entity,
-				resource.cloud,
-				resource.cloudService,
-				resource.descriptor,
+				pendingResource.entityGroup,
+				pendingResource.entity,
+				pendingResource.cloud,
+				pendingResource.cloudService,
+				pendingResource.descriptor,
 			].join(".") + ".ts";
 
 		const newFilePath = join(templateDestinationDir, "src", newFileName);
@@ -461,7 +469,7 @@ async function newGraph(
 		const ast = mod.exports.$ast;
 
 		mod.exports.entityGroupEntityCloudCloudServiceDescriptor.$args[0].name =
-			setResourceUpperSnakeCaseName(resource);
+			setResourceUpperSnakeCaseName(pendingResource);
 
 		// @ts-ignore
 		const exportDeclaration = ast.body.find(
@@ -476,7 +484,7 @@ async function newGraph(
 
 		if (exportDeclaration?.declaration.declarations[0]) {
 			exportDeclaration.declaration.declarations[0].id.name =
-				setResourceCamelCaseName(resource);
+				setResourceCamelCaseName(pendingResource);
 		} else {
 			console.log("export config const not found in the file");
 		}
@@ -484,17 +492,10 @@ async function newGraph(
 		await writeFile(mod, newFilePath);
 	};
 
-	const resourceProcessingPromises = [
-		processResource(entryResource, entryResourceTemplateId),
-		apiResource && apiResourceTemplateId
-			? processResource(apiResource, apiResourceTemplateId)
-			: null,
-		dbResource && dbResourceTemplateId
-			? processResource(dbResource, dbResourceTemplateId)
-			: null,
-	].filter(Boolean);
+	const processPendingResourcesPromises =
+		Object.values(pendingResources).map(processResource);
 
-	await Promise.all(resourceProcessingPromises);
+	await Promise.all(processPendingResourcesPromises);
 
 	if (
 		entryResourceTemplate.type === "web" &&
@@ -503,7 +504,7 @@ async function newGraph(
 	) {
 		const viteConfigFilePath = join(
 			config.containerDirPath,
-			setResourceKebabCaseName(entryResource),
+			setResourceKebabCaseName(pendingResources[entryResourceName]),
 			"vite.config.ts",
 		);
 
@@ -530,37 +531,42 @@ async function newGraph(
 	const resourceNpmInstallCommands: string[] = [];
 
 	if (
-		entryResource.cloud === "cf" &&
-		entryResource.cloudService === "pages" &&
-		entryResource.descriptor === "ssr" &&
-		apiResource
+		pendingResources[entryResourceName].cloud === "cf" &&
+		pendingResources[entryResourceName].cloudService === "pages" &&
+		pendingResources[entryResourceName].descriptor === "ssr" &&
+		apiResourceTemplateId
 	) {
+		const apiResourceName = Object.keys(pendingResources)[1];
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${setResourceKebabCaseName(apiResource)}@0.0.0 --save-exact -w ${setResourceKebabCaseName(entryResource)}`,
+			`npm install --no-fund --no-audit ${setResourceKebabCaseName(pendingResources[apiResourceName])}@0.0.0 --save-exact -w ${setResourceKebabCaseName(pendingResources[entryResourceName])}`,
 		);
 	}
 
 	if (
-		entryResource.cloud === "cf" &&
-		entryResource.cloudService === "workers" &&
-		entryResource.descriptor === "api" &&
-		dbResource
+		pendingResources[entryResourceName].cloud === "cf" &&
+		pendingResources[entryResourceName].cloudService === "workers" &&
+		pendingResources[entryResourceName].descriptor === "api" &&
+		dbResourceTemplateId
 	) {
+		const dbResourceName = Object.keys(pendingResources)[2];
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${setResourceKebabCaseName(dbResource)}@0.0.0 --save-exact -w ${setResourceKebabCaseName(entryResource)}`,
+			`npm install --no-fund --no-audit ${setResourceKebabCaseName(pendingResources[dbResourceName])}@0.0.0 --save-exact -w ${setResourceKebabCaseName(pendingResources[entryResourceName])}`,
 		);
 	}
 
-	if (apiResource && dbResource) {
+	if (apiResourceTemplateId && dbResourceTemplateId) {
+		const dbResourceName = Object.keys(pendingResources)[2];
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${setResourceKebabCaseName(dbResource)}@0.0.0 --save-exact -w ${setResourceKebabCaseName(entryResource)}`,
+			`npm install --no-fund --no-audit ${setResourceKebabCaseName(pendingResources[dbResourceName])}@0.0.0 --save-exact -w ${setResourceKebabCaseName(pendingResources[entryResourceName])}`,
 		);
 	}
 
 	await installingResources(resourceNpmInstallCommands);
 
 	const addedResources = await setResources(config.containerDirPath, {
-		resourceNames: addedResourceNames,
+		resourceNames: Object.values(pendingResources).map((resource) =>
+			setResourceKebabCaseName(resource),
+		),
 	});
 
 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -574,26 +580,19 @@ async function newGraph(
 			addedResources.nameToIndexFilePath[resourceName],
 		);
 
-		for (const depName in resourceDeps) {
+		for (const depName of resourceDeps) {
 			mod.imports.$append({
-				// biome-ignore lint/style/noNonNullAssertion: <explanation>
-				from: setResourceKebabCaseName(apiResource!),
-				// biome-ignore lint/style/noNonNullAssertion: <explanation>
-				imported: setResourceCamelCaseName(apiResource!),
+				from: setUpperSnakeCaseAsKebabStr(depName),
+				imported: setUpperCaseSnakeAsCamelStr(depName),
 			});
 
 			const params =
-				mod.exports[setResourceCamelCaseName(entryResource)].$args[0];
+				mod.exports[setUpperCaseSnakeAsCamelStr(resourceName)].$args[0];
 
 			if (!params.services) {
 				params.services = [];
 				params.services.push({
-					binding: builders.raw(
-						`${
-							// biome-ignore lint/style/noNonNullAssertion: <explanation>
-							setResourceCamelCaseName(apiResource!)
-						}.name`,
-					),
+					binding: builders.raw(`${setUpperCaseSnakeAsCamelStr(depName)}.name`),
 				});
 			}
 		}

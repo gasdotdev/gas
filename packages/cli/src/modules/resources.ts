@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { type GraphGroupToDepthToNodes, setGraph } from "./graph.js";
+import { setUpperSnakeCaseAsKebabStr } from "./strings.js";
 
 type PackageJson = Record<string, unknown>;
 
@@ -79,7 +80,7 @@ export async function setResources(
 
 	if (options?.resourceNames) {
 		containerSubdirPaths = options.resourceNames.map((name) => {
-			return path.join(containerDirPath, convertResourceNameToKebabCase(name));
+			return path.join(containerDirPath, setUpperSnakeCaseAsKebabStr(name));
 		});
 	} else {
 		containerSubdirPaths = await setContainerSubdirPaths(containerDirPath);
@@ -496,8 +497,4 @@ export function setResourceEntities(
 		}
 	}
 	return Array.from(entitySet);
-}
-
-function convertResourceNameToKebabCase(resourceName: string): string {
-	return resourceName.replace(/_/g, "-").toLowerCase();
 }
