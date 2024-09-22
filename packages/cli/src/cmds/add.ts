@@ -346,6 +346,7 @@ async function newGraph(
 	}
 
 	let apiResourceEntity = "";
+	let apiResourceName = "";
 
 	if (apiResourceEntityGroup) {
 		apiResourceEntity = await runSelectApiEntityPrompt(resources.list);
@@ -354,7 +355,7 @@ async function newGraph(
 			apiResourceEntity = await runInputApiEntityPrompt();
 		}
 
-		const apiResourceName = setObjAsUpperSnakeCaseStr({
+		apiResourceName = setObjAsUpperSnakeCaseStr({
 			entityGroup: apiResourceEntityGroup,
 			entity: apiResourceEntity,
 			cloud: apiResourceTemplate!.cloud,
@@ -389,11 +390,11 @@ async function newGraph(
 	}
 
 	let dbResourceEntity = "";
-
+	let dbResourceName = "";
 	if (dbResourceEntityGroup) {
 		dbResourceEntity = await runInputEntityPrompt();
 
-		const dbResourceName = setObjAsUpperSnakeCaseStr({
+		dbResourceName = setObjAsUpperSnakeCaseStr({
 			entityGroup: dbResourceEntityGroup,
 			entity: dbResourceEntity,
 			cloud: dbResourceTemplate!.cloud,
@@ -470,7 +471,7 @@ async function newGraph(
 		const ast = mod.exports.$ast;
 
 		mod.exports.entityGroupEntityCloudCloudServiceDescriptor.$args[0].name =
-			setUpperSnakeCaseAsKebabStr(pendingResourceName);
+			pendingResourceName;
 
 		// Note: The ast types aren't working correctly. Thus,
 		// @ts-ignore. In a demo, where magicast is used in a
@@ -490,7 +491,7 @@ async function newGraph(
 
 		if (exportDeclaration?.declaration.declarations[0]) {
 			exportDeclaration.declaration.declarations[0].id.name =
-				pendingResourceName;
+				setUpperCaseSnakeAsCamelStr(pendingResourceName);
 		} else {
 			console.log("export config const not found in the file");
 		}
@@ -594,11 +595,20 @@ async function newGraph(
 			const params =
 				mod.exports[setUpperCaseSnakeAsCamelStr(resourceName)].$args[0];
 
-			if (!params.services) {
-				params.services = [];
-				params.services.push({
-					binding: builders.raw(`${setUpperCaseSnakeAsCamelStr(depName)}.name`),
-				});
+			if (
+				pendingResources[resourceName].cloud === "cf" &&
+				pendingResources[resourceName].cloudService === "pages" &&
+				pendingResources[resourceName].descriptor === "ssr" &&
+				apiResourceName
+			) {
+				if (!params.services) {
+					params.services = [];
+					params.services.push({
+						binding: builders.raw(
+							`${setUpperCaseSnakeAsCamelStr(depName)}.name`,
+						),
+					});
+				}
 			}
 		}
 
