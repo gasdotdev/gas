@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import util from "node:util";
 import { confirm, input, select } from "@inquirer/prompts";
-import { downloadTemplate } from "giget";
+import { downloadTemplate as giget } from "giget";
 import { builders, loadFile, writeFile } from "magicast";
 import { type Config, setConfig } from "../modules/config.js";
 import {
@@ -20,9 +20,9 @@ import {
 	setResources,
 } from "../modules/resources.js";
 import {
-	setObjAsUpperSnakeCaseStr,
-	setUpperCaseSnakeAsCamelStr,
-	setUpperSnakeCaseAsKebabStr,
+	stringsConvertCapitalSnakeCaseToCamelCase,
+	stringsConvertCapitalSnakeCaseToKebabCase,
+	stringsConvertObjectToCapitalSnakeCase,
 } from "../modules/strings.js";
 
 type State = "select-which" | "new-graph" | "existing-graph";
@@ -190,6 +190,200 @@ async function runInputEntityPrompt() {
 	});
 }
 
+type AddedResource = {
+	entityGroup: string;
+	entity: string;
+	cloud: string;
+	cloudService: string;
+	descriptor: string;
+	templateId: string;
+	kebabCase: string;
+};
+
+type AddedResources = {
+	[name: string]: AddedResource;
+};
+
+function setAddedResource(input: {
+	name: string;
+	entityGroup: string;
+	entity: string;
+	cloud: string;
+	cloudService: string;
+	descriptor: string;
+	templateId: string;
+}): AddedResource {
+	return {
+		entityGroup: input.entityGroup,
+		entity: input.entity,
+		cloud: input.cloud,
+		cloudService: input.cloudService,
+		descriptor: input.descriptor,
+		templateId: input.templateId,
+		kebabCase: stringsConvertCapitalSnakeCaseToKebabCase(input.name),
+	};
+}
+
+type GigetTemplateToCopy = {
+	src: string;
+	dest: string;
+};
+
+function setAddedResourceTemplatesToCopy(
+	addedResources: AddedResources,
+	resourceContainerDirPath: string,
+	gigetLocalPath: string,
+): GigetTemplateToCopy[] {
+	const res: GigetTemplateToCopy[] = [];
+	for (const addedResourceName in addedResources) {
+		const addedResource = addedResources[addedResourceName];
+		const templateDestinationDir = join(
+			resourceContainerDirPath,
+			addedResource.kebabCase,
+		);
+		res.push({
+			src: join(gigetLocalPath, addedResource.templateId),
+			dest: templateDestinationDir,
+		});
+	}
+	return res;
+}
+
+async function copyAddedResourceTemplatesFromGigetLocalSrc(
+	addedResourceTemplatesToCopy: GigetTemplateToCopy[],
+) {
+	const promises: Promise<void>[] = [];
+	for (const addedResourceTemplateToCopy of addedResourceTemplatesToCopy) {
+		promises.push(
+			fs.cp(addedResourceTemplateToCopy.src, addedResourceTemplateToCopy.dest, {
+				recursive: true,
+			}),
+		);
+	}
+	await Promise.all(promises);
+}
+
+type AddedResourcePackageJsonPaths = {
+	[name: string]: string;
+};
+
+function setAddedResourcePackageJsonPaths(
+	addedResources: AddedResources,
+	resourceContainerDirPath: string,
+) {
+	const res: AddedResourcePackageJsonPaths = {};
+	for (const addedResourceName in addedResources) {
+		const addedResource = addedResources[addedResourceName];
+		const packageJsonPath = join(
+			resourceContainerDirPath,
+			addedResource.kebabCase,
+			"package.json",
+		);
+		res[addedResourceName] = packageJsonPath;
+	}
+	return res;
+}
+
+type AddedResourcePackageJsons = {
+	[name: string]: Record<string, unknown>;
+};
+
+async function readAddedResourcePackageJsons(
+	addedResourcePackageJsonPaths: AddedResourcePackageJsonPaths,
+) {
+	const res: AddedResourcePackageJsons = {};
+	for (const addedResourceName in addedResourcePackageJsonPaths) {
+		const packageJsonPath = addedResourcePackageJsonPaths[addedResourceName];
+		const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
+		res[addedResourceName] = JSON.parse(packageJsonContent);
+	}
+	return res;
+}
+
+function updateAddedResourcePackageJsonNames(
+	addedResourcePackageJsons: AddedResourcePackageJsons,
+) {
+	for (const addedResourceName in addedResourcePackageJsons) {
+		const packageJson = addedResourcePackageJsons[addedResourceName];
+		packageJson.name =
+			stringsConvertCapitalSnakeCaseToKebabCase(addedResourceName);
+	}
+}
+
+async function saveAddedResourcePackageJsons(
+	addedResourcePackageJsonPaths: AddedResourcePackageJsonPaths,
+	addedResourcePackageJsons: AddedResourcePackageJsons,
+) {
+	const promises: Promise<void>[] = [];
+	for (const addedResourceName in addedResourcePackageJsons) {
+		const packageJsonPath = addedResourcePackageJsonPaths[addedResourceName];
+		promises.push(
+			fs.writeFile(
+				packageJsonPath,
+				JSON.stringify(addedResourcePackageJsons[addedResourceName], null, 2),
+			),
+		);
+	}
+	await Promise.all(promises);
+}
+
+type AddedResourceIndexFilesToRename = {
+	[name: string]: {
+		oldPath: string;
+		newPath: string;
+	};
+};
+
+function setAddedResourceIndexFilesToRename(
+	addedResources: AddedResources,
+	resourceContainerDirPath: string,
+) {
+	const res: AddedResourceIndexFilesToRename = {};
+	for (const addedResourceName in addedResources) {
+		const addedResource = addedResources[addedResourceName];
+
+		const oldFilePath = join(
+			resourceContainerDirPath,
+			addedResource.kebabCase,
+			"src",
+			"index.entity-group.entity.cloud.cloud-service.descriptor.ts",
+		);
+
+		const newFileName =
+			[
+				"index",
+				addedResource.entityGroup,
+				addedResource.entity,
+				addedResource.cloud,
+				addedResource.cloudService,
+				addedResource.descriptor,
+			].join(".") + ".ts";
+
+		res[addedResourceName] = {
+			oldPath: oldFilePath,
+			newPath: join(
+				resourceContainerDirPath,
+				addedResource.kebabCase,
+				"src",
+				newFileName,
+			),
+		};
+	}
+	return res;
+}
+
+async function renameAddedResourceIndexFiles(
+	addedResourceIndexFilesToRename: AddedResourceIndexFilesToRename,
+) {
+	const promises: Promise<void>[] = [];
+	for (const addedResourceName in addedResourceIndexFilesToRename) {
+		const { oldPath, newPath } =
+			addedResourceIndexFilesToRename[addedResourceName];
+		promises.push(fs.rename(oldPath, newPath));
+	}
+	await Promise.all(promises);
+}
+
 async function runConfirmInstallPackages() {
 	return await confirm({
 		message: "Install packages?",
@@ -236,43 +430,12 @@ async function installingResources(
 	}
 }
 
-type PendingResource = {
-	entityGroup: string;
-	entity: string;
-	cloud: string;
-	cloudService: string;
-	descriptor: string;
-	templateId: string;
-};
-
-type PendingResources = {
-	[name: string]: PendingResource;
-};
-
-function setPendingResource(input: {
-	entityGroup: string;
-	entity: string;
-	cloud: string;
-	cloudService: string;
-	descriptor: string;
-	templateId: string;
-}): PendingResource {
-	return {
-		entityGroup: input.entityGroup,
-		entity: input.entity,
-		cloud: input.cloud,
-		cloudService: input.cloudService,
-		descriptor: input.descriptor,
-		templateId: input.templateId,
-	};
-}
-
 async function newGraph(
 	config: Config,
 	resources: Resources,
 	resourceTemplates: ResourceTemplates,
 ) {
-	const pendingResources: PendingResources = {};
+	const addedResources: AddedResources = {};
 
 	const entryResourceTemplateId =
 		await runSelectEntryResourcePrompt(resourceTemplates);
@@ -308,7 +471,7 @@ async function newGraph(
 		}
 	}
 
-	const entryResourceName = setObjAsUpperSnakeCaseStr({
+	const entryResourceName = stringsConvertObjectToCapitalSnakeCase({
 		entityGroup: entryResourceEntityGroup,
 		entity: entryResourceEntity,
 		cloud: entryResourceTemplate.cloud,
@@ -316,7 +479,8 @@ async function newGraph(
 		descriptor: entryResourceTemplate.descriptor,
 	});
 
-	pendingResources[entryResourceName] = setPendingResource({
+	addedResources[entryResourceName] = setAddedResource({
+		name: entryResourceName,
 		entityGroup: entryResourceEntityGroup,
 		entity: entryResourceEntity,
 		cloud: entryResourceTemplate.cloud,
@@ -355,7 +519,7 @@ async function newGraph(
 			apiResourceEntity = await runInputApiEntityPrompt();
 		}
 
-		apiResourceName = setObjAsUpperSnakeCaseStr({
+		apiResourceName = stringsConvertObjectToCapitalSnakeCase({
 			entityGroup: apiResourceEntityGroup,
 			entity: apiResourceEntity,
 			cloud: apiResourceTemplate!.cloud,
@@ -363,7 +527,8 @@ async function newGraph(
 			descriptor: apiResourceTemplate!.descriptor,
 		});
 
-		pendingResources[apiResourceName] = setPendingResource({
+		addedResources[apiResourceName] = setAddedResource({
+			name: apiResourceName,
 			entityGroup: apiResourceEntityGroup,
 			entity: apiResourceEntity,
 			cloud: apiResourceTemplate!.cloud,
@@ -394,7 +559,7 @@ async function newGraph(
 	if (dbResourceEntityGroup) {
 		dbResourceEntity = await runInputEntityPrompt();
 
-		dbResourceName = setObjAsUpperSnakeCaseStr({
+		dbResourceName = stringsConvertObjectToCapitalSnakeCase({
 			entityGroup: dbResourceEntityGroup,
 			entity: dbResourceEntity,
 			cloud: dbResourceTemplate!.cloud,
@@ -402,7 +567,8 @@ async function newGraph(
 			descriptor: dbResourceTemplate!.descriptor,
 		});
 
-		pendingResources[dbResourceName] = setPendingResource({
+		addedResources[dbResourceName] = setAddedResource({
+			name: dbResourceName,
 			entityGroup: dbResourceEntityGroup,
 			entity: dbResourceEntity,
 			cloud: dbResourceTemplate!.cloud,
@@ -413,97 +579,50 @@ async function newGraph(
 	}
 
 	const __filename = fileURLToPath(import.meta.url);
+
 	const __dirname = dirname(__filename);
 
-	const templateSrc = "github:gasdotdev/gas/templates#master";
-	const templateDir = join(__dirname, "..", "..", ".giget");
+	const gigetRemotePath = "github:gasdotdev/gas/templates#master";
 
-	await downloadTemplate(templateSrc, {
-		dir: templateDir,
+	const gigetLocalPath = join(__dirname, "..", "..", ".giget");
+
+	await giget(gigetRemotePath, {
+		dir: gigetLocalPath,
 		forceClean: true,
 	});
 
-	const processResource = async (
-		pendingResourceName: string,
-		pendingResource: PendingResource,
-	) => {
-		const resourceKebabCaseName =
-			setUpperSnakeCaseAsKebabStr(pendingResourceName);
-		const templateDestinationDir = join(
-			config.containerDirPath,
-			resourceKebabCaseName,
-		);
-
-		await fs.cp(
-			join(templateDir, pendingResource.templateId),
-			templateDestinationDir,
-			{
-				recursive: true,
-			},
-		);
-
-		const packageJsonPath = join(templateDestinationDir, "package.json");
-		const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
-		const packageJson = JSON.parse(packageJsonContent);
-		packageJson.name = resourceKebabCaseName;
-		await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
-
-		const oldFilePath = join(
-			templateDestinationDir,
-			"src",
-			"index.entity-group.entity.cloud.cloud-service.descriptor.ts",
-		);
-
-		const newFileName =
-			[
-				"index",
-				pendingResource.entityGroup,
-				pendingResource.entity,
-				pendingResource.cloud,
-				pendingResource.cloudService,
-				pendingResource.descriptor,
-			].join(".") + ".ts";
-
-		const newFilePath = join(templateDestinationDir, "src", newFileName);
-		await fs.rename(oldFilePath, newFilePath);
-
-		const mod = await loadFile(newFilePath);
-		const ast = mod.exports.$ast;
-
-		mod.exports.entityGroupEntityCloudCloudServiceDescriptor.$args[0].name =
-			pendingResourceName;
-
-		// Note: The ast types aren't working correctly. Thus,
-		// @ts-ignore. In a demo, where magicast is used in a
-		// plain .js file, and with the same version, ast is
-		// correctly typed as having a body method. The reason
-		// for this discrepancy is unknown.
-		// @ts-ignore
-		const exportDeclaration = ast.body.find(
-			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-			(node: any) =>
-				node.type === "ExportNamedDeclaration" &&
-				node.declaration?.type === "VariableDeclaration" &&
-				node.declaration.declarations[0]?.id.type === "Identifier" &&
-				node.declaration.declarations[0].id.name ===
-					"entityGroupEntityCloudCloudServiceDescriptor",
-		);
-
-		if (exportDeclaration?.declaration.declarations[0]) {
-			exportDeclaration.declaration.declarations[0].id.name =
-				setUpperCaseSnakeAsCamelStr(pendingResourceName);
-		} else {
-			console.log("export config const not found in the file");
-		}
-
-		await writeFile(mod, newFilePath);
-	};
-
-	const processPendingResourcesPromises = Object.entries(pendingResources).map(
-		([name, pendingResource]) => processResource(name, pendingResource),
+	const resourceTemplatesToCopy = setAddedResourceTemplatesToCopy(
+		addedResources,
+		config.containerDirPath,
+		gigetLocalPath,
 	);
 
-	await Promise.all(processPendingResourcesPromises);
+	await copyAddedResourceTemplatesFromGigetLocalSrc(resourceTemplatesToCopy);
+
+	const resourcePackageJsonPaths = setAddedResourcePackageJsonPaths(
+		addedResources,
+		config.containerDirPath,
+	);
+
+	const resourcePackageJsons = await readAddedResourcePackageJsons(
+		resourcePackageJsonPaths,
+	);
+
+	updateAddedResourcePackageJsonNames(resourcePackageJsons);
+
+	await saveAddedResourcePackageJsons(
+		resourcePackageJsonPaths,
+		resourcePackageJsons,
+	);
+
+	const resourceIndexFilesToRename = setAddedResourceIndexFilesToRename(
+		addedResources,
+		config.containerDirPath,
+	);
+
+	await renameAddedResourceIndexFiles(resourceIndexFilesToRename);
+
+	return;
 
 	if (
 		entryResourceTemplate.type === "web" &&
@@ -512,7 +631,7 @@ async function newGraph(
 	) {
 		const viteConfigFilePath = join(
 			config.containerDirPath,
-			setUpperSnakeCaseAsKebabStr(entryResourceName),
+			stringsConvertCapitalSnakeCaseToKebabCase(entryResourceName),
 			"vite.config.ts",
 		);
 
@@ -539,40 +658,40 @@ async function newGraph(
 	const resourceNpmInstallCommands: string[] = [];
 
 	if (
-		pendingResources[entryResourceName].cloud === "cf" &&
-		pendingResources[entryResourceName].cloudService === "pages" &&
-		pendingResources[entryResourceName].descriptor === "ssr" &&
+		addedResources[entryResourceName].cloud === "cf" &&
+		addedResources[entryResourceName].cloudService === "pages" &&
+		addedResources[entryResourceName].descriptor === "ssr" &&
 		apiResourceTemplateId
 	) {
-		const apiResourceName = Object.keys(pendingResources)[1];
+		const apiResourceName = Object.keys(addedResources)[1];
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${setUpperSnakeCaseAsKebabStr(apiResourceName)}@0.0.0 --save-exact -w ${setUpperSnakeCaseAsKebabStr(entryResourceName)}`,
+			`npm install --no-fund --no-audit ${stringsConvertCapitalSnakeCaseToKebabCase(apiResourceName)}@0.0.0 --save-exact -w ${stringsConvertCapitalSnakeCaseToKebabCase(entryResourceName)}`,
 		);
 	}
 
 	if (
-		pendingResources[entryResourceName].cloud === "cf" &&
-		pendingResources[entryResourceName].cloudService === "workers" &&
-		pendingResources[entryResourceName].descriptor === "api" &&
+		addedResources[entryResourceName].cloud === "cf" &&
+		addedResources[entryResourceName].cloudService === "workers" &&
+		addedResources[entryResourceName].descriptor === "api" &&
 		dbResourceTemplateId
 	) {
-		const dbResourceName = Object.keys(pendingResources)[2];
+		const dbResourceName = Object.keys(addedResources)[2];
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${setUpperSnakeCaseAsKebabStr(dbResourceName)}@0.0.0 --save-exact -w ${setUpperSnakeCaseAsKebabStr(entryResourceName)}`,
+			`npm install --no-fund --no-audit ${stringsConvertCapitalSnakeCaseToKebabCase(dbResourceName)}@0.0.0 --save-exact -w ${stringsConvertCapitalSnakeCaseToKebabCase(entryResourceName)}`,
 		);
 	}
 
 	if (apiResourceTemplateId && dbResourceTemplateId) {
-		const dbResourceName = Object.keys(pendingResources)[2];
+		const dbResourceName = Object.keys(addedResources)[2];
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${setUpperSnakeCaseAsKebabStr(dbResourceName)}@0.0.0 --save-exact -w ${setUpperSnakeCaseAsKebabStr(entryResourceName)}`,
+			`npm install --no-fund --no-audit ${stringsConvertCapitalSnakeCaseToKebabCase(dbResourceName)}@0.0.0 --save-exact -w ${stringsConvertCapitalSnakeCaseToKebabCase(entryResourceName)}`,
 		);
 	}
 
 	await installingResources(resourceNpmInstallCommands);
 
-	const addedResources = await setResources(config.containerDirPath, {
-		resourceNames: Object.keys(pendingResources),
+	const newResources = await setResources(config.containerDirPath, {
+		resourceNames: Object.keys(addedResources),
 	});
 
 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -582,42 +701,41 @@ async function newGraph(
 		resourceName: string,
 		resourceDeps: string[],
 	) {
-		const mod = await loadFile(
-			addedResources.nameToIndexFilePath[resourceName],
-		);
+		const mod = await loadFile(newResources.nameToIndexFilePath[resourceName]);
 
 		for (const depName of resourceDeps) {
 			mod.imports.$append({
-				from: setUpperSnakeCaseAsKebabStr(depName),
-				imported: setUpperCaseSnakeAsCamelStr(depName),
+				from: stringsConvertCapitalSnakeCaseToKebabCase(depName),
+				imported: stringsConvertCapitalSnakeCaseToCamelCase(depName),
 			});
 
 			const params =
-				mod.exports[setUpperCaseSnakeAsCamelStr(resourceName)].$args[0];
+				mod.exports[stringsConvertCapitalSnakeCaseToCamelCase(resourceName)]
+					.$args[0];
 
 			if (
-				pendingResources[resourceName].cloud === "cf" &&
-				pendingResources[resourceName].cloudService === "pages" &&
-				pendingResources[resourceName].descriptor === "ssr" &&
+				addedResources[resourceName].cloud === "cf" &&
+				addedResources[resourceName].cloudService === "pages" &&
+				addedResources[resourceName].descriptor === "ssr" &&
 				apiResourceName
 			) {
 				if (!params.services) {
 					params.services = [];
 					params.services.push({
 						binding: builders.raw(
-							`${setUpperCaseSnakeAsCamelStr(depName)}.name`,
+							`${stringsConvertCapitalSnakeCaseToCamelCase(depName)}.name`,
 						),
 					});
 				}
 			}
 		}
 
-		writeFile(mod, addedResources.nameToIndexFilePath[resourceName]);
+		writeFile(mod, newResources.nameToIndexFilePath[resourceName]);
 	}
 
-	for (const name in addedResources.nameToDeps) {
+	for (const name in newResources.nameToDeps) {
 		updateResourceIndexFilePromises.push(
-			updateResourceIndexFile(name, addedResources.nameToDeps[name]),
+			updateResourceIndexFile(name, newResources.nameToDeps[name]),
 		);
 	}
 

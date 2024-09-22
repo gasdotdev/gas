@@ -1,14 +1,16 @@
-export function setObjAsUpperSnakeCaseStr(obj: Record<string, string>): string {
+export function stringsConvertObjectToCapitalSnakeCase(
+	obj: Record<string, string>,
+): string {
 	return Object.entries(obj)
 		.map(([_, value]) => value)
 		.join("_")
 		.toUpperCase();
 }
 
-export function setUpperCaseSnakeAsCamelStr(str: string) {
+export function stringsConvertCapitalSnakeCaseToCamelCase(str: string) {
 	return str.toLowerCase().replace(/_(.)/g, (_, char) => char.toUpperCase());
 }
 
-export function setUpperSnakeCaseAsKebabStr(str: string) {
+export function stringsConvertCapitalSnakeCaseToKebabCase(str: string) {
 	return str.replace(/_/g, "-").toLowerCase();
 }
