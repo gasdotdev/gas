@@ -384,6 +384,51 @@ async function renameAddedResourceIndexFiles(
 	await Promise.all(promises);
 }
 
+type AddedEntryResourceViteConfigPath = string;
+
+function setAddedEntryResourceViteConfigPath(
+	resourceContainerDirPath: string,
+	addedEntryResourceName: string,
+	addedResources: AddedResources,
+): AddedEntryResourceViteConfigPath {
+	return join(
+		resourceContainerDirPath,
+		addedResources[addedEntryResourceName].kebabCase,
+		"vite.config.ts",
+	);
+}
+
+async function updateAddedEntryResourceViteConfigEnvVars(
+	addedEntryResourceViteConfigPath: AddedEntryResourceViteConfigPath,
+	addedEntryResourceName: string,
+	addedResources: AddedResources,
+) {
+	const viteConfigContent = await fs.readFile(
+		addedEntryResourceViteConfigPath,
+		"utf-8",
+	);
+
+	const newEnvVarName = `GAS_${[
+		addedResources[addedEntryResourceName].entityGroup,
+		addedResources[addedEntryResourceName].entity,
+		addedResources[addedEntryResourceName].cloud,
+		addedResources[addedEntryResourceName].cloudService,
+		addedResources[addedEntryResourceName].descriptor,
+	]
+		.join("_")
+		.toUpperCase()}_PORT`;
+
+	const updatedViteConfigContent = viteConfigContent.replace(
+		/process\.env\.VITE_SERVER_PORT/g,
+		`process.env.${newEnvVarName}`,
+	);
+
+	await fs.writeFile(
+		addedEntryResourceViteConfigPath,
+		updatedViteConfigContent,
+	);
+}
+
 async function runConfirmInstallPackages() {
 	return await confirm({
 		message: "Install packages?",
@@ -437,144 +482,154 @@ async function newGraph(
 ) {
 	const addedResources: AddedResources = {};
 
-	const entryResourceTemplateId =
+	const addedEntryResourceTemplateId =
 		await runSelectEntryResourcePrompt(resourceTemplates);
 
-	const entryResourceTemplate = resourceTemplates[entryResourceTemplateId];
+	const addedEntryResourceTemplate =
+		resourceTemplates[addedEntryResourceTemplateId];
 
-	let entryResourceEntityGroup = "";
+	let addedEntryResourceEntityGroup = "";
 
-	if (entryResourceTemplate.type === "web") {
-		entryResourceEntityGroup = "web";
-	} else if (entryResourceTemplate.type === "api") {
-		entryResourceEntityGroup = await runSelectApiEntityGroupPrompt(
+	if (addedEntryResourceTemplate.type === "web") {
+		addedEntryResourceEntityGroup = "web";
+	} else if (addedEntryResourceTemplate.type === "api") {
+		addedEntryResourceEntityGroup = await runSelectApiEntityGroupPrompt(
 			resources.list,
 		);
 
-		if (entryResourceEntityGroup === "new") {
-			entryResourceEntityGroup = await runInputApiEntityGroupPrompt();
+		if (addedEntryResourceEntityGroup === "new") {
+			addedEntryResourceEntityGroup = await runInputApiEntityGroupPrompt();
 		}
 	}
 
-	entryResourceEntityGroup === "web" &&
+	addedEntryResourceEntityGroup === "web" &&
 		console.log("✔ Entity group set to web");
 
-	let entryResourceEntity = "";
+	let addedEntryResourceEntity = "";
 
-	if (entryResourceEntityGroup && entryResourceTemplate.type === "web") {
-		entryResourceEntity = await runInputWebEntityPrompt();
-	} else if (entryResourceEntityGroup && entryResourceTemplate.type === "api") {
-		entryResourceEntity = await runSelectApiEntityPrompt(resources.list);
+	if (
+		addedEntryResourceEntityGroup &&
+		addedEntryResourceTemplate.type === "web"
+	) {
+		addedEntryResourceEntity = await runInputWebEntityPrompt();
+	} else if (
+		addedEntryResourceEntityGroup &&
+		addedEntryResourceTemplate.type === "api"
+	) {
+		addedEntryResourceEntity = await runSelectApiEntityPrompt(resources.list);
 
-		if (entryResourceEntity === "new") {
-			entryResourceEntity = await runInputApiEntityPrompt();
+		if (addedEntryResourceEntity === "new") {
+			addedEntryResourceEntity = await runInputApiEntityPrompt();
 		}
 	}
 
-	const entryResourceName = stringsConvertObjectToCapitalSnakeCase({
-		entityGroup: entryResourceEntityGroup,
-		entity: entryResourceEntity,
-		cloud: entryResourceTemplate.cloud,
-		cloudService: entryResourceTemplate.cloudService,
-		descriptor: entryResourceTemplate.descriptor,
+	const addedEntryResourceName = stringsConvertObjectToCapitalSnakeCase({
+		entityGroup: addedEntryResourceEntityGroup,
+		entity: addedEntryResourceEntity,
+		cloud: addedEntryResourceTemplate.cloud,
+		cloudService: addedEntryResourceTemplate.cloudService,
+		descriptor: addedEntryResourceTemplate.descriptor,
 	});
 
-	addedResources[entryResourceName] = setAddedResource({
-		name: entryResourceName,
-		entityGroup: entryResourceEntityGroup,
-		entity: entryResourceEntity,
-		cloud: entryResourceTemplate.cloud,
-		cloudService: entryResourceTemplate.cloudService,
-		descriptor: entryResourceTemplate.descriptor,
-		templateId: entryResourceTemplateId,
+	addedResources[addedEntryResourceName] = setAddedResource({
+		name: addedEntryResourceName,
+		entityGroup: addedEntryResourceEntityGroup,
+		entity: addedEntryResourceEntity,
+		cloud: addedEntryResourceTemplate.cloud,
+		cloudService: addedEntryResourceTemplate.cloudService,
+		descriptor: addedEntryResourceTemplate.descriptor,
+		templateId: addedEntryResourceTemplateId,
 	});
 
-	let apiResourceTemplateId = "";
-	if (entryResourceTemplate.type === "web") {
-		apiResourceTemplateId = await runSelectApiResourcePrompt(resourceTemplates);
+	let addedApiResourceTemplateId = "";
+	if (addedEntryResourceTemplate.type === "web") {
+		addedApiResourceTemplateId =
+			await runSelectApiResourcePrompt(resourceTemplates);
 	}
 
-	const apiResourceTemplate = apiResourceTemplateId
-		? resourceTemplates[apiResourceTemplateId]
+	const addedApiResourceTemplate = addedApiResourceTemplateId
+		? resourceTemplates[addedApiResourceTemplateId]
 		: undefined;
 
-	let apiResourceEntityGroup = "";
-	if (apiResourceTemplateId) {
-		apiResourceEntityGroup = await runSelectApiEntityGroupPrompt(
+	let addedApiResourceEntityGroup = "";
+	if (addedApiResourceTemplateId) {
+		addedApiResourceEntityGroup = await runSelectApiEntityGroupPrompt(
 			resources.list,
 		);
 
-		if (apiResourceEntityGroup === "new") {
-			apiResourceEntityGroup = await runInputApiEntityGroupPrompt();
+		if (addedApiResourceEntityGroup === "new") {
+			addedApiResourceEntityGroup = await runInputApiEntityGroupPrompt();
 		}
 	}
 
-	let apiResourceEntity = "";
-	let apiResourceName = "";
+	let addedApiResourceEntity = "";
+	let addedApiResourceName = "";
 
-	if (apiResourceEntityGroup) {
-		apiResourceEntity = await runSelectApiEntityPrompt(resources.list);
+	if (addedApiResourceEntityGroup) {
+		addedApiResourceEntity = await runSelectApiEntityPrompt(resources.list);
 
-		if (apiResourceEntity === "new") {
-			apiResourceEntity = await runInputApiEntityPrompt();
+		if (addedApiResourceEntity === "new") {
+			addedApiResourceEntity = await runInputApiEntityPrompt();
 		}
 
-		apiResourceName = stringsConvertObjectToCapitalSnakeCase({
-			entityGroup: apiResourceEntityGroup,
-			entity: apiResourceEntity,
-			cloud: apiResourceTemplate!.cloud,
-			cloudService: apiResourceTemplate!.cloudService,
-			descriptor: apiResourceTemplate!.descriptor,
+		addedApiResourceName = stringsConvertObjectToCapitalSnakeCase({
+			entityGroup: addedApiResourceEntityGroup,
+			entity: addedApiResourceEntity,
+			cloud: addedApiResourceTemplate!.cloud,
+			cloudService: addedApiResourceTemplate!.cloudService,
+			descriptor: addedApiResourceTemplate!.descriptor,
 		});
 
-		addedResources[apiResourceName] = setAddedResource({
-			name: apiResourceName,
-			entityGroup: apiResourceEntityGroup,
-			entity: apiResourceEntity,
-			cloud: apiResourceTemplate!.cloud,
-			cloudService: apiResourceTemplate!.cloudService,
-			descriptor: apiResourceTemplate!.descriptor,
-			templateId: apiResourceTemplateId,
+		addedResources[addedApiResourceName] = setAddedResource({
+			name: addedApiResourceName,
+			entityGroup: addedApiResourceEntityGroup,
+			entity: addedApiResourceEntity,
+			cloud: addedApiResourceTemplate!.cloud,
+			cloudService: addedApiResourceTemplate!.cloudService,
+			descriptor: addedApiResourceTemplate!.descriptor,
+			templateId: addedApiResourceTemplateId,
 		});
 	}
 
-	let dbResourceTemplateId = "";
+	let addedDbResourceTemplateId = "";
 
-	if (apiResourceTemplateId) {
-		dbResourceTemplateId = await runSelectDbResourcePrompt(resourceTemplates);
+	if (addedApiResourceTemplateId) {
+		addedDbResourceTemplateId =
+			await runSelectDbResourcePrompt(resourceTemplates);
 	}
 
-	const dbResourceTemplate = dbResourceTemplateId
-		? resourceTemplates[dbResourceTemplateId]
+	const addedDbResourceTemplate = addedDbResourceTemplateId
+		? resourceTemplates[addedDbResourceTemplateId]
 		: undefined;
 
-	let dbResourceEntityGroup = "";
+	let addedDbResourceEntityGroup = "";
 
-	if (dbResourceTemplateId) {
-		dbResourceEntityGroup = await runInputEntityGroupPrompt();
+	if (addedDbResourceTemplateId) {
+		addedDbResourceEntityGroup = await runInputEntityGroupPrompt();
 	}
 
-	let dbResourceEntity = "";
-	let dbResourceName = "";
-	if (dbResourceEntityGroup) {
-		dbResourceEntity = await runInputEntityPrompt();
+	let addedDbResourceEntity = "";
+	let addedDbResourceName = "";
 
-		dbResourceName = stringsConvertObjectToCapitalSnakeCase({
-			entityGroup: dbResourceEntityGroup,
-			entity: dbResourceEntity,
-			cloud: dbResourceTemplate!.cloud,
-			cloudService: dbResourceTemplate!.cloudService,
-			descriptor: dbResourceTemplate!.descriptor,
+	if (addedDbResourceEntityGroup) {
+		addedDbResourceEntity = await runInputEntityPrompt();
+
+		addedDbResourceName = stringsConvertObjectToCapitalSnakeCase({
+			entityGroup: addedDbResourceEntityGroup,
+			entity: addedDbResourceEntity,
+			cloud: addedDbResourceTemplate!.cloud,
+			cloudService: addedDbResourceTemplate!.cloudService,
+			descriptor: addedDbResourceTemplate!.descriptor,
 		});
 
-		addedResources[dbResourceName] = setAddedResource({
-			name: dbResourceName,
-			entityGroup: dbResourceEntityGroup,
-			entity: dbResourceEntity,
-			cloud: dbResourceTemplate!.cloud,
-			cloudService: dbResourceTemplate!.cloudService,
-			descriptor: dbResourceTemplate!.descriptor,
-			templateId: dbResourceTemplateId,
+		addedResources[addedDbResourceName] = setAddedResource({
+			name: addedDbResourceName,
+			entityGroup: addedDbResourceEntityGroup,
+			entity: addedDbResourceEntity,
+			cloud: addedDbResourceTemplate!.cloud,
+			cloudService: addedDbResourceTemplate!.cloudService,
+			descriptor: addedDbResourceTemplate!.descriptor,
+			templateId: addedDbResourceTemplateId,
 		});
 	}
 
@@ -622,69 +677,53 @@ async function newGraph(
 
 	await renameAddedResourceIndexFiles(resourceIndexFilesToRename);
 
-	return;
+	if (addedEntryResourceTemplateId === "cloudflare-pages-remix") {
+		const addedEntryResourceViteConfigPath =
+			setAddedEntryResourceViteConfigPath(
+				config.containerDirPath,
+				addedEntryResourceName,
+				addedResources,
+			);
 
-	if (
-		entryResourceTemplate.type === "web" &&
-		entryResourceTemplate.cloud === "cf" &&
-		entryResourceTemplate.cloudService === "pages"
-	) {
-		const viteConfigFilePath = join(
-			config.containerDirPath,
-			stringsConvertCapitalSnakeCaseToKebabCase(entryResourceName),
-			"vite.config.ts",
+		await updateAddedEntryResourceViteConfigEnvVars(
+			addedEntryResourceViteConfigPath,
+			addedEntryResourceName,
+			addedResources,
 		);
-
-		const viteConfigContent = await fs.readFile(viteConfigFilePath, "utf-8");
-
-		const newEnvVarName = `GAS_${[
-			entryResourceEntityGroup,
-			entryResourceEntity,
-			entryResourceTemplate.cloud,
-			entryResourceTemplate.cloudService,
-			entryResourceTemplate.descriptor,
-		]
-			.join("_")
-			.toUpperCase()}_PORT`;
-
-		const updatedViteConfigContent = viteConfigContent.replace(
-			/process\.env\.VITE_SERVER_PORT/g,
-			`process.env.${newEnvVarName}`,
-		);
-
-		await fs.writeFile(viteConfigFilePath, updatedViteConfigContent);
 	}
+
+	return;
 
 	const resourceNpmInstallCommands: string[] = [];
 
 	if (
-		addedResources[entryResourceName].cloud === "cf" &&
-		addedResources[entryResourceName].cloudService === "pages" &&
-		addedResources[entryResourceName].descriptor === "ssr" &&
-		apiResourceTemplateId
+		addedResources[addedEntryResourceName].cloud === "cf" &&
+		addedResources[addedEntryResourceName].cloudService === "pages" &&
+		addedResources[addedEntryResourceName].descriptor === "ssr" &&
+		addedApiResourceTemplateId
 	) {
 		const apiResourceName = Object.keys(addedResources)[1];
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${stringsConvertCapitalSnakeCaseToKebabCase(apiResourceName)}@0.0.0 --save-exact -w ${stringsConvertCapitalSnakeCaseToKebabCase(entryResourceName)}`,
+			`npm install --no-fund --no-audit ${stringsConvertCapitalSnakeCaseToKebabCase(apiResourceName)}@0.0.0 --save-exact -w ${stringsConvertCapitalSnakeCaseToKebabCase(addedEntryResourceName)}`,
 		);
 	}
 
 	if (
-		addedResources[entryResourceName].cloud === "cf" &&
-		addedResources[entryResourceName].cloudService === "workers" &&
-		addedResources[entryResourceName].descriptor === "api" &&
-		dbResourceTemplateId
+		addedResources[addedEntryResourceName].cloud === "cf" &&
+		addedResources[addedEntryResourceName].cloudService === "workers" &&
+		addedResources[addedEntryResourceName].descriptor === "api" &&
+		addedDbResourceTemplateId
 	) {
 		const dbResourceName = Object.keys(addedResources)[2];
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${stringsConvertCapitalSnakeCaseToKebabCase(dbResourceName)}@0.0.0 --save-exact -w ${stringsConvertCapitalSnakeCaseToKebabCase(entryResourceName)}`,
+			`npm install --no-fund --no-audit ${stringsConvertCapitalSnakeCaseToKebabCase(dbResourceName)}@0.0.0 --save-exact -w ${stringsConvertCapitalSnakeCaseToKebabCase(addedEntryResourceName)}`,
 		);
 	}
 
-	if (apiResourceTemplateId && dbResourceTemplateId) {
+	if (addedApiResourceTemplateId && addedDbResourceTemplateId) {
 		const dbResourceName = Object.keys(addedResources)[2];
 		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${stringsConvertCapitalSnakeCaseToKebabCase(dbResourceName)}@0.0.0 --save-exact -w ${stringsConvertCapitalSnakeCaseToKebabCase(entryResourceName)}`,
+			`npm install --no-fund --no-audit ${stringsConvertCapitalSnakeCaseToKebabCase(dbResourceName)}@0.0.0 --save-exact -w ${stringsConvertCapitalSnakeCaseToKebabCase(addedEntryResourceName)}`,
 		);
 	}
 
@@ -717,7 +756,7 @@ async function newGraph(
 				addedResources[resourceName].cloud === "cf" &&
 				addedResources[resourceName].cloudService === "pages" &&
 				addedResources[resourceName].descriptor === "ssr" &&
-				apiResourceName
+				addedApiResourceName
 			) {
 				if (!params.services) {
 					params.services = [];
