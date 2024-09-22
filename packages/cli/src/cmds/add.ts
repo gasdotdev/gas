@@ -471,6 +471,11 @@ async function newGraph(
 		mod.exports.entityGroupEntityCloudCloudServiceDescriptor.$args[0].name =
 			setResourceUpperSnakeCaseName(pendingResource);
 
+		// Note: The ast types aren't working correctly. Thus,
+		// @ts-ignore. In a demo, where magicast is used in a
+		// plain .js file, and with the same version, ast is
+		// correctly typed as having a body method. The reason
+		// for this discrepancy is unknown.
 		// @ts-ignore
 		const exportDeclaration = ast.body.find(
 			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
