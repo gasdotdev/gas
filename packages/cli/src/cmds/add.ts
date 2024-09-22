@@ -429,30 +429,55 @@ async function updateAddedEntryResourceViteConfigEnvVars(
 	);
 }
 
-async function runConfirmInstallPackages() {
-	return await confirm({
-		message: "Install packages?",
-	});
-}
+type AddedResourceNpmInstallCommands = string[];
 
-const exec = util.promisify(execCallback);
+function setAddedResourceNpmInstallCommands(
+	addedResources: AddedResources,
+	addedEntryResourceName: string,
+	addedApiResourceName: string,
+	addedDbResourceName: string,
+): AddedResourceNpmInstallCommands {
+	const res: AddedResourceNpmInstallCommands = [];
 
-async function installPackages(): Promise<void> {
-	console.log("Installing packages...");
-	try {
-		const { stdout, stderr } = await exec("npm install");
-		console.log(stdout);
-		if (stderr) {
-			console.error(stderr);
-		}
-		console.log("Packages installed successfully.");
-	} catch (error) {
-		console.error("Error installing packages:", error);
+	const cmdBase = "npm install --no-fund --no-audit";
+
+	const addedEntryResource = addedResources[addedEntryResourceName];
+	const addedApiResource = addedResources[addedApiResourceName];
+	const addedDbResource = addedResources[addedDbResourceName];
+
+	if (
+		addedEntryResource.cloud === "cf" &&
+		addedEntryResource.cloudService === "pages" &&
+		addedEntryResource.descriptor === "ssr" &&
+		addedApiResourceName
+	) {
+		res.push(
+			`${cmdBase} ${addedApiResource.kebabCase}@0.0.0 --save-exact -w ${addedEntryResource.kebabCase}`,
+		);
 	}
+
+	if (
+		addedEntryResource.cloud === "cf" &&
+		addedEntryResource.cloudService === "workers" &&
+		addedEntryResource.descriptor === "api" &&
+		addedDbResourceName
+	) {
+		res.push(
+			`${cmdBase} ${addedDbResource.kebabCase}@0.0.0 --save-exact -w ${addedEntryResource.kebabCase}`,
+		);
+	}
+
+	if (addedApiResourceName && addedDbResourceName) {
+		res.push(
+			`${cmdBase} ${addedDbResource.kebabCase}@0.0.0 --save-exact -w ${addedApiResource.kebabCase}`,
+		);
+	}
+
+	return res;
 }
 
-async function installingResources(
-	resourceNpmInstallCommands: string[],
+async function runAddedResourceNpmInstallCommands(
+	resourceNpmInstallCommands: AddedResourceNpmInstallCommands,
 ): Promise<void> {
 	console.log("Installing resources...");
 	try {
@@ -472,6 +497,28 @@ async function installingResources(
 		console.log("All resources installed successfully.");
 	} catch (error) {
 		console.error("Error installing resources:", error);
+	}
+}
+
+async function runConfirmInstallPackages() {
+	return await confirm({
+		message: "Install packages?",
+	});
+}
+
+const exec = util.promisify(execCallback);
+
+async function installPackages(): Promise<void> {
+	console.log("Installing packages...");
+	try {
+		const { stdout, stderr } = await exec("npm install");
+		console.log(stdout);
+		if (stderr) {
+			console.error(stderr);
+		}
+		console.log("Packages installed successfully.");
+	} catch (error) {
+		console.error("Error installing packages:", error);
 	}
 }
 
@@ -692,42 +739,16 @@ async function newGraph(
 		);
 	}
 
+	const resourceNpmInstallCommands = setAddedResourceNpmInstallCommands(
+		addedResources,
+		addedEntryResourceName,
+		addedApiResourceName,
+		addedDbResourceName,
+	);
+
+	await runAddedResourceNpmInstallCommands(resourceNpmInstallCommands);
+
 	return;
-
-	const resourceNpmInstallCommands: string[] = [];
-
-	if (
-		addedResources[addedEntryResourceName].cloud === "cf" &&
-		addedResources[addedEntryResourceName].cloudService === "pages" &&
-		addedResources[addedEntryResourceName].descriptor === "ssr" &&
-		addedApiResourceTemplateId
-	) {
-		const apiResourceName = Object.keys(addedResources)[1];
-		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${stringsConvertCapitalSnakeCaseToKebabCase(apiResourceName)}@0.0.0 --save-exact -w ${stringsConvertCapitalSnakeCaseToKebabCase(addedEntryResourceName)}`,
-		);
-	}
-
-	if (
-		addedResources[addedEntryResourceName].cloud === "cf" &&
-		addedResources[addedEntryResourceName].cloudService === "workers" &&
-		addedResources[addedEntryResourceName].descriptor === "api" &&
-		addedDbResourceTemplateId
-	) {
-		const dbResourceName = Object.keys(addedResources)[2];
-		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${stringsConvertCapitalSnakeCaseToKebabCase(dbResourceName)}@0.0.0 --save-exact -w ${stringsConvertCapitalSnakeCaseToKebabCase(addedEntryResourceName)}`,
-		);
-	}
-
-	if (addedApiResourceTemplateId && addedDbResourceTemplateId) {
-		const dbResourceName = Object.keys(addedResources)[2];
-		resourceNpmInstallCommands.push(
-			`npm install --no-fund --no-audit ${stringsConvertCapitalSnakeCaseToKebabCase(dbResourceName)}@0.0.0 --save-exact -w ${stringsConvertCapitalSnakeCaseToKebabCase(addedEntryResourceName)}`,
-		);
-	}
-
-	await installingResources(resourceNpmInstallCommands);
 
 	const newResources = await setResources(config.containerDirPath, {
 		resourceNames: Object.keys(addedResources),
