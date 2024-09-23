@@ -85,13 +85,13 @@ async function runSelectApiEntityGroupPrompt(resourceList: ResourceList) {
 
 	if (apiResourceEntityGroupChoices.length > 0) {
 		choices.push(...apiResourceEntityGroupChoices);
-		choices.push({ name: "Create new", value: "new" });
+		choices.push({ name: "new", value: "new" });
 	} else {
 		choices.push({
-			name: "Core (suggested)",
+			name: "core (suggested)",
 			value: "core",
 		});
-		choices.push({ name: "Create new", value: "new" });
+		choices.push({ name: "new", value: "new" });
 	}
 
 	return await select({
@@ -109,7 +109,7 @@ async function runInputApiEntityGroupPrompt() {
 
 async function runInputWebEntityPrompt() {
 	return await input({
-		message: "Enter web resource entity: (e.g. app, dash, landing)",
+		message: "Enter web resource entity: (e.g. app, blog, landing)",
 		required: true,
 	});
 }
@@ -126,10 +126,10 @@ async function runSelectApiEntityPrompt(resourceList: ResourceList) {
 
 	if (entityChoices.length > 0) {
 		choices.push(...entityChoices);
-		choices.push({ name: "Create new", value: "new" });
+		choices.push({ name: "new", value: "new" });
 	} else {
-		choices.push({ name: "Base (suggested)", value: "base" });
-		choices.push({ name: "Create new", value: "new" });
+		choices.push({ name: "base (suggested)", value: "base" });
+		choices.push({ name: "new", value: "new" });
 	}
 
 	return await select({
@@ -152,8 +152,8 @@ async function runSelectApiResourcePrompt(
 		setResourceTemplateSelectPromptListItems(resourceTemplates, ["api"]);
 
 	const choices = [
-		{ name: "Skip", value: "" },
 		...resourceTemplatesSelectPromptListItems,
+		{ name: "skip", value: "" },
 	];
 
 	return await select({
@@ -167,8 +167,8 @@ async function runSelectDbResourcePrompt(resourceTemplates: ResourceTemplates) {
 		setResourceTemplateSelectPromptListItems(resourceTemplates, ["db"]);
 
 	const choices = [
-		{ name: "Skip", value: "" },
 		...resourceTemplatesSelectPromptListItems,
+		{ name: "skip", value: "" },
 	];
 
 	return await select({
