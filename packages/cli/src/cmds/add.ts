@@ -21,6 +21,7 @@ import {
 } from "../modules/resources.js";
 import {
 	stringsConvertCapitalSnakeCaseToCamelCase,
+	stringsConvertCapitalSnakeCaseToDotCase,
 	stringsConvertCapitalSnakeCaseToKebabCase,
 	stringsConvertObjectToCapitalSnakeCase,
 } from "../modules/strings.js";
@@ -197,7 +198,9 @@ type AddedResource = {
 	cloudService: string;
 	descriptor: string;
 	templateId: string;
+	camelCase: string;
 	kebabCase: string;
+	indexFilePath: string;
 };
 
 type AddedResources = {
@@ -212,7 +215,9 @@ function setAddedResource(input: {
 	cloudService: string;
 	descriptor: string;
 	templateId: string;
+	resourceContainerDir: string;
 }): AddedResource {
+	const kebabCase = stringsConvertCapitalSnakeCaseToKebabCase(input.name);
 	return {
 		entityGroup: input.entityGroup,
 		entity: input.entity,
@@ -220,7 +225,14 @@ function setAddedResource(input: {
 		cloudService: input.cloudService,
 		descriptor: input.descriptor,
 		templateId: input.templateId,
-		kebabCase: stringsConvertCapitalSnakeCaseToKebabCase(input.name),
+		camelCase: stringsConvertCapitalSnakeCaseToCamelCase(input.name),
+		kebabCase,
+		indexFilePath: join(
+			input.resourceContainerDir,
+			kebabCase,
+			"src",
+			`index.${stringsConvertCapitalSnakeCaseToDotCase(input.name)}.ts`,
+		),
 	};
 }
 
@@ -500,6 +512,117 @@ async function runAddedResourceNpmInstallCommands(
 	}
 }
 
+type AddedResourceDependencies = {
+	[name: string]: string[];
+};
+
+function setAddedResourceDependencies(
+	addedResources: AddedResources,
+	addedEntryResourceName: string,
+	addedApiResourceName: string,
+	addedDbResourceName: string,
+): AddedResourceDependencies {
+	const res: AddedResourceDependencies = {};
+
+	const addedEntryResource = addedResources[addedEntryResourceName];
+
+	res[addedEntryResourceName] = [];
+	if (addedApiResourceName) res[addedApiResourceName] = [];
+	if (addedDbResourceName) res[addedDbResourceName] = [];
+
+	if (
+		addedEntryResource.cloud === "cf" &&
+		addedEntryResource.cloudService === "pages" &&
+		addedEntryResource.descriptor === "ssr" &&
+		addedApiResourceName
+	) {
+		res[addedEntryResourceName].push(addedApiResourceName);
+	}
+
+	if (
+		addedEntryResource.cloud === "cf" &&
+		addedEntryResource.cloudService === "workers" &&
+		addedEntryResource.descriptor === "api" &&
+		addedDbResourceName
+	) {
+		res[addedEntryResourceName].push(addedDbResourceName);
+	}
+
+	if (addedApiResourceName && addedDbResourceName) {
+		res[addedApiResourceName].push(addedDbResourceName);
+	}
+
+	return res;
+}
+
+async function updateAddedResourceIndexFiles(
+	addedResources: AddedResources,
+	addedResourceDependencies: AddedResourceDependencies,
+	addedApiResourceName: string,
+) {
+	const promises: Promise<void>[] = [];
+
+	for (const addedResourceName in addedResources) {
+		const mod = await loadFile(addedResources[addedResourceName].indexFilePath);
+
+		const ast = mod.exports.$ast;
+
+		mod.exports.entityGroupEntityCloudCloudServiceDescriptor.$args[0].name =
+			addedResourceName;
+
+		// Note: The ast types aren't working correctly. Thus,
+		// @ts-ignore. In a demo, where magicast is used in a
+		// plain .js file, and with the same version, ast is
+		// correctly typed as having a body method. The reason
+		// for this discrepancy is unknown.
+		// @ts-ignore
+		const exportDeclaration = ast.body.find(
+			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+			(node: any) =>
+				node.type === "ExportNamedDeclaration" &&
+				node.declaration?.type === "VariableDeclaration" &&
+				node.declaration.declarations[0]?.id.type === "Identifier" &&
+				node.declaration.declarations[0].id.name ===
+					"entityGroupEntityCloudCloudServiceDescriptor",
+		);
+
+		if (exportDeclaration?.declaration.declarations[0]) {
+			exportDeclaration.declaration.declarations[0].id.name =
+				addedResources[addedResourceName].camelCase;
+		} else {
+			console.log("export config const not found in the file");
+		}
+
+		for (const depName of addedResourceDependencies[addedResourceName]) {
+			mod.imports.$append({
+				from: addedResources[depName].kebabCase,
+				imported: addedResources[depName].camelCase,
+			});
+
+			const params =
+				mod.exports[addedResources[addedResourceName].camelCase].$args[0];
+
+			if (
+				addedResources[addedResourceName].cloud === "cf" &&
+				addedResources[addedResourceName].cloudService === "pages" &&
+				addedResources[addedResourceName].descriptor === "ssr" &&
+				addedApiResourceName
+			) {
+				if (!params.services) {
+					params.services = [];
+					params.services.push({
+						binding: builders.raw(`${addedResources[depName].camelCase}.name`),
+					});
+				}
+			}
+		}
+
+		writeFile(mod, addedResources[addedResourceName].indexFilePath);
+	}
+
+	return await Promise.all(promises);
+}
+
 async function runConfirmInstallPackages() {
 	return await confirm({
 		message: "Install packages?",
@@ -586,6 +709,7 @@ async function newGraph(
 		cloudService: addedEntryResourceTemplate.cloudService,
 		descriptor: addedEntryResourceTemplate.descriptor,
 		templateId: addedEntryResourceTemplateId,
+		resourceContainerDir: config.containerDirPath,
 	});
 
 	let addedApiResourceTemplateId = "";
@@ -635,6 +759,7 @@ async function newGraph(
 			cloudService: addedApiResourceTemplate!.cloudService,
 			descriptor: addedApiResourceTemplate!.descriptor,
 			templateId: addedApiResourceTemplateId,
+			resourceContainerDir: config.containerDirPath,
 		});
 	}
 
@@ -677,6 +802,7 @@ async function newGraph(
 			cloudService: addedDbResourceTemplate!.cloudService,
 			descriptor: addedDbResourceTemplate!.descriptor,
 			templateId: addedDbResourceTemplateId,
+			resourceContainerDir: config.containerDirPath,
 		});
 	}
 
@@ -748,58 +874,18 @@ async function newGraph(
 
 	await runAddedResourceNpmInstallCommands(resourceNpmInstallCommands);
 
-	return;
+	const addedResourceDependencies = setAddedResourceDependencies(
+		addedResources,
+		addedEntryResourceName,
+		addedApiResourceName,
+		addedDbResourceName,
+	);
 
-	const newResources = await setResources(config.containerDirPath, {
-		resourceNames: Object.keys(addedResources),
-	});
-
-	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-	const updateResourceIndexFilePromises: any = [];
-
-	async function updateResourceIndexFile(
-		resourceName: string,
-		resourceDeps: string[],
-	) {
-		const mod = await loadFile(newResources.nameToIndexFilePath[resourceName]);
-
-		for (const depName of resourceDeps) {
-			mod.imports.$append({
-				from: stringsConvertCapitalSnakeCaseToKebabCase(depName),
-				imported: stringsConvertCapitalSnakeCaseToCamelCase(depName),
-			});
-
-			const params =
-				mod.exports[stringsConvertCapitalSnakeCaseToCamelCase(resourceName)]
-					.$args[0];
-
-			if (
-				addedResources[resourceName].cloud === "cf" &&
-				addedResources[resourceName].cloudService === "pages" &&
-				addedResources[resourceName].descriptor === "ssr" &&
-				addedApiResourceName
-			) {
-				if (!params.services) {
-					params.services = [];
-					params.services.push({
-						binding: builders.raw(
-							`${stringsConvertCapitalSnakeCaseToCamelCase(depName)}.name`,
-						),
-					});
-				}
-			}
-		}
-
-		writeFile(mod, newResources.nameToIndexFilePath[resourceName]);
-	}
-
-	for (const name in newResources.nameToDeps) {
-		updateResourceIndexFilePromises.push(
-			updateResourceIndexFile(name, newResources.nameToDeps[name]),
-		);
-	}
-
-	await Promise.all(updateResourceIndexFilePromises);
+	await updateAddedResourceIndexFiles(
+		addedResources,
+		addedResourceDependencies,
+		addedApiResourceName,
+	);
 
 	const confirmInstallPackages = await runConfirmInstallPackages();
 
