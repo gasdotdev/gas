@@ -94,15 +94,15 @@ export async function runDevStart() {
 	mfPort = devManifest.miniflarePort;
 
 	const workers = [];
-	for (const name in devManifest.resources.nameToConfigData) {
+	for (const name in devManifest.resources.configData) {
 		if (
-			devManifest.resources.nameToConfigData[name].functionName ===
+			devManifest.resources.configData[name].functionName ===
 			"cloudflareWorkerApi"
 		) {
 			workers.push({
 				name,
 				modules: true,
-				scriptPath: devManifest.resources.nameToBuildIndexFilePath[name],
+				scriptPath: devManifest.resources.buildIndexFilePaths[name],
 			});
 		}
 	}

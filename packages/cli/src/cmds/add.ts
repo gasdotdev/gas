@@ -1012,7 +1012,7 @@ export async function runAdd() {
 
 	const resources = await setResources(config.containerDirPath);
 
-	if (Object.keys(resources.nameToConfig).length === 0) {
+	if (Object.keys(resources.configs).length === 0) {
 		state = "new-graph";
 	}
 
