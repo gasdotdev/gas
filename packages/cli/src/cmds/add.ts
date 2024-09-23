@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import util from "node:util";
 import { confirm, input, select } from "@inquirer/prompts";
 import { downloadTemplate as giget } from "giget";
-import { builders, loadFile, writeFile } from "magicast";
+import { builders, generateCode, loadFile } from "magicast";
 import { type Config, setConfig } from "../modules/config.js";
 import {
 	type ResourceTemplateType,
@@ -623,7 +623,8 @@ async function updateAddedResourceIndexFiles(
 		mod.exports.entityGroupEntityCloudCloudServiceDescriptor.$args[0].name =
 			addedResourceName;
 
-		// Note: The ast types aren't working correctly. Thus,
+		// Note:
+		// The ast types aren't working correctly. Thus,
 		// @ts-ignore. In a demo, where magicast is used in a
 		// plain .js file, and with the same version, ast is
 		// correctly typed as having a body method. The reason
@@ -670,7 +671,44 @@ async function updateAddedResourceIndexFiles(
 			}
 		}
 
-		writeFile(mod, addedResources[addedResourceName].indexFilePath);
+		// Note:
+		// There are issues with line breaks and spacing in
+		// Magicast's generated code.
+		// - Imports and config function parameters have unecessary
+		// line breaks between them.
+		// - Named import specifiers lack spacing.
+		// Line break and simple spacing issues can be fixed by pre-processing
+		// the code before saving.
+		// Complex spacing issues can be fixed by running a formatter like
+		// Prettier or Biome after save.
+		// It's not clear if these issues are preventable using Magicast.
+		// Can the issues be prevented by providing proper inputs to Magicast,
+		// is it a fixable bug in Magicast, and/or is this "just how it is"?
+
+		const { code } = generateCode(mod);
+
+		// Remove line breaks between imports.
+		let cleanCode = code.replace(/import [^;]+;\n\nimport [^;]+;/g, (match) =>
+			match.replace(/\n\n/g, "\n"),
+		);
+
+		// Add spacing to import specifiers between {}.
+		cleanCode = cleanCode.replace(
+			/import\s*{\s*([^}]+)\s*}\s*from\s*["']([^"']+)["'];/g,
+			(match, importSpecifier, modulePath) => {
+				// importSpecifiers is the content inside the curly braces
+				// modulePath is the path of the module being imported
+				return `import { ${importSpecifier.trim()} } from "${modulePath}";`;
+			},
+		);
+
+		// Remove empty line breaks after commas.
+		cleanCode = cleanCode.replace(/,\n\n/g, ",\n");
+
+		await fs.writeFile(
+			addedResources[addedResourceName].indexFilePath,
+			cleanCode,
+		);
 	}
 
 	return await Promise.all(promises);
