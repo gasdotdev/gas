@@ -662,6 +662,11 @@ async function updateAddedResourceIndexFiles(
 				addedResources[addedResourceName].descriptor === "ssr" &&
 				addedApiResourceName
 			) {
+				mod.imports.$append({
+					from: "@gasdotdev/resources",
+					imported: "ServiceFetcherBindings",
+				});
+
 				if (!params.services) {
 					params.services = [];
 					params.services.push({
@@ -685,15 +690,15 @@ async function updateAddedResourceIndexFiles(
 		// Can the issues be prevented by providing proper inputs to Magicast,
 		// is it a fixable bug in Magicast, and/or is this "just how it is"?
 
-		const { code } = generateCode(mod);
+		let { code } = generateCode(mod);
 
 		// Remove line breaks between imports.
-		let cleanCode = code.replace(/import [^;]+;\n\nimport [^;]+;/g, (match) =>
+		code = code.replace(/import [^;]+;\n\nimport [^;]+;/g, (match) =>
 			match.replace(/\n\n/g, "\n"),
 		);
 
 		// Add spacing to import specifiers between {}.
-		cleanCode = cleanCode.replace(
+		code = code.replace(
 			/import\s*{\s*([^}]+)\s*}\s*from\s*["']([^"']+)["'];/g,
 			(match, importSpecifier, modulePath) => {
 				// importSpecifiers is the content inside the curly braces
@@ -703,12 +708,23 @@ async function updateAddedResourceIndexFiles(
 		);
 
 		// Remove empty line breaks after commas.
-		cleanCode = cleanCode.replace(/,\n\n/g, ",\n");
+		code = code.replace(/,\n\n/g, ",\n");
 
-		await fs.writeFile(
-			addedResources[addedResourceName].indexFilePath,
-			cleanCode,
-		);
+		for (const depName of addedResourceDependencies[addedResourceName]) {
+			if (
+				addedResources[addedResourceName].cloud === "cf" &&
+				addedResources[addedResourceName].cloudService === "pages" &&
+				addedResources[addedResourceName].descriptor === "ssr" &&
+				addedApiResourceName
+			) {
+				code = code.replace(
+					"type Env = {}",
+					`type Env = ServiceFetcherBindings<(typeof ${addedResources[addedResourceName].camelCase})["services"]>`,
+				);
+			}
+		}
+
+		await fs.writeFile(addedResources[addedResourceName].indexFilePath, code);
 	}
 
 	return await Promise.all(promises);
