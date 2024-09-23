@@ -8,7 +8,7 @@ import { downloadTemplate as giget } from "giget";
 import { builders, generateCode, loadFile } from "magicast";
 import { type Config, setConfig } from "../modules/config.js";
 import {
-	type ResourceTemplateType,
+	type ResourceTemplateCategory,
 	type ResourceTemplates,
 	setResourceTemplates,
 } from "../modules/resource-templates.js";
@@ -45,12 +45,12 @@ export type ResourceTemplatesSelectPromptListItems = {
 
 export const setResourceTemplateSelectPromptListItems = (
 	record: ResourceTemplates,
-	types?: ResourceTemplateType[],
+	categories?: ResourceTemplateCategory[],
 ): ResourceTemplatesSelectPromptListItems => {
 	const entries = Object.entries(record);
-	return types
+	return categories
 		? entries
-				.filter(([_, value]) => types.includes(value.type))
+				.filter(([_, value]) => categories.includes(value.category))
 				.map(([key, value]) => ({ name: value.name, value: key }))
 		: entries.map(([key, value]) => ({ name: value.name, value: key }));
 };
@@ -767,9 +767,9 @@ async function newGraph(
 
 	let addedEntryResourceEntityGroup = "";
 
-	if (addedEntryResourceTemplate.type === "web") {
+	if (addedEntryResourceTemplate.category === "web") {
 		addedEntryResourceEntityGroup = "web";
-	} else if (addedEntryResourceTemplate.type === "api") {
+	} else if (addedEntryResourceTemplate.category === "api") {
 		addedEntryResourceEntityGroup = await runSelectApiEntityGroupPrompt(
 			resources.list,
 		);
@@ -786,12 +786,12 @@ async function newGraph(
 
 	if (
 		addedEntryResourceEntityGroup &&
-		addedEntryResourceTemplate.type === "web"
+		addedEntryResourceTemplate.category === "web"
 	) {
 		addedEntryResourceEntity = await runInputWebEntityPrompt();
 	} else if (
 		addedEntryResourceEntityGroup &&
-		addedEntryResourceTemplate.type === "api"
+		addedEntryResourceTemplate.category === "api"
 	) {
 		addedEntryResourceEntity = await runSelectApiEntityPrompt(resources.list);
 
@@ -820,7 +820,7 @@ async function newGraph(
 	});
 
 	let addedApiResourceTemplateId = "";
-	if (addedEntryResourceTemplate.type === "web") {
+	if (addedEntryResourceTemplate.category === "web") {
 		addedApiResourceTemplateId =
 			await runSelectApiResourcePrompt(resourceTemplates);
 	}
