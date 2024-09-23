@@ -199,6 +199,7 @@ type AddedResource = {
 	descriptor: string;
 	templateId: string;
 	camelCase: string;
+	dotCase: string;
 	kebabCase: string;
 	indexFilePath: string;
 };
@@ -226,6 +227,7 @@ function setAddedResource(input: {
 		descriptor: input.descriptor,
 		templateId: input.templateId,
 		camelCase: stringsConvertCapitalSnakeCaseToCamelCase(input.name),
+		dotCase: stringsConvertCapitalSnakeCaseToDotCase(input.name),
 		kebabCase,
 		indexFilePath: join(
 			input.resourceContainerDir,
@@ -296,8 +298,18 @@ function setAddedResourcePackageJsonPaths(
 	return res;
 }
 
+type AddedResourcePackageJson = {
+	name: string;
+	main?: string;
+	types?: string;
+	scripts: {
+		build?: string;
+		dev?: string;
+	};
+};
+
 type AddedResourcePackageJsons = {
-	[name: string]: Record<string, unknown>;
+	[name: string]: AddedResourcePackageJson;
 };
 
 async function readAddedResourcePackageJsons(
@@ -312,13 +324,54 @@ async function readAddedResourcePackageJsons(
 	return res;
 }
 
-function updateAddedResourcePackageJsonNames(
+function updateAddedResourcePackageJsons(
+	addedResources: AddedResources,
 	addedResourcePackageJsons: AddedResourcePackageJsons,
 ) {
 	for (const addedResourceName in addedResourcePackageJsons) {
 		const packageJson = addedResourcePackageJsons[addedResourceName];
+
 		packageJson.name =
 			stringsConvertCapitalSnakeCaseToKebabCase(addedResourceName);
+
+		if (
+			packageJson.main?.includes(
+				"./src/index.entity-group.entity.descriptor.ts",
+			)
+		) {
+			packageJson.main = packageJson.main.replace(
+				"./src/index.entity-group.entity.descriptor.ts",
+				`./src/index.${addedResources[addedResourceName].dotCase}.ts`,
+			);
+		}
+
+		if (
+			packageJson.types?.includes(
+				"./src/index.entity-group.entity.descriptor.ts",
+			)
+		) {
+			packageJson.types = packageJson.types.replace(
+				"./src/index.entity-group.entity.descriptor.ts",
+				`./src/index.${addedResources[addedResourceName].dotCase}.ts`,
+			);
+		}
+
+		const outFileString =
+			"--outfile=build/src/index.entity-group.entity.descriptor.js";
+
+		if (packageJson.scripts?.build?.includes(outFileString)) {
+			packageJson.scripts.build = packageJson.scripts.build.replace(
+				outFileString,
+				`--outfile=build/src/${addedResources[addedResourceName].dotCase}.js`,
+			);
+		}
+
+		if (packageJson.scripts?.dev?.includes(outFileString)) {
+			packageJson.scripts.dev = packageJson.scripts.dev.replace(
+				outFileString,
+				`--outfile=build/src/${addedResources[addedResourceName].dotCase}.js`,
+			);
+		}
 	}
 }
 
@@ -836,7 +889,7 @@ async function newGraph(
 		resourcePackageJsonPaths,
 	);
 
-	updateAddedResourcePackageJsonNames(resourcePackageJsons);
+	updateAddedResourcePackageJsons(addedResources, resourcePackageJsons);
 
 	await saveAddedResourcePackageJsons(
 		resourcePackageJsonPaths,
