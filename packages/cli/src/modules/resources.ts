@@ -81,35 +81,6 @@ type FactoryOptions = {
 	upJsonNameToDependencies: UpJsonNameToDependencies;
 };
 
-/**
- * Initializes resources.
- *
- * @param containerDirPath - Path to resource container dir (e.g. `./gas`).
- * @param options.upJsonNameToDependencies - `UpJsonNameToDependencies` object.
- * It gets merged with the `ResourceNameToDependencies` object (with
- * `ResourceNameToDependencies` taking precedence). It's used when deploying
- * resources via the `up` command.
- *
- * The reason is resources can be derived from:
- * 1) The resource container dir.
- * 2) The up .json file (e.g. `./gas.up.json`).
- *
- * - Resources derived from the resource container dir are considered as being current
- * resources. They're a snapshot of the system's resources as they currently exist.
- *
- * - Resources derived from the up .json file are a mixture of current and past
- * resources -- depending on what changes have or haven't been made. They're a snapshot
- * of the system's resources on last deploy to the cloud.
- *
- * When deploying resources via the `up` command, it's necessary to account for resources
- * that exist in the up .json file but not as current resources (i.e. deleted resources).
- * For example, if Resource A depends on Resource B and Resource B gets deleted, Resource B
- * would no longer exist in the resource container dir. The only record of Resource B would
- * be in the up .json file. Therefore, `UpJsonNameToDependencies` and `ResourceNameToDependencies`
- * have to be merged. Only then, when all resources have been accounted for, can a proper resource
- * graph be constructed for deployment.
- * @returns Resources.
- */
 async function factory(
 	containerDirPath: ResourceContainerDirPath,
 	options?: FactoryOptions,
@@ -135,6 +106,8 @@ async function factory(
 
 	let nameToDependencies = setNameToDependencies(nameToPackageJson);
 
+	// Account for deleted resources. Deleted will resources will be
+	// present in gas.up.json but not the file system.
 	if (options?.upJsonNameToDependencies) {
 		nameToDependencies = {
 			...options.upJsonNameToDependencies,
