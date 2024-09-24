@@ -248,33 +248,33 @@ function setAddedResourceTemplatesToCopy(
 	resourceContainerDirPath: string,
 	gigetLocalPath: string,
 ): AddedResourceTemplateToCopy[] {
-	const addedResourceTemplatesToCopy: AddedResourceTemplateToCopy[] = [];
+	const res: AddedResourceTemplateToCopy[] = [];
 	for (const name in nameToAddedResource) {
 		const resource = nameToAddedResource[name];
 		const templateDestinationDir = join(
 			resourceContainerDirPath,
 			resource.kebabCase,
 		);
-		addedResourceTemplatesToCopy.push({
+		res.push({
 			src: join(gigetLocalPath, resource.templateId),
 			dest: templateDestinationDir,
 		});
 	}
-	return addedResourceTemplatesToCopy;
+	return res;
 }
 
 async function copyAddedResourceTemplatesFromGigetLocalSrc(
 	addedResourceTemplatesToCopy: AddedResourceTemplateToCopy[],
 ) {
-	const copyPromises: Promise<void>[] = [];
+	const promises: Promise<void>[] = [];
 	for (const addedResourceTemplateToCopy of addedResourceTemplatesToCopy) {
-		copyPromises.push(
+		promises.push(
 			fs.cp(addedResourceTemplateToCopy.src, addedResourceTemplateToCopy.dest, {
 				recursive: true,
 			}),
 		);
 	}
-	await Promise.all(copyPromises);
+	await Promise.all(promises);
 }
 
 type AddedResourceNameToPackageJsonPath = {
@@ -285,8 +285,7 @@ function setAddedResourceNameToPackageJsonPath(
 	nameToAddedResource: NameToAddedResource,
 	resourceContainerDirPath: string,
 ) {
-	const addedResourceNameToPackageJsonPath: AddedResourceNameToPackageJsonPath =
-		{};
+	const res: AddedResourceNameToPackageJsonPath = {};
 	for (const name in nameToAddedResource) {
 		const resource = nameToAddedResource[name];
 		const packageJsonPath = join(
@@ -294,9 +293,9 @@ function setAddedResourceNameToPackageJsonPath(
 			resource.kebabCase,
 			"package.json",
 		);
-		addedResourceNameToPackageJsonPath[name] = packageJsonPath;
+		res[name] = packageJsonPath;
 	}
-	return addedResourceNameToPackageJsonPath;
+	return res;
 }
 
 type AddedResourcePackageJson = {
@@ -316,13 +315,13 @@ type AddedResourceNameToPackageJson = {
 async function setAddedResourceNameToPackageJsons(
 	addedResourceNameToPackageJsonPath: AddedResourceNameToPackageJsonPath,
 ) {
-	const addedResourceNameToPackageJsons: AddedResourceNameToPackageJson = {};
+	const res: AddedResourceNameToPackageJson = {};
 	for (const name in addedResourceNameToPackageJsonPath) {
 		const packageJsonPath = addedResourceNameToPackageJsonPath[name];
 		const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
-		addedResourceNameToPackageJsons[name] = JSON.parse(packageJsonContent);
+		res[name] = JSON.parse(packageJsonContent);
 	}
-	return addedResourceNameToPackageJsons;
+	return res;
 }
 
 function updateAddedResourcePackageJsons(
@@ -379,11 +378,11 @@ async function saveAddedResourcePackageJsons(
 	addedResourceNameToPackageJsonPath: AddedResourceNameToPackageJsonPath,
 	addedResourceNameToPackageJson: AddedResourceNameToPackageJson,
 ) {
-	const writeFilePromises: Promise<void>[] = [];
+	const promises: Promise<void>[] = [];
 	for (const addedResourceName in addedResourceNameToPackageJson) {
 		const packageJsonPath =
 			addedResourceNameToPackageJsonPath[addedResourceName];
-		writeFilePromises.push(
+		promises.push(
 			fs.writeFile(
 				packageJsonPath,
 				JSON.stringify(
@@ -394,7 +393,7 @@ async function saveAddedResourcePackageJsons(
 			),
 		);
 	}
-	await Promise.all(writeFilePromises);
+	await Promise.all(promises);
 }
 
 type AddedResourceNameToIndexFilesToRename = {
@@ -408,8 +407,7 @@ function setAddedResourceNameToIndexFilesToRename(
 	nameToAddedResource: NameToAddedResource,
 	resourceContainerDirPath: string,
 ) {
-	const addedResourceNameToIndexFilesToRename: AddedResourceNameToIndexFilesToRename =
-		{};
+	const res: AddedResourceNameToIndexFilesToRename = {};
 	for (const name in nameToAddedResource) {
 		const resource = nameToAddedResource[name];
 
@@ -430,7 +428,7 @@ function setAddedResourceNameToIndexFilesToRename(
 				resource.descriptor,
 			].join(".") + ".ts";
 
-		addedResourceNameToIndexFilesToRename[name] = {
+		res[name] = {
 			oldPath: oldFilePath,
 			newPath: join(
 				resourceContainerDirPath,
@@ -440,19 +438,19 @@ function setAddedResourceNameToIndexFilesToRename(
 			),
 		};
 	}
-	return addedResourceNameToIndexFilesToRename;
+	return res;
 }
 
 async function renameAddedResourceIndexFiles(
 	addedResourceIndexFilesToRename: AddedResourceNameToIndexFilesToRename,
 ) {
-	const renamePromises: Promise<void>[] = [];
+	const promises: Promise<void>[] = [];
 	for (const addedResourceName in addedResourceIndexFilesToRename) {
 		const { oldPath, newPath } =
 			addedResourceIndexFilesToRename[addedResourceName];
-		renamePromises.push(fs.rename(oldPath, newPath));
+		promises.push(fs.rename(oldPath, newPath));
 	}
-	await Promise.all(renamePromises);
+	await Promise.all(promises);
 }
 
 type AddedEntryResourceViteConfigPath = string;
@@ -575,7 +573,7 @@ type AddedResourceNameToDependencies = {
 	[name: string]: string[];
 };
 
-function setAddedResourceDependencies(
+function setAddedResourceNameToDependencies(
 	nameToAddedResource: NameToAddedResource,
 	addedEntryResourceName: string,
 	addedApiResourceName: string,
@@ -764,7 +762,7 @@ async function newGraph(
 	resources: Resources,
 	resourceTemplates: ResourceTemplates,
 ) {
-	const addedResources: NameToAddedResource = {};
+	const nameToAddedResources: NameToAddedResource = {};
 
 	const addedEntryResourceTemplateId =
 		await runSelectEntryResourcePrompt(resourceTemplates);
@@ -815,7 +813,7 @@ async function newGraph(
 		descriptor: addedEntryResourceTemplate.descriptor,
 	});
 
-	addedResources[addedEntryResourceName] = setAddedResource({
+	nameToAddedResources[addedEntryResourceName] = setAddedResource({
 		name: addedEntryResourceName,
 		entityGroup: addedEntryResourceEntityGroup,
 		entity: addedEntryResourceEntity,
@@ -865,7 +863,7 @@ async function newGraph(
 			descriptor: addedApiResourceTemplate!.descriptor,
 		});
 
-		addedResources[addedApiResourceName] = setAddedResource({
+		nameToAddedResources[addedApiResourceName] = setAddedResource({
 			name: addedApiResourceName,
 			entityGroup: addedApiResourceEntityGroup,
 			entity: addedApiResourceEntity,
@@ -908,7 +906,7 @@ async function newGraph(
 			descriptor: addedDbResourceTemplate!.descriptor,
 		});
 
-		addedResources[addedDbResourceName] = setAddedResource({
+		nameToAddedResources[addedDbResourceName] = setAddedResource({
 			name: addedDbResourceName,
 			entityGroup: addedDbResourceEntityGroup,
 			entity: addedDbResourceEntity,
@@ -934,53 +932,59 @@ async function newGraph(
 	});
 
 	const resourceTemplatesToCopy = setAddedResourceTemplatesToCopy(
-		addedResources,
+		nameToAddedResources,
 		config.containerDirPath,
 		gigetLocalPath,
 	);
 
 	await copyAddedResourceTemplatesFromGigetLocalSrc(resourceTemplatesToCopy);
 
-	const resourcePackageJsonPaths = setAddedResourceNameToPackageJsonPath(
-		addedResources,
-		config.containerDirPath,
-	);
+	const addedResourceNameToPackageJsonPath =
+		setAddedResourceNameToPackageJsonPath(
+			nameToAddedResources,
+			config.containerDirPath,
+		);
 
-	const resourcePackageJsons = await setAddedResourceNameToPackageJsons(
-		resourcePackageJsonPaths,
-	);
+	const addedResourceNameToPackageJson =
+		await setAddedResourceNameToPackageJsons(
+			addedResourceNameToPackageJsonPath,
+		);
 
-	updateAddedResourcePackageJsons(addedResources, resourcePackageJsons);
+	updateAddedResourcePackageJsons(
+		nameToAddedResources,
+		addedResourceNameToPackageJson,
+	);
 
 	await saveAddedResourcePackageJsons(
-		resourcePackageJsonPaths,
-		resourcePackageJsons,
+		addedResourceNameToPackageJsonPath,
+		addedResourceNameToPackageJson,
 	);
 
-	const resourceIndexFilesToRename = setAddedResourceNameToIndexFilesToRename(
-		addedResources,
-		config.containerDirPath,
-	);
+	const addedResourceNameToIndexFilesToRename =
+		setAddedResourceNameToIndexFilesToRename(
+			nameToAddedResources,
+			config.containerDirPath,
+		);
 
-	await renameAddedResourceIndexFiles(resourceIndexFilesToRename);
+	await renameAddedResourceIndexFiles(addedResourceNameToIndexFilesToRename);
 
 	if (addedEntryResourceTemplateId === "cloudflare-pages-remix") {
 		const addedEntryResourceViteConfigPath =
 			setAddedEntryResourceViteConfigPath(
 				config.containerDirPath,
 				addedEntryResourceName,
-				addedResources,
+				nameToAddedResources,
 			);
 
 		await updateAddedEntryResourceViteConfigEnvVars(
 			addedEntryResourceViteConfigPath,
 			addedEntryResourceName,
-			addedResources,
+			nameToAddedResources,
 		);
 	}
 
 	const resourceNpmInstallCommands = setAddedResourceNpmInstallCommands(
-		addedResources,
+		nameToAddedResources,
 		addedEntryResourceName,
 		addedApiResourceName,
 		addedDbResourceName,
@@ -988,16 +992,16 @@ async function newGraph(
 
 	await runAddedResourceNpmInstallCommands(resourceNpmInstallCommands);
 
-	const addedResourceDependencies = setAddedResourceDependencies(
-		addedResources,
+	const addedResourceNameToDependencies = setAddedResourceNameToDependencies(
+		nameToAddedResources,
 		addedEntryResourceName,
 		addedApiResourceName,
 		addedDbResourceName,
 	);
 
 	await updateAddedResourceIndexFiles(
-		addedResources,
-		addedResourceDependencies,
+		nameToAddedResources,
+		addedResourceNameToDependencies,
 		addedApiResourceName,
 	);
 
