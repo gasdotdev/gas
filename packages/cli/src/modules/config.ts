@@ -8,12 +8,14 @@ interface ConfigJson {
 
 export interface Config {
 	containerDirPath: string;
+	upJsonPath: string;
 }
 
 export async function setConfig(): Promise<Config> {
 	const json = await setJson();
 	const containerDirPath = setContainerDirPath(json);
-	return { containerDirPath };
+	const upJsonPath = setUpJsonPath(json);
+	return { containerDirPath, upJsonPath };
 }
 
 async function setJson(): Promise<ConfigJson> {
@@ -37,4 +39,11 @@ function setContainerDirPath(json: ConfigJson): string {
 		return json.resourceContainerDirPath;
 	}
 	return "./gas";
+}
+
+function setUpJsonPath(json: ConfigJson): string {
+	if (typeof json.resourceContainerDirPath === "string") {
+		return json.resourceContainerDirPath;
+	}
+	return "./gas.up.json";
 }

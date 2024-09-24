@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { type GraphGroupToDepthToNodes, setGraph } from "./graph.js";
-import { stringsConvertCapitalSnakeCaseToKebabCase } from "./strings.js";
+import type { UpJsonNameToDependencies } from "./up-json.js";
 
 type PackageJson = Record<string, unknown>;
 
@@ -66,31 +66,47 @@ interface ConfigData {
 }
 
 type SetResourcesOptions = {
-	resourceNames: string[];
+	upJsonNameToDependencies: UpJsonNameToDependencies;
 };
 
+/**
+ * Set resources.
+ *
+ * @param containerDirPath - Path to resource container dir (e.g. `./gas`).
+ * @param options.upJsonNameToDependencies - `UpJsonNameToDependencies` object.
+ * It gets merged with the `ResourceNameToDependencies` object (with
+ * `ResourceNameToDependencies` taking precedence). It's used when deploying
+ * resources via the `up` command.
+ *
+ * The reason is resources can be derived from:
+ * 1) The resource container dir.
+ * 2) The up .json file (e.g. `./gas.up.json`).
+ *
+ * - Resources derived from the resource container dir are considered as being current
+ * resources. They're a snapshot of the system's resources as they currently exist.
+ *
+ * - Resources derived from the up .json file are a mixture of current and past
+ * resources -- depending on what changes have or haven't been made. They're a snapshot
+ * of the system's resources on last deploy to the cloud.
+ *
+ * When deploying resources via the `up` command, it's necessary to account for resources
+ * that exist in the up .json file but not as current resources (i.e. deleted resources).
+ * For example, if Resource A depends on Resource B and Resource B gets deleted, Resource B
+ * would no longer exist in the resource container dir. The only record of Resource B would
+ * be in the up .json file. Therefore, `UpJsonNameToDependencies` and `ResourceNameToDependencies`
+ * have to be merged. Only then, when all resources have been accounted for, can a proper resource
+ * graph be constructed for deployment.
+ * @returns Resources.
+ */
 export async function setResources(
 	containerDirPath: ResourceContainerDirPath,
 	options?: SetResourcesOptions,
 ): Promise<Resources> {
-	let containerSubdirPaths: ResourceContainerSubdirPaths = [];
-
-	if (options?.resourceNames) {
-		containerSubdirPaths = options.resourceNames.map((name) => {
-			return path.join(
-				containerDirPath,
-				stringsConvertCapitalSnakeCaseToKebabCase(name),
-			);
-		});
-	} else {
-		containerSubdirPaths = await setContainerSubdirPaths(containerDirPath);
-	}
+	const containerSubdirPaths: ResourceContainerSubdirPaths = [];
 
 	const list = setList(containerSubdirPaths);
 
 	const nameToPackageJson = await setNameToPackageJson(containerSubdirPaths);
-
-	const nameToDependencies = setNameToDependencies(nameToPackageJson);
 
 	const nameToIndexFilePath =
 		await setNameToIndexFilePath(containerSubdirPaths);
@@ -104,6 +120,15 @@ export async function setResources(
 		containerDirPath,
 		nameToIndexFilePath,
 	);
+
+	let nameToDependencies = setNameToDependencies(nameToPackageJson);
+
+	if (options?.upJsonNameToDependencies) {
+		nameToDependencies = {
+			...options.upJsonNameToDependencies,
+			...nameToDependencies,
+		};
+	}
 
 	const graph = setGraph(nameToDependencies);
 

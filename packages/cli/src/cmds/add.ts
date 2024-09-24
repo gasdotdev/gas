@@ -20,10 +20,10 @@ import {
 	setResources,
 } from "../modules/resources.js";
 import {
-	stringsConvertCapitalSnakeCaseToCamelCase,
-	stringsConvertCapitalSnakeCaseToDotCase,
-	stringsConvertCapitalSnakeCaseToKebabCase,
-	stringsConvertObjectToCapitalSnakeCase,
+	convertCapitalSnakeCaseToCamelCase,
+	convertCapitalSnakeCaseToDotCase,
+	convertCapitalSnakeCaseToKebabCase,
+	convertObjectToCapitalSnakeCase,
 } from "../modules/strings.js";
 
 type State = "select-which" | "new-graph" | "existing-graph";
@@ -218,7 +218,7 @@ function setAddedResource(input: {
 	templateId: string;
 	resourceContainerDir: string;
 }): AddedResource {
-	const kebabCase = stringsConvertCapitalSnakeCaseToKebabCase(input.name);
+	const kebabCase = convertCapitalSnakeCaseToKebabCase(input.name);
 	return {
 		entityGroup: input.entityGroup,
 		entity: input.entity,
@@ -226,14 +226,14 @@ function setAddedResource(input: {
 		cloudService: input.cloudService,
 		descriptor: input.descriptor,
 		templateId: input.templateId,
-		camelCase: stringsConvertCapitalSnakeCaseToCamelCase(input.name),
-		dotCase: stringsConvertCapitalSnakeCaseToDotCase(input.name),
+		camelCase: convertCapitalSnakeCaseToCamelCase(input.name),
+		dotCase: convertCapitalSnakeCaseToDotCase(input.name),
 		kebabCase,
 		indexFilePath: join(
 			input.resourceContainerDir,
 			kebabCase,
 			"src",
-			`index.${stringsConvertCapitalSnakeCaseToDotCase(input.name)}.ts`,
+			`index.${convertCapitalSnakeCaseToDotCase(input.name)}.ts`,
 		),
 	};
 }
@@ -331,7 +331,7 @@ function updateAddedResourcePackageJsons(
 	for (const name in addedResourceNameToPackageJson) {
 		const packageJson = addedResourceNameToPackageJson[name];
 
-		packageJson.name = stringsConvertCapitalSnakeCaseToKebabCase(name);
+		packageJson.name = convertCapitalSnakeCaseToKebabCase(name);
 
 		if (
 			packageJson.main?.includes(
@@ -805,7 +805,7 @@ async function newGraph(
 		}
 	}
 
-	const addedEntryResourceName = stringsConvertObjectToCapitalSnakeCase({
+	const addedEntryResourceName = convertObjectToCapitalSnakeCase({
 		entityGroup: addedEntryResourceEntityGroup,
 		entity: addedEntryResourceEntity,
 		cloud: addedEntryResourceTemplate.cloud,
@@ -855,7 +855,7 @@ async function newGraph(
 			addedApiResourceEntity = await runInputApiEntityPrompt();
 		}
 
-		addedApiResourceName = stringsConvertObjectToCapitalSnakeCase({
+		addedApiResourceName = convertObjectToCapitalSnakeCase({
 			entityGroup: addedApiResourceEntityGroup,
 			entity: addedApiResourceEntity,
 			cloud: addedApiResourceTemplate!.cloud,
@@ -898,7 +898,7 @@ async function newGraph(
 	if (addedDbResourceEntityGroup) {
 		addedDbResourceEntity = await runInputEntityPrompt();
 
-		addedDbResourceName = stringsConvertObjectToCapitalSnakeCase({
+		addedDbResourceName = convertObjectToCapitalSnakeCase({
 			entityGroup: addedDbResourceEntityGroup,
 			entity: addedDbResourceEntity,
 			cloud: addedDbResourceTemplate!.cloud,

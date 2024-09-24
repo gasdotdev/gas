@@ -1,4 +1,4 @@
-export function stringsConvertObjectToCapitalSnakeCase(
+export function convertObjectToCapitalSnakeCase(
 	obj: Record<string, string>,
 ): string {
 	return Object.entries(obj)
@@ -7,14 +7,14 @@ export function stringsConvertObjectToCapitalSnakeCase(
 		.toUpperCase();
 }
 
-export function stringsConvertCapitalSnakeCaseToCamelCase(str: string) {
+export function convertCapitalSnakeCaseToCamelCase(str: string) {
 	return str.toLowerCase().replace(/_(.)/g, (_, char) => char.toUpperCase());
 }
 
-export function stringsConvertCapitalSnakeCaseToDotCase(str: string) {
+export function convertCapitalSnakeCaseToDotCase(str: string) {
 	return str.toLowerCase().replace(/_/g, ".");
 }
 
-export function stringsConvertCapitalSnakeCaseToKebabCase(str: string) {
+export function convertCapitalSnakeCaseToKebabCase(str: string) {
 	return str.replace(/_/g, "-").toLowerCase();
 }
