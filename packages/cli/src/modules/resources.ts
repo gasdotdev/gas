@@ -1,7 +1,14 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { type GraphGroupToDepthToNodes, setGraph } from "./graph.js";
+import {
+	type GraphDepthToNodes,
+	type GraphGroupToDepthToNodes,
+	type GraphNodeToDepth,
+	type GraphNodeToIntermediates,
+	type GraphNodesWithInDegreesOfZero,
+	setGraph,
+} from "./graph.js";
 import type { UpJsonNameToDependencies } from "./up-json.js";
 
 type PackageJson = Record<string, unknown>;
@@ -49,11 +56,16 @@ export type Resources = {
 	containerSubdirPaths: ResourceContainerSubdirPaths;
 	list: ResourceList;
 	nameToPackageJson: ResourceNameToPackageJson;
-	nameToDependencies: ResourceNameToDependencies;
 	nameToIndexFilePath: ResourceNameToIndexFilePath;
 	nameToBuildIndexFilePath: ResourceNameToBuildIndexFilePath;
 	nameToIndexFileContent: ResourceNameToIndexFileContent;
 	nameToConfigData: ResourceNameToConfigData;
+	nameToDependencies: ResourceNameToDependencies;
+	groupToDepthToNames: GraphGroupToDepthToNodes;
+	namesWithIndegreesOfZero: GraphNodesWithInDegreesOfZero;
+	nameToIntermediates: GraphNodeToIntermediates;
+	depthToNames: GraphDepthToNodes;
+	nameToDepth: GraphNodeToDepth;
 	nodeJsConfigScript: ResourceNodeJsConfigScript;
 	runNodeJsConfigScriptResult: ResourceRunNodeJsConfigScriptResult;
 	nameToConfig: ResourceNameToConfig;
@@ -102,7 +114,7 @@ export async function setResources(
 	containerDirPath: ResourceContainerDirPath,
 	options?: SetResourcesOptions,
 ): Promise<Resources> {
-	const containerSubdirPaths: ResourceContainerSubdirPaths = [];
+	const containerSubdirPaths = await setContainerSubdirPaths(containerDirPath);
 
 	const list = setList(containerSubdirPaths);
 
@@ -111,15 +123,15 @@ export async function setResources(
 	const nameToIndexFilePath =
 		await setNameToIndexFilePath(containerSubdirPaths);
 
-	const nameToIndexFileContent =
-		await setNameToIndexFileContent(nameToIndexFilePath);
-
-	const nameToConfigData = setNameToConfigData(nameToIndexFileContent);
-
 	const nameToBuildIndexFilePath = setNameToBuildIndexFilePath(
 		containerDirPath,
 		nameToIndexFilePath,
 	);
+
+	const nameToIndexFileContent =
+		await setNameToIndexFileContent(nameToIndexFilePath);
+
+	const nameToConfigData = setNameToConfigData(nameToIndexFileContent);
 
 	let nameToDependencies = setNameToDependencies(nameToPackageJson);
 
@@ -132,9 +144,19 @@ export async function setResources(
 
 	const graph = setGraph(nameToDependencies);
 
+	const groupToDepthToNames = graph.groupToDepthToNodes;
+
+	const namesWithIndegreesOfZero = graph.nodesWithInDegreesOfZero;
+
+	const nameToIntermediates = graph.nodeToIntermediates;
+
+	const depthToNames = graph.depthToNodes;
+
+	const nameToDepth = graph.nodeToDepth;
+
 	const nodeJsConfigScript = setNodeJsConfigScript(
 		nameToConfigData,
-		graph.groupToDepthToNodes,
+		groupToDepthToNames,
 	);
 
 	const runNodeJsConfigScriptResult =
@@ -152,6 +174,11 @@ export async function setResources(
 		nameToBuildIndexFilePath,
 		nameToIndexFileContent,
 		nameToConfigData,
+		groupToDepthToNames,
+		namesWithIndegreesOfZero,
+		nameToIntermediates,
+		depthToNames,
+		nameToDepth,
 		nodeJsConfigScript,
 		runNodeJsConfigScriptResult,
 		nameToConfig,

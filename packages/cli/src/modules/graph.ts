@@ -16,7 +16,7 @@ export type GraphNodeToGroup = {
 	[node: string]: number;
 };
 
-export type GraphDepthToNode = {
+export type GraphDepthToNodes = {
 	[depth: number]: string[];
 };
 
@@ -36,7 +36,7 @@ export type Graph = {
 	nodesWithInDegreesOfZero: GraphNodesWithInDegreesOfZero;
 	nodeToIntermediates: GraphNodeToIntermediates;
 	nodeToGroup: GraphNodeToGroup;
-	depthToNode: GraphDepthToNode;
+	depthToNodes: GraphDepthToNodes;
 	nodeToDepth: GraphNodeToDepth;
 	groupToDepthToNodes: GraphGroupToDepthToNodes;
 };
@@ -49,7 +49,7 @@ export function setGraph(nameToDependencies: GraphNodeToDependencies): Graph {
 		nodesWithInDegreesOfZero,
 		nodeToIntermediates,
 	);
-	const depthToNode = setDepthToNode(
+	const depthToNode = setDepthToNodes(
 		nameToDependencies,
 		nodesWithInDegreesOfZero,
 	);
@@ -62,7 +62,7 @@ export function setGraph(nameToDependencies: GraphNodeToDependencies): Graph {
 		nodesWithInDegreesOfZero,
 		nodeToIntermediates,
 		nodeToGroup,
-		depthToNode,
+		depthToNodes: depthToNode,
 		nodeToDepth,
 		groupToDepthToNodes,
 	};
@@ -221,11 +221,11 @@ function setNodeToGroup(
 
 // For example, given a graph of A->B, B->C, A has a depth
 // of 0, B has a depth of 1, and C has a depth of 2.
-function setDepthToNode(
+function setDepthToNodes(
 	nodeToDependencies: GraphNodeToDependencies,
 	nodesWithInDegreesOfZero: GraphNodesWithInDegreesOfZero,
-): GraphDepthToNode {
-	const res: GraphDepthToNode = {};
+): GraphDepthToNodes {
+	const res: GraphDepthToNodes = {};
 	let numOfNodesToProcess = Object.keys(nodeToDependencies).length;
 	let depth = 0;
 
@@ -256,7 +256,7 @@ function setDepthToNode(
 	return res;
 }
 
-function setNodeToDepth(depthToNode: GraphDepthToNode): GraphNodeToDepth {
+function setNodeToDepth(depthToNode: GraphDepthToNodes): GraphNodeToDepth {
 	const res: GraphNodeToDepth = {};
 	for (const [depthStr, nodes] of Object.entries(depthToNode)) {
 		const depth = Number(depthStr);
