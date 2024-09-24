@@ -211,10 +211,6 @@ export async function setResourcesWithUp(
 	return await initWithUp(containerDirPath, upJsonNameToDependencies);
 }
 
-export function setResourcesFromMemory(data: Resources): Resources {
-	return { ...data };
-}
-
 async function setContainerSubdirPaths(
 	containerDirPath: ResourceContainerDirPath,
 ): Promise<ResourceContainerSubdirPaths> {
