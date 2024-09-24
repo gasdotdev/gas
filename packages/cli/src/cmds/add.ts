@@ -204,7 +204,7 @@ type AddedResource = {
 	indexFilePath: string;
 };
 
-type AddedResources = {
+type NameToAddedResource = {
 	[name: string]: AddedResource;
 };
 
@@ -238,64 +238,65 @@ function setAddedResource(input: {
 	};
 }
 
-type GigetTemplateToCopy = {
+type AddedResourceTemplateToCopy = {
 	src: string;
 	dest: string;
 };
 
 function setAddedResourceTemplatesToCopy(
-	addedResources: AddedResources,
+	nameToAddedResource: NameToAddedResource,
 	resourceContainerDirPath: string,
 	gigetLocalPath: string,
-): GigetTemplateToCopy[] {
-	const res: GigetTemplateToCopy[] = [];
-	for (const addedResourceName in addedResources) {
-		const addedResource = addedResources[addedResourceName];
+): AddedResourceTemplateToCopy[] {
+	const addedResourceTemplatesToCopy: AddedResourceTemplateToCopy[] = [];
+	for (const name in nameToAddedResource) {
+		const resource = nameToAddedResource[name];
 		const templateDestinationDir = join(
 			resourceContainerDirPath,
-			addedResource.kebabCase,
+			resource.kebabCase,
 		);
-		res.push({
-			src: join(gigetLocalPath, addedResource.templateId),
+		addedResourceTemplatesToCopy.push({
+			src: join(gigetLocalPath, resource.templateId),
 			dest: templateDestinationDir,
 		});
 	}
-	return res;
+	return addedResourceTemplatesToCopy;
 }
 
 async function copyAddedResourceTemplatesFromGigetLocalSrc(
-	addedResourceTemplatesToCopy: GigetTemplateToCopy[],
+	addedResourceTemplatesToCopy: AddedResourceTemplateToCopy[],
 ) {
-	const promises: Promise<void>[] = [];
+	const copyPromises: Promise<void>[] = [];
 	for (const addedResourceTemplateToCopy of addedResourceTemplatesToCopy) {
-		promises.push(
+		copyPromises.push(
 			fs.cp(addedResourceTemplateToCopy.src, addedResourceTemplateToCopy.dest, {
 				recursive: true,
 			}),
 		);
 	}
-	await Promise.all(promises);
+	await Promise.all(copyPromises);
 }
 
-type AddedResourcePackageJsonPaths = {
+type AddedResourceNameToPackageJsonPath = {
 	[name: string]: string;
 };
 
-function setAddedResourcePackageJsonPaths(
-	addedResources: AddedResources,
+function setAddedResourceNameToPackageJsonPath(
+	nameToAddedResource: NameToAddedResource,
 	resourceContainerDirPath: string,
 ) {
-	const res: AddedResourcePackageJsonPaths = {};
-	for (const addedResourceName in addedResources) {
-		const addedResource = addedResources[addedResourceName];
+	const addedResourceNameToPackageJsonPath: AddedResourceNameToPackageJsonPath =
+		{};
+	for (const name in nameToAddedResource) {
+		const resource = nameToAddedResource[name];
 		const packageJsonPath = join(
 			resourceContainerDirPath,
-			addedResource.kebabCase,
+			resource.kebabCase,
 			"package.json",
 		);
-		res[addedResourceName] = packageJsonPath;
+		addedResourceNameToPackageJsonPath[name] = packageJsonPath;
 	}
-	return res;
+	return addedResourceNameToPackageJsonPath;
 }
 
 type AddedResourcePackageJson = {
@@ -308,31 +309,30 @@ type AddedResourcePackageJson = {
 	};
 };
 
-type AddedResourcePackageJsons = {
+type AddedResourceNameToPackageJson = {
 	[name: string]: AddedResourcePackageJson;
 };
 
-async function readAddedResourcePackageJsons(
-	addedResourcePackageJsonPaths: AddedResourcePackageJsonPaths,
+async function setAddedResourceNameToPackageJsons(
+	addedResourceNameToPackageJsonPath: AddedResourceNameToPackageJsonPath,
 ) {
-	const res: AddedResourcePackageJsons = {};
-	for (const addedResourceName in addedResourcePackageJsonPaths) {
-		const packageJsonPath = addedResourcePackageJsonPaths[addedResourceName];
+	const addedResourceNameToPackageJsons: AddedResourceNameToPackageJson = {};
+	for (const name in addedResourceNameToPackageJsonPath) {
+		const packageJsonPath = addedResourceNameToPackageJsonPath[name];
 		const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
-		res[addedResourceName] = JSON.parse(packageJsonContent);
+		addedResourceNameToPackageJsons[name] = JSON.parse(packageJsonContent);
 	}
-	return res;
+	return addedResourceNameToPackageJsons;
 }
 
 function updateAddedResourcePackageJsons(
-	addedResources: AddedResources,
-	addedResourcePackageJsons: AddedResourcePackageJsons,
+	nameToAddedResource: NameToAddedResource,
+	addedResourceNameToPackageJson: AddedResourceNameToPackageJson,
 ) {
-	for (const addedResourceName in addedResourcePackageJsons) {
-		const packageJson = addedResourcePackageJsons[addedResourceName];
+	for (const name in addedResourceNameToPackageJson) {
+		const packageJson = addedResourceNameToPackageJson[name];
 
-		packageJson.name =
-			stringsConvertCapitalSnakeCaseToKebabCase(addedResourceName);
+		packageJson.name = stringsConvertCapitalSnakeCaseToKebabCase(name);
 
 		if (
 			packageJson.main?.includes(
@@ -341,7 +341,7 @@ function updateAddedResourcePackageJsons(
 		) {
 			packageJson.main = packageJson.main.replace(
 				"./src/index.entity-group.entity.descriptor.ts",
-				`./src/index.${addedResources[addedResourceName].dotCase}.ts`,
+				`./src/index.${nameToAddedResource[name].dotCase}.ts`,
 			);
 		}
 
@@ -352,7 +352,7 @@ function updateAddedResourcePackageJsons(
 		) {
 			packageJson.types = packageJson.types.replace(
 				"./src/index.entity-group.entity.descriptor.ts",
-				`./src/index.${addedResources[addedResourceName].dotCase}.ts`,
+				`./src/index.${nameToAddedResource[name].dotCase}.ts`,
 			);
 		}
 
@@ -362,54 +362,60 @@ function updateAddedResourcePackageJsons(
 		if (packageJson.scripts?.build?.includes(outFileString)) {
 			packageJson.scripts.build = packageJson.scripts.build.replace(
 				outFileString,
-				`--outfile=build/src/${addedResources[addedResourceName].dotCase}.js`,
+				`--outfile=build/src/${nameToAddedResource[name].dotCase}.js`,
 			);
 		}
 
 		if (packageJson.scripts?.dev?.includes(outFileString)) {
 			packageJson.scripts.dev = packageJson.scripts.dev.replace(
 				outFileString,
-				`--outfile=build/src/${addedResources[addedResourceName].dotCase}.js`,
+				`--outfile=build/src/${nameToAddedResource[name].dotCase}.js`,
 			);
 		}
 	}
 }
 
 async function saveAddedResourcePackageJsons(
-	addedResourcePackageJsonPaths: AddedResourcePackageJsonPaths,
-	addedResourcePackageJsons: AddedResourcePackageJsons,
+	addedResourceNameToPackageJsonPath: AddedResourceNameToPackageJsonPath,
+	addedResourceNameToPackageJson: AddedResourceNameToPackageJson,
 ) {
-	const promises: Promise<void>[] = [];
-	for (const addedResourceName in addedResourcePackageJsons) {
-		const packageJsonPath = addedResourcePackageJsonPaths[addedResourceName];
-		promises.push(
+	const writeFilePromises: Promise<void>[] = [];
+	for (const addedResourceName in addedResourceNameToPackageJson) {
+		const packageJsonPath =
+			addedResourceNameToPackageJsonPath[addedResourceName];
+		writeFilePromises.push(
 			fs.writeFile(
 				packageJsonPath,
-				JSON.stringify(addedResourcePackageJsons[addedResourceName], null, 2),
+				JSON.stringify(
+					addedResourceNameToPackageJson[addedResourceName],
+					null,
+					2,
+				),
 			),
 		);
 	}
-	await Promise.all(promises);
+	await Promise.all(writeFilePromises);
 }
 
-type AddedResourceIndexFilesToRename = {
+type AddedResourceNameToIndexFilesToRename = {
 	[name: string]: {
 		oldPath: string;
 		newPath: string;
 	};
 };
 
-function setAddedResourceIndexFilesToRename(
-	addedResources: AddedResources,
+function setAddedResourceNameToIndexFilesToRename(
+	nameToAddedResource: NameToAddedResource,
 	resourceContainerDirPath: string,
 ) {
-	const res: AddedResourceIndexFilesToRename = {};
-	for (const addedResourceName in addedResources) {
-		const addedResource = addedResources[addedResourceName];
+	const addedResourceNameToIndexFilesToRename: AddedResourceNameToIndexFilesToRename =
+		{};
+	for (const name in nameToAddedResource) {
+		const resource = nameToAddedResource[name];
 
 		const oldFilePath = join(
 			resourceContainerDirPath,
-			addedResource.kebabCase,
+			resource.kebabCase,
 			"src",
 			"index.entity-group.entity.cloud.cloud-service.descriptor.ts",
 		);
@@ -417,36 +423,36 @@ function setAddedResourceIndexFilesToRename(
 		const newFileName =
 			[
 				"index",
-				addedResource.entityGroup,
-				addedResource.entity,
-				addedResource.cloud,
-				addedResource.cloudService,
-				addedResource.descriptor,
+				resource.entityGroup,
+				resource.entity,
+				resource.cloud,
+				resource.cloudService,
+				resource.descriptor,
 			].join(".") + ".ts";
 
-		res[addedResourceName] = {
+		addedResourceNameToIndexFilesToRename[name] = {
 			oldPath: oldFilePath,
 			newPath: join(
 				resourceContainerDirPath,
-				addedResource.kebabCase,
+				resource.kebabCase,
 				"src",
 				newFileName,
 			),
 		};
 	}
-	return res;
+	return addedResourceNameToIndexFilesToRename;
 }
 
 async function renameAddedResourceIndexFiles(
-	addedResourceIndexFilesToRename: AddedResourceIndexFilesToRename,
+	addedResourceIndexFilesToRename: AddedResourceNameToIndexFilesToRename,
 ) {
-	const promises: Promise<void>[] = [];
+	const renamePromises: Promise<void>[] = [];
 	for (const addedResourceName in addedResourceIndexFilesToRename) {
 		const { oldPath, newPath } =
 			addedResourceIndexFilesToRename[addedResourceName];
-		promises.push(fs.rename(oldPath, newPath));
+		renamePromises.push(fs.rename(oldPath, newPath));
 	}
-	await Promise.all(promises);
+	await Promise.all(renamePromises);
 }
 
 type AddedEntryResourceViteConfigPath = string;
@@ -454,7 +460,7 @@ type AddedEntryResourceViteConfigPath = string;
 function setAddedEntryResourceViteConfigPath(
 	resourceContainerDirPath: string,
 	addedEntryResourceName: string,
-	addedResources: AddedResources,
+	addedResources: NameToAddedResource,
 ): AddedEntryResourceViteConfigPath {
 	return join(
 		resourceContainerDirPath,
@@ -466,7 +472,7 @@ function setAddedEntryResourceViteConfigPath(
 async function updateAddedEntryResourceViteConfigEnvVars(
 	addedEntryResourceViteConfigPath: AddedEntryResourceViteConfigPath,
 	addedEntryResourceName: string,
-	addedResources: AddedResources,
+	addedResources: NameToAddedResource,
 ) {
 	const viteConfigContent = await fs.readFile(
 		addedEntryResourceViteConfigPath,
@@ -497,7 +503,7 @@ async function updateAddedEntryResourceViteConfigEnvVars(
 type AddedResourceNpmInstallCommands = string[];
 
 function setAddedResourceNpmInstallCommands(
-	addedResources: AddedResources,
+	addedResources: NameToAddedResource,
 	addedEntryResourceName: string,
 	addedApiResourceName: string,
 	addedDbResourceName: string,
@@ -565,19 +571,19 @@ async function runAddedResourceNpmInstallCommands(
 	}
 }
 
-type AddedResourceDependencies = {
+type AddedResourceNameToDependencies = {
 	[name: string]: string[];
 };
 
 function setAddedResourceDependencies(
-	addedResources: AddedResources,
+	nameToAddedResource: NameToAddedResource,
 	addedEntryResourceName: string,
 	addedApiResourceName: string,
 	addedDbResourceName: string,
-): AddedResourceDependencies {
-	const res: AddedResourceDependencies = {};
+): AddedResourceNameToDependencies {
+	const res: AddedResourceNameToDependencies = {};
 
-	const addedEntryResource = addedResources[addedEntryResourceName];
+	const addedEntryResource = nameToAddedResource[addedEntryResourceName];
 
 	res[addedEntryResourceName] = [];
 	if (addedApiResourceName) res[addedApiResourceName] = [];
@@ -609,19 +615,19 @@ function setAddedResourceDependencies(
 }
 
 async function updateAddedResourceIndexFiles(
-	addedResources: AddedResources,
-	addedResourceDependencies: AddedResourceDependencies,
+	nameToAddedResource: NameToAddedResource,
+	addedResourceNameToDependencies: AddedResourceNameToDependencies,
 	addedApiResourceName: string,
 ) {
 	const promises: Promise<void>[] = [];
 
-	for (const addedResourceName in addedResources) {
-		const mod = await loadFile(addedResources[addedResourceName].indexFilePath);
+	for (const name in nameToAddedResource) {
+		const mod = await loadFile(nameToAddedResource[name].indexFilePath);
 
 		const ast = mod.exports.$ast;
 
 		mod.exports.entityGroupEntityCloudCloudServiceDescriptor.$args[0].name =
-			addedResourceName;
+			name;
 
 		// Note:
 		// The ast types aren't working correctly. Thus,
@@ -642,24 +648,23 @@ async function updateAddedResourceIndexFiles(
 
 		if (exportDeclaration?.declaration.declarations[0]) {
 			exportDeclaration.declaration.declarations[0].id.name =
-				addedResources[addedResourceName].camelCase;
+				nameToAddedResource[name].camelCase;
 		} else {
 			console.log("export config const not found in the file");
 		}
 
-		for (const depName of addedResourceDependencies[addedResourceName]) {
+		for (const dependencyName of addedResourceNameToDependencies[name]) {
 			mod.imports.$append({
-				from: addedResources[depName].kebabCase,
-				imported: addedResources[depName].camelCase,
+				from: nameToAddedResource[dependencyName].kebabCase,
+				imported: nameToAddedResource[dependencyName].camelCase,
 			});
 
-			const params =
-				mod.exports[addedResources[addedResourceName].camelCase].$args[0];
+			const params = mod.exports[nameToAddedResource[name].camelCase].$args[0];
 
 			if (
-				addedResources[addedResourceName].cloud === "cf" &&
-				addedResources[addedResourceName].cloudService === "pages" &&
-				addedResources[addedResourceName].descriptor === "ssr" &&
+				nameToAddedResource[name].cloud === "cf" &&
+				nameToAddedResource[name].cloudService === "pages" &&
+				nameToAddedResource[name].descriptor === "ssr" &&
 				addedApiResourceName
 			) {
 				mod.imports.$append({
@@ -670,7 +675,9 @@ async function updateAddedResourceIndexFiles(
 				if (!params.services) {
 					params.services = [];
 					params.services.push({
-						binding: builders.raw(`${addedResources[depName].camelCase}.name`),
+						binding: builders.raw(
+							`${nameToAddedResource[dependencyName].camelCase}.name`,
+						),
 					});
 				}
 			}
@@ -710,21 +717,21 @@ async function updateAddedResourceIndexFiles(
 		// Remove empty line breaks after commas.
 		code = code.replace(/,\n\n/g, ",\n");
 
-		for (const depName of addedResourceDependencies[addedResourceName]) {
+		for (const depName of addedResourceNameToDependencies[name]) {
 			if (
-				addedResources[addedResourceName].cloud === "cf" &&
-				addedResources[addedResourceName].cloudService === "pages" &&
-				addedResources[addedResourceName].descriptor === "ssr" &&
+				nameToAddedResource[name].cloud === "cf" &&
+				nameToAddedResource[name].cloudService === "pages" &&
+				nameToAddedResource[name].descriptor === "ssr" &&
 				addedApiResourceName
 			) {
 				code = code.replace(
 					"type Env = {}",
-					`type Env = ServiceFetcherBindings<(typeof ${addedResources[addedResourceName].camelCase})["services"]>`,
+					`type Env = ServiceFetcherBindings<(typeof ${nameToAddedResource[name].camelCase})["services"]>`,
 				);
 			}
 		}
 
-		await fs.writeFile(addedResources[addedResourceName].indexFilePath, code);
+		await fs.writeFile(nameToAddedResource[name].indexFilePath, code);
 	}
 
 	return await Promise.all(promises);
@@ -757,7 +764,7 @@ async function newGraph(
 	resources: Resources,
 	resourceTemplates: ResourceTemplates,
 ) {
-	const addedResources: AddedResources = {};
+	const addedResources: NameToAddedResource = {};
 
 	const addedEntryResourceTemplateId =
 		await runSelectEntryResourcePrompt(resourceTemplates);
@@ -934,12 +941,12 @@ async function newGraph(
 
 	await copyAddedResourceTemplatesFromGigetLocalSrc(resourceTemplatesToCopy);
 
-	const resourcePackageJsonPaths = setAddedResourcePackageJsonPaths(
+	const resourcePackageJsonPaths = setAddedResourceNameToPackageJsonPath(
 		addedResources,
 		config.containerDirPath,
 	);
 
-	const resourcePackageJsons = await readAddedResourcePackageJsons(
+	const resourcePackageJsons = await setAddedResourceNameToPackageJsons(
 		resourcePackageJsonPaths,
 	);
 
@@ -950,7 +957,7 @@ async function newGraph(
 		resourcePackageJsons,
 	);
 
-	const resourceIndexFilesToRename = setAddedResourceIndexFilesToRename(
+	const resourceIndexFilesToRename = setAddedResourceNameToIndexFilesToRename(
 		addedResources,
 		config.containerDirPath,
 	);
@@ -1012,7 +1019,7 @@ export async function runAdd() {
 
 	const resources = await setResources(config.containerDirPath);
 
-	if (Object.keys(resources.configs).length === 0) {
+	if (Object.keys(resources.nameToConfig).length === 0) {
 		state = "new-graph";
 	}
 

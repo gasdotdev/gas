@@ -20,24 +20,24 @@ export type Resource = {
 
 export type ResourceList = Resource[];
 
-export type ResourcePackageJsons = Record<string, PackageJson>;
+export type ResourceNameToPackageJson = Record<string, PackageJson>;
 
-export type ResourceDependencies = Record<string, string[]>;
+export type ResourceNameToDependencies = Record<string, string[]>;
 
-export type ResourceIndexFilePaths = Record<string, string>;
+export type ResourceNameToIndexFilePath = Record<string, string>;
 
-export type ResourceBuildIndexFilePaths = Record<string, string>;
+export type ResourceNameToBuildIndexFilePath = Record<string, string>;
 
-export type ResourceIndexFileContents = Record<string, string>;
+export type ResourceNameToIndexFileContent = Record<string, string>;
 
-export type ResourceConfigData = Record<string, ConfigData>;
+export type ResourceNameToConfigData = Record<string, ConfigData>;
 
 export type ResourceNodeJsConfigScript = string;
 
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 type ResourceConfig = Record<string, any>;
 
-export type ResourceConfigs = Record<string, ResourceConfig>;
+export type ResourceNameToConfig = Record<string, ResourceConfig>;
 
 export type ResourceRunNodeJsConfigScriptResult = Record<
 	string,
@@ -48,15 +48,15 @@ export type Resources = {
 	containerDirPath: ResourceContainerDirPath;
 	containerSubdirPaths: ResourceContainerSubdirPaths;
 	list: ResourceList;
-	packageJsons: ResourcePackageJsons;
-	dependencies: ResourceDependencies;
-	indexFilePaths: ResourceIndexFilePaths;
-	buildIndexFilePaths: ResourceBuildIndexFilePaths;
-	indexFileContents: ResourceIndexFileContents;
-	configData: ResourceConfigData;
+	nameToPackageJson: ResourceNameToPackageJson;
+	nameToDependencies: ResourceNameToDependencies;
+	nameToIndexFilePath: ResourceNameToIndexFilePath;
+	nameToBuildIndexFilePath: ResourceNameToBuildIndexFilePath;
+	nameToIndexFileContent: ResourceNameToIndexFileContent;
+	nameToConfigData: ResourceNameToConfigData;
 	nodeJsConfigScript: ResourceNodeJsConfigScript;
 	runNodeJsConfigScriptResult: ResourceRunNodeJsConfigScriptResult;
-	configs: ResourceConfigs;
+	nameToConfig: ResourceNameToConfig;
 };
 
 interface ConfigData {
@@ -88,46 +88,48 @@ export async function setResources(
 
 	const list = setList(containerSubdirPaths);
 
-	const packageJsons = await setNameToPackageJson(containerSubdirPaths);
+	const nameToPackageJson = await setNameToPackageJson(containerSubdirPaths);
 
-	const dependencies = setNameToDependencies(packageJsons);
+	const nameToDependencies = setNameToDependencies(nameToPackageJson);
 
-	const indexFilePaths = await setNameToIndexFilePath(containerSubdirPaths);
+	const nameToIndexFilePath =
+		await setNameToIndexFilePath(containerSubdirPaths);
 
-	const indexFileContents = await setNameToIndexFileContent(indexFilePaths);
+	const nameToIndexFileContent =
+		await setNameToIndexFileContent(nameToIndexFilePath);
 
-	const configData = setNameToConfigData(indexFileContents);
+	const nameToConfigData = setNameToConfigData(nameToIndexFileContent);
 
-	const buildIndexFilePaths = setNameToBuildIndexFilePath(
+	const nameToBuildIndexFilePath = setNameToBuildIndexFilePath(
 		containerDirPath,
-		indexFilePaths,
+		nameToIndexFilePath,
 	);
 
-	const graph = setGraph(dependencies);
+	const graph = setGraph(nameToDependencies);
 
 	const nodeJsConfigScript = setNodeJsConfigScript(
-		configData,
+		nameToConfigData,
 		graph.groupToDepthToNodes,
 	);
 
 	const runNodeJsConfigScriptResult =
 		await runNodeJsConfigScript(nodeJsConfigScript);
 
-	const configs = setNameToConfig(runNodeJsConfigScriptResult);
+	const nameToConfig = setNameToConfig(runNodeJsConfigScriptResult);
 
 	return {
 		containerDirPath,
 		containerSubdirPaths,
 		list,
-		packageJsons,
-		dependencies,
-		indexFilePaths,
-		buildIndexFilePaths,
-		indexFileContents,
-		configData,
+		nameToPackageJson,
+		nameToDependencies,
+		nameToIndexFilePath,
+		nameToBuildIndexFilePath,
+		nameToIndexFileContent,
+		nameToConfigData,
 		nodeJsConfigScript,
 		runNodeJsConfigScriptResult,
-		configs,
+		nameToConfig,
 	};
 }
 
@@ -168,8 +170,8 @@ function convertContainerSubdirPathToName(subdirPath: string): string {
 
 async function setNameToPackageJson(
 	containerSubdirPaths: ResourceContainerSubdirPaths,
-): Promise<ResourcePackageJsons> {
-	const res: ResourcePackageJsons = {};
+): Promise<ResourceNameToPackageJson> {
+	const nameToPackageJson: ResourceNameToPackageJson = {};
 	for (const subdirPath of containerSubdirPaths) {
 		const resourceName = convertContainerSubdirPathToName(subdirPath);
 		const packageJsonPath = path.join(subdirPath, "package.json");
@@ -177,18 +179,18 @@ async function setNameToPackageJson(
 		try {
 			const data = await fs.readFile(packageJsonPath, "utf8");
 			const packageJson: PackageJson = JSON.parse(data);
-			res[resourceName] = packageJson;
+			nameToPackageJson[resourceName] = packageJson;
 		} catch (err) {
 			throw new Error(`Unable to read or parse ${packageJsonPath}: ${err}`);
 		}
 	}
-	return res;
+	return nameToPackageJson;
 }
 
 function setNameToDependencies(
-	nameToPackageJson: ResourcePackageJsons,
-): ResourceDependencies {
-	const res: ResourceDependencies = {};
+	nameToPackageJson: ResourceNameToPackageJson,
+): ResourceNameToDependencies {
+	const nameToDependencies: ResourceNameToDependencies = {};
 	for (const [name, packageJson] of Object.entries(nameToPackageJson)) {
 		const resourceDependencies: string[] = [];
 		const packageJsonDependencies = packageJson.dependencies as
@@ -202,15 +204,15 @@ function setNameToDependencies(
 				}
 			}
 		}
-		res[name] = resourceDependencies;
+		nameToDependencies[name] = resourceDependencies;
 	}
-	return res;
+	return nameToDependencies;
 }
 
 async function setNameToIndexFilePath(
 	containerSubdirPaths: ResourceContainerSubdirPaths,
-): Promise<ResourceIndexFilePaths> {
-	const res: ResourceIndexFilePaths = {};
+): Promise<ResourceNameToIndexFilePath> {
+	const nameToIndexFilePath: ResourceNameToIndexFilePath = {};
 	const indexFilePathPattern = /^index\.[^.]+\.[^.]+\.[^.]+\.[^.]+\.[^.]+\.ts$/;
 	for (const subdirPath of containerSubdirPaths) {
 		const resourceName = convertContainerSubdirPathToName(subdirPath);
@@ -223,7 +225,7 @@ async function setNameToIndexFilePath(
 			const files = await fs.readdir(srcPath);
 			for (const file of files) {
 				if (indexFilePathPattern.test(file)) {
-					res[resourceName] = path.join(srcPath, file);
+					nameToIndexFilePath[resourceName] = path.join(srcPath, file);
 					break;
 				}
 			}
@@ -235,45 +237,45 @@ async function setNameToIndexFilePath(
 			}
 		}
 	}
-	return res;
+	return nameToIndexFilePath;
 }
 
 function setNameToBuildIndexFilePath(
 	containerDirPath: ResourceContainerDirPath,
-	nameToIndexFilePath: ResourceIndexFilePaths,
-): ResourceBuildIndexFilePaths {
-	const res: ResourceBuildIndexFilePaths = {};
+	nameToIndexFilePath: ResourceNameToIndexFilePath,
+): ResourceNameToBuildIndexFilePath {
+	const nameToBuildIndexFilePath: ResourceNameToBuildIndexFilePath = {};
 	for (const [name, indexFilePath] of Object.entries(nameToIndexFilePath)) {
 		const relativePath = path.relative(containerDirPath, indexFilePath);
 		const parts = relativePath.split(path.sep);
 		parts.splice(1, 0, "build");
 		const buildPath = path.join(containerDirPath, ...parts);
-		res[name] = buildPath.replace(/\.ts$/, ".js");
+		nameToBuildIndexFilePath[name] = buildPath.replace(/\.ts$/, ".js");
 	}
-	return res;
+	return nameToBuildIndexFilePath;
 }
 
 async function setNameToIndexFileContent(
-	nameToIndexFilePath: ResourceIndexFilePaths,
-): Promise<ResourceIndexFileContents> {
-	const res: ResourceIndexFileContents = {};
+	nameToIndexFilePath: ResourceNameToIndexFilePath,
+): Promise<ResourceNameToIndexFileContent> {
+	const nameToIndexFileContent: ResourceNameToIndexFileContent = {};
 	for (const [name, indexFilePath] of Object.entries(nameToIndexFilePath)) {
 		try {
 			const content = await fs.readFile(indexFilePath, "utf8");
-			res[name] = content;
+			nameToIndexFileContent[name] = content;
 		} catch (err) {
 			throw new Error(
 				`Unable to read file ${indexFilePath}: ${(err as Error).message}`,
 			);
 		}
 	}
-	return res;
+	return nameToIndexFileContent;
 }
 
 function setNameToConfigData(
-	nameToIndexFileContent: ResourceIndexFileContents,
-): ResourceConfigData {
-	const res: ResourceConfigData = {};
+	nameToIndexFileContent: ResourceNameToIndexFileContent,
+): ResourceNameToConfigData {
+	const nameToConfigData: ResourceNameToConfigData = {};
 	for (const [name, indexFileContent] of Object.entries(
 		nameToIndexFileContent,
 	)) {
@@ -305,7 +307,7 @@ function setNameToConfigData(
 				);
 				if (!variableNameMatch) continue;
 
-				res[name] = {
+				nameToConfigData[name] = {
 					variableName: variableNameMatch[1],
 					functionName: possibleExportedConfigFunctionName,
 					exportString: possibleExportedConfig,
@@ -314,11 +316,11 @@ function setNameToConfigData(
 			}
 		}
 	}
-	return res;
+	return nameToConfigData;
 }
 
 function setNodeJsConfigScript(
-	nameToConfigData: ResourceConfigData,
+	nameToConfigData: ResourceNameToConfigData,
 	groupToDepthToNames: GraphGroupToDepthToNodes,
 ): ResourceNodeJsConfigScript {
 	if (Object.keys(groupToDepthToNames).length === 0) {
@@ -394,7 +396,7 @@ async function runNodeJsConfigScript(
 
 function setNameToConfig(
 	runNodeJsConfigScriptResult: ResourceRunNodeJsConfigScriptResult,
-): ResourceConfigs {
+): ResourceNameToConfig {
 	return { ...runNodeJsConfigScriptResult };
 }
 

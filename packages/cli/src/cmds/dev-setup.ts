@@ -4,7 +4,7 @@ import path, { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setConfig } from "../modules/config.js";
 import {
-	type ResourceConfigData,
+	type ResourceNameToConfigData,
 	type Resources,
 	setResources,
 } from "../modules/resources.js";
@@ -45,7 +45,7 @@ type PortToCloudflarePagesResourceName = Record<number, string>;
 
 async function setPortToCloudflarePagesResourceName(
 	startPort: number,
-	resourceConfigData: ResourceConfigData,
+	resourceConfigData: ResourceNameToConfigData,
 ): Promise<{
 	portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName;
 	lastPortUsed: number;
@@ -72,7 +72,7 @@ async function writeCloudflarePagesResourceDotEnvFiles(
 	for (const [port, resourceName] of Object.entries(
 		portToCloudflarePagesResourceName,
 	)) {
-		const indexFilePath = resources.indexFilePaths[resourceName];
+		const indexFilePath = resources.nameToIndexFilePath[resourceName];
 		if (indexFilePath) {
 			const envContent = `GAS_DEV_SERVER_PORT=${devServerPort}\nGAS_${resourceName}_PORT=${port}\n`;
 			const envFilePath = path.join(
@@ -109,15 +109,15 @@ function setDevManifest({
 			containerDirPath: resources.containerDirPath,
 			containerSubdirPaths: resources.containerSubdirPaths,
 			list: resources.list,
-			packageJsons: resources.packageJsons,
-			dependencies: resources.dependencies,
-			indexFilePaths: resources.indexFilePaths,
-			buildIndexFilePaths: resources.buildIndexFilePaths,
-			indexFileContents: resources.indexFileContents,
-			configData: resources.configData,
+			nameToPackageJson: resources.nameToPackageJson,
+			nameToDependencies: resources.nameToDependencies,
+			nameToIndexFilePath: resources.nameToIndexFilePath,
+			nameToBuildIndexFilePath: resources.nameToBuildIndexFilePath,
+			nameToIndexFileContent: resources.nameToIndexFileContent,
+			nameToConfigData: resources.nameToConfigData,
 			nodeJsConfigScript: resources.nodeJsConfigScript,
 			runNodeJsConfigScriptResult: resources.runNodeJsConfigScriptResult,
-			configs: resources.configs,
+			nameToConfig: resources.nameToConfig,
 		},
 		devServerPort,
 		miniflarePort,
@@ -135,7 +135,7 @@ export async function runDevSetup(): Promise<void> {
 	const { portToCloudflarePagesResourceName, lastPortUsed } =
 		await setPortToCloudflarePagesResourceName(
 			devServerPort + 1,
-			resources.configData,
+			resources.nameToConfigData,
 		);
 
 	const miniflarePort = await setAvailablePort(lastPortUsed + 1);
