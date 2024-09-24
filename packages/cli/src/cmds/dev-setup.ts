@@ -105,20 +105,7 @@ function setDevManifest({
 	portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName;
 }): DevManifest {
 	return {
-		resources: {
-			containerDirPath: resources.containerDirPath,
-			containerSubdirPaths: resources.containerSubdirPaths,
-			list: resources.list,
-			nameToPackageJson: resources.nameToPackageJson,
-			nameToDependencies: resources.nameToDependencies,
-			nameToIndexFilePath: resources.nameToIndexFilePath,
-			nameToBuildIndexFilePath: resources.nameToBuildIndexFilePath,
-			nameToIndexFileContent: resources.nameToIndexFileContent,
-			nameToConfigData: resources.nameToConfigData,
-			nodeJsConfigScript: resources.nodeJsConfigScript,
-			runNodeJsConfigScriptResult: resources.runNodeJsConfigScriptResult,
-			nameToConfig: resources.nameToConfig,
-		},
+		resources,
 		devServerPort,
 		miniflarePort,
 		portToCloudflarePagesResourceName,
