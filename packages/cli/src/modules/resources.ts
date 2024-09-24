@@ -22,8 +22,6 @@ export type ResourceList = Resource[];
 
 export type ResourcePackageJsons = Record<string, PackageJson>;
 
-export type ResourcePackageJsonNameToName = Record<string, string>;
-
 export type ResourceDependencies = Record<string, string[]>;
 
 export type ResourceIndexFilePaths = Record<string, string>;
@@ -51,7 +49,6 @@ export type Resources = {
 	containerSubdirPaths: ResourceContainerSubdirPaths;
 	list: ResourceList;
 	packageJsons: ResourcePackageJsons;
-	packageJsonNameToName: ResourcePackageJsonNameToName;
 	dependencies: ResourceDependencies;
 	indexFilePaths: ResourceIndexFilePaths;
 	buildIndexFilePaths: ResourceBuildIndexFilePaths;
@@ -91,54 +88,46 @@ export async function setResources(
 
 	const list = setList(containerSubdirPaths);
 
-	const nameToPackageJson = await setNameToPackageJson(containerSubdirPaths);
+	const packageJsons = await setNameToPackageJson(containerSubdirPaths);
 
-	const packageJsonNameToName = setPackageJsonNameToName(nameToPackageJson);
+	const dependencies = setNameToDependencies(packageJsons);
 
-	const nameToDependencies = setNameToDependencies(
-		nameToPackageJson,
-		packageJsonNameToName,
-	);
+	const indexFilePaths = await setNameToIndexFilePath(containerSubdirPaths);
 
-	const nameToIndexFilePath =
-		await setNameToIndexFilePath(containerSubdirPaths);
+	const indexFileContents = await setNameToIndexFileContent(indexFilePaths);
 
-	const nameToIndexFileContent =
-		await setNameToIndexFileContent(nameToIndexFilePath);
+	const configData = setNameToConfigData(indexFileContents);
 
-	const nameToConfigData = setNameToConfigData(nameToIndexFileContent);
-
-	const nameToBuildIndexFilePath = setNameToBuildIndexFilePath(
+	const buildIndexFilePaths = setNameToBuildIndexFilePath(
 		containerDirPath,
-		nameToIndexFilePath,
+		indexFilePaths,
 	);
 
-	const graph = setGraph(nameToDependencies);
+	const graph = setGraph(dependencies);
 
 	const nodeJsConfigScript = setNodeJsConfigScript(
-		nameToConfigData,
+		configData,
 		graph.groupToDepthToNodes,
 	);
 
 	const runNodeJsConfigScriptResult =
 		await runNodeJsConfigScript(nodeJsConfigScript);
 
-	const nameToConfig = setNameToConfig(runNodeJsConfigScriptResult);
+	const configs = setNameToConfig(runNodeJsConfigScriptResult);
 
 	return {
 		containerDirPath,
 		containerSubdirPaths,
 		list,
-		packageJsons: nameToPackageJson,
-		packageJsonNameToName,
-		dependencies: nameToDependencies,
-		indexFilePaths: nameToIndexFilePath,
-		buildIndexFilePaths: nameToBuildIndexFilePath,
-		indexFileContents: nameToIndexFileContent,
-		configData: nameToConfigData,
+		packageJsons,
+		dependencies,
+		indexFilePaths,
+		buildIndexFilePaths,
+		indexFileContents,
+		configData,
 		nodeJsConfigScript,
 		runNodeJsConfigScriptResult,
-		configs: nameToConfig,
+		configs,
 	};
 }
 
@@ -196,20 +185,8 @@ async function setNameToPackageJson(
 	return res;
 }
 
-function setPackageJsonNameToName(
-	nameToPackageJson: ResourcePackageJsons,
-): ResourcePackageJsonNameToName {
-	const res: ResourcePackageJsonNameToName = {};
-	for (const [resourceName, packageJson] of Object.entries(nameToPackageJson)) {
-		const name = packageJson.name as string;
-		res[name] = resourceName;
-	}
-	return res;
-}
-
 function setNameToDependencies(
 	nameToPackageJson: ResourcePackageJsons,
-	packageJsonNameToName: ResourcePackageJsonNameToName,
 ): ResourceDependencies {
 	const res: ResourceDependencies = {};
 	for (const [name, packageJson] of Object.entries(nameToPackageJson)) {
@@ -219,9 +196,9 @@ function setNameToDependencies(
 			| undefined;
 		if (packageJsonDependencies) {
 			for (const packageJsonDependency in packageJsonDependencies) {
-				const internalDep = packageJsonNameToName[packageJsonDependency];
+				const internalDep = nameToPackageJson[packageJsonDependency];
 				if (internalDep) {
-					resourceDependencies.push(internalDep);
+					resourceDependencies.push(packageJsonDependency);
 				}
 			}
 		}
