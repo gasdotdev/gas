@@ -77,12 +77,12 @@ interface ConfigData {
 	exportString: string;
 }
 
-type SetResourcesOptions = {
+type FactoryOptions = {
 	upJsonNameToDependencies: UpJsonNameToDependencies;
 };
 
 /**
- * Set resources.
+ * Initializes resources.
  *
  * @param containerDirPath - Path to resource container dir (e.g. `./gas`).
  * @param options.upJsonNameToDependencies - `UpJsonNameToDependencies` object.
@@ -110,9 +110,9 @@ type SetResourcesOptions = {
  * graph be constructed for deployment.
  * @returns Resources.
  */
-export async function setResources(
+async function factory(
 	containerDirPath: ResourceContainerDirPath,
-	options?: SetResourcesOptions,
+	options?: FactoryOptions,
 ): Promise<Resources> {
 	const containerSubdirPaths = await setContainerSubdirPaths(containerDirPath);
 
@@ -183,6 +183,32 @@ export async function setResources(
 		runNodeJsConfigScriptResult,
 		nameToConfig,
 	};
+}
+
+async function init(
+	containerDirPath: ResourceContainerDirPath,
+): Promise<Resources> {
+	return await factory(containerDirPath);
+}
+
+async function initWithUp(
+	containerDirPath: ResourceContainerDirPath,
+	upJsonNameToDependencies: UpJsonNameToDependencies,
+): Promise<Resources> {
+	return await factory(containerDirPath, { upJsonNameToDependencies });
+}
+
+export async function setResources(
+	containerDirPath: ResourceContainerDirPath,
+): Promise<Resources> {
+	return await init(containerDirPath);
+}
+
+export async function setResourcesWithUp(
+	containerDirPath: ResourceContainerDirPath,
+	upJsonNameToDependencies: UpJsonNameToDependencies,
+): Promise<Resources> {
+	return await initWithUp(containerDirPath, upJsonNameToDependencies);
 }
 
 export function setResourcesFromMemory(data: Resources): Resources {
