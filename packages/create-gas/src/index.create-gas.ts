@@ -83,7 +83,7 @@ async function selectPackageManagerPrompt() {
 	return res;
 }
 
-async function runInstallDepsPrompt() {
+async function runInstallDependenciesPrompt() {
 	const res = await confirm({
 		message: "Install dependencies?",
 	});
@@ -167,9 +167,9 @@ async function create() {
 		path.join(dir, "./turbo.json"),
 		JSON.stringify(turboJsonJson, null, 2),
 	);
-	const installDeps = await runInstallDepsPrompt();
+	const installDependencies = await runInstallDependenciesPrompt();
 
-	if (installDeps) {
+	if (installDependencies) {
 		console.log("Installing dependencies...");
 		try {
 			const { stdout, stderr } = await exec(`${packageManager} install`, {

@@ -111,7 +111,7 @@ function setDevManifest({
 			list: resources.list,
 			packageJsons: resources.packageJsons,
 			packageJsonNameToName: resources.packageJsonNameToName,
-			deps: resources.deps,
+			dependencies: resources.dependencies,
 			indexFilePaths: resources.indexFilePaths,
 			buildIndexFilePaths: resources.buildIndexFilePaths,
 			indexFileContents: resources.indexFileContents,

@@ -114,11 +114,13 @@ export const cloudflareRemixDevPlugin = <Env>(
 						data.devManifest.portToCloudflarePagesResourceName[viteServerPort];
 
 					const cloudflarePagesResourceDependencies =
-						data.devManifest.resources.nameToDeps[cloudflarePagesResourceName];
+						data.devManifest.resources.dependencies[
+							cloudflarePagesResourceName
+						];
 
 					for (const dependencyName of cloudflarePagesResourceDependencies) {
 						if (
-							data.devManifest.resources.nameToConfigData[dependencyName]
+							data.devManifest.resources.configData[dependencyName]
 								.functionName === "cloudflareWorkerApi"
 						) {
 							const serviceFetcher = new ServiceFetcher(dependencyName);

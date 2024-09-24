@@ -24,7 +24,7 @@ export type ResourcePackageJsons = Record<string, PackageJson>;
 
 export type ResourcePackageJsonNameToName = Record<string, string>;
 
-export type ResourceDeps = Record<string, string[]>;
+export type ResourceDependencies = Record<string, string[]>;
 
 export type ResourceIndexFilePaths = Record<string, string>;
 
@@ -52,7 +52,7 @@ export type Resources = {
 	list: ResourceList;
 	packageJsons: ResourcePackageJsons;
 	packageJsonNameToName: ResourcePackageJsonNameToName;
-	deps: ResourceDeps;
+	dependencies: ResourceDependencies;
 	indexFilePaths: ResourceIndexFilePaths;
 	buildIndexFilePaths: ResourceBuildIndexFilePaths;
 	indexFileContents: ResourceIndexFileContents;
@@ -95,7 +95,10 @@ export async function setResources(
 
 	const packageJsonNameToName = setPackageJsonNameToName(nameToPackageJson);
 
-	const nameToDeps = setNameToDeps(nameToPackageJson, packageJsonNameToName);
+	const nameToDependencies = setNameToDependencies(
+		nameToPackageJson,
+		packageJsonNameToName,
+	);
 
 	const nameToIndexFilePath =
 		await setNameToIndexFilePath(containerSubdirPaths);
@@ -110,7 +113,7 @@ export async function setResources(
 		nameToIndexFilePath,
 	);
 
-	const graph = setGraph(nameToDeps);
+	const graph = setGraph(nameToDependencies);
 
 	const nodeJsConfigScript = setNodeJsConfigScript(
 		nameToConfigData,
@@ -128,7 +131,7 @@ export async function setResources(
 		list,
 		packageJsons: nameToPackageJson,
 		packageJsonNameToName,
-		deps: nameToDeps,
+		dependencies: nameToDependencies,
 		indexFilePaths: nameToIndexFilePath,
 		buildIndexFilePaths: nameToBuildIndexFilePath,
 		indexFileContents: nameToIndexFileContent,
@@ -204,25 +207,25 @@ function setPackageJsonNameToName(
 	return res;
 }
 
-function setNameToDeps(
+function setNameToDependencies(
 	nameToPackageJson: ResourcePackageJsons,
 	packageJsonNameToName: ResourcePackageJsonNameToName,
-): ResourceDeps {
-	const res: ResourceDeps = {};
+): ResourceDependencies {
+	const res: ResourceDependencies = {};
 	for (const [name, packageJson] of Object.entries(nameToPackageJson)) {
-		const deps: string[] = [];
-		const dependencies = packageJson.dependencies as
+		const resourceDependencies: string[] = [];
+		const packageJsonDependencies = packageJson.dependencies as
 			| Record<string, string>
 			| undefined;
-		if (dependencies) {
-			for (const dep in dependencies) {
-				const internalDep = packageJsonNameToName[dep];
+		if (packageJsonDependencies) {
+			for (const packageJsonDependency in packageJsonDependencies) {
+				const internalDep = packageJsonNameToName[packageJsonDependency];
 				if (internalDep) {
-					deps.push(internalDep);
+					resourceDependencies.push(internalDep);
 				}
 			}
 		}
-		res[name] = deps;
+		res[name] = resourceDependencies;
 	}
 	return res;
 }
