@@ -9,7 +9,7 @@ import {
 	type GraphNodesWithInDegreesOfZero,
 	setGraph,
 } from "./graph.js";
-import type { UpJsonNameToDependencies } from "./up-json.js";
+import type { UpResourceNameToDependencies } from "./up-resources.js";
 
 type PackageJson = Record<string, unknown>;
 
@@ -78,7 +78,7 @@ interface ConfigData {
 }
 
 type FactoryOptions = {
-	upJsonNameToDependencies: UpJsonNameToDependencies;
+	upResourceNameToDependencies: UpResourceNameToDependencies;
 };
 
 async function factory(
@@ -108,9 +108,9 @@ async function factory(
 
 	// Account for deleted resources. Deleted will resources will be
 	// present in gas.up.json but not the file system.
-	if (options?.upJsonNameToDependencies) {
+	if (options?.upResourceNameToDependencies) {
 		nameToDependencies = {
-			...options.upJsonNameToDependencies,
+			...options.upResourceNameToDependencies,
 			...nameToDependencies,
 		};
 	}
@@ -166,9 +166,11 @@ async function init(
 
 async function initWithUp(
 	containerDirPath: ResourceContainerDirPath,
-	upJsonNameToDependencies: UpJsonNameToDependencies,
+	upResourceNameToDependencies: UpResourceNameToDependencies,
 ): Promise<Resources> {
-	return await factory(containerDirPath, { upJsonNameToDependencies });
+	return await factory(containerDirPath, {
+		upResourceNameToDependencies,
+	});
 }
 
 export async function setResources(
@@ -179,9 +181,9 @@ export async function setResources(
 
 export async function setResourcesWithUp(
 	containerDirPath: ResourceContainerDirPath,
-	upJsonNameToDependencies: UpJsonNameToDependencies,
+	upResourceNameToDependencies: UpResourceNameToDependencies,
 ): Promise<Resources> {
-	return await initWithUp(containerDirPath, upJsonNameToDependencies);
+	return await initWithUp(containerDirPath, upResourceNameToDependencies);
 }
 
 async function setContainerSubdirPaths(
