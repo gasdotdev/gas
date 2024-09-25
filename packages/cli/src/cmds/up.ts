@@ -7,6 +7,17 @@ import {
 } from "../modules/resources.js";
 import { setUpResources } from "../modules/up-resources.js";
 
+function setGroupDeployMachine() {
+	return setup({}).createMachine({
+		id: "groupDeploy",
+		initial: "ok",
+		states: {
+			ok: { type: "final" },
+			error: { type: "final" },
+		},
+	});
+}
+
 function logPreDeployNameToState(
 	groupToDepthToNames: ResourceGroupToDepthToNames,
 	nameToState: ResourceNameToState,
@@ -31,14 +42,16 @@ function setNameToDeployStateOfPending(nameToState: ResourceNameToState) {
 	}
 }
 
-const machine = setup({}).createMachine({
-	id: "root",
-	initial: "ok",
-	states: {
-		ok: { type: "final" },
-		error: { type: "final" },
-	},
-});
+function setRootDeployMachine() {
+	return setup({}).createMachine({
+		id: "rootDeploy",
+		initial: "ok",
+		states: {
+			ok: { type: "final" },
+			error: { type: "final" },
+		},
+	});
+}
 
 export async function runUp() {
 	const config = await setConfig();
@@ -50,7 +63,9 @@ export async function runUp() {
 		upResources,
 	);
 
-	const actor = createActor(machine).start();
+	const rootMachine = setRootDeployMachine();
+
+	const actor = createActor(rootMachine).start();
 
 	const snapshot = await waitFor(
 		actor,
