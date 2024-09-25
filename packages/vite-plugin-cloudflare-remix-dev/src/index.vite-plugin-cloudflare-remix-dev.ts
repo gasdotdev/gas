@@ -90,6 +90,7 @@ export const cloudflareRemixDevPlugin = <Env>(
 					this.resourceName = resourceName;
 				}
 
+				// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 				async fetch(request: any) {
 					const res = await client["miniflare-run"].$post({
 						json: {
@@ -114,13 +115,13 @@ export const cloudflareRemixDevPlugin = <Env>(
 						data.devManifest.portToCloudflarePagesResourceName[viteServerPort];
 
 					const cloudflarePagesResourceDependencies =
-						data.devManifest.resources.dependencies[
+						data.devManifest.resources.nameToDependencies[
 							cloudflarePagesResourceName
 						];
 
 					for (const dependencyName of cloudflarePagesResourceDependencies) {
 						if (
-							data.devManifest.resources.configData[dependencyName]
+							data.devManifest.resources.nameToConfigData[dependencyName]
 								.functionName === "cloudflareWorkerApi"
 						) {
 							const serviceFetcher = new ServiceFetcher(dependencyName);
