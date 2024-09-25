@@ -3,6 +3,7 @@ import { parseArgs } from "node:util";
 import { runAdd } from "./cmds/add.js";
 import { runDevSetup } from "./cmds/dev-setup.js";
 import { runDevStart } from "./cmds/dev-start.js";
+import { runUp } from "./cmds/up.js";
 
 await main();
 
@@ -29,6 +30,7 @@ Available commands:
   add         Add new resource(s)
   dev:setup   Setup dev environment
   dev:start   Start dev server
+  up          Deploy resources to the cloud
 Options:
 	--help, -h Print help`;
 
@@ -49,6 +51,10 @@ Options:
 			}
 			case "dev:start": {
 				await runDevStart();
+				break;
+			}
+			case "up": {
+				await runUp();
 				break;
 			}
 			default:

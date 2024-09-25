@@ -471,7 +471,7 @@ function setNameToState(
 	}
 
 	for (const name in nameToConfig) {
-		if (!(name in upResources[name].config)) {
+		if (!(name in upResources)) {
 			nameToState[name] = "CREATED";
 		} else {
 			if (
@@ -497,7 +497,7 @@ function setNameToState(
 	return nameToState;
 }
 
-type ResourcesWithUp = Resources & {
+export type ResourcesWithUp = Resources & {
 	nameToState: ResourceNameToState;
 };
 
