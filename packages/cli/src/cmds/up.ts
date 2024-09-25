@@ -115,8 +115,6 @@ export async function runUp() {
 		},
 	);
 
-	console.log(JSON.stringify(resourcesWithUp, null, 2));
-
 	if (snapshot.value === "error") {
 		throw new Error("Unable to deploy resources");
 	}

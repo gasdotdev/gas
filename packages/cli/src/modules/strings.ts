@@ -7,6 +7,10 @@ export function convertObjectToCapitalSnakeCase(
 		.toUpperCase();
 }
 
+export function convertKebabCaseToCapitalSnakeCase(str: string) {
+	return str.replace(/-/g, "_").toUpperCase();
+}
+
 export function convertCapitalSnakeCaseToCamelCase(str: string) {
 	return str.toLowerCase().replace(/_(.)/g, (_, char) => char.toUpperCase());
 }

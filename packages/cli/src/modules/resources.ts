@@ -9,6 +9,7 @@ import {
 	type GraphNodesWithInDegreesOfZero,
 	setGraph,
 } from "./graph.js";
+import { convertKebabCaseToCapitalSnakeCase } from "./strings.js";
 import type { UpResources } from "./up-resources.js";
 
 type PackageJson = Record<string, unknown>;
@@ -93,9 +94,12 @@ function setNameToDependencies(
 			| undefined;
 		if (packageJsonDependencies) {
 			for (const packageJsonDependency in packageJsonDependencies) {
-				const internalDep = nameToPackageJson[packageJsonDependency];
+				const capitalSnakeCasePackageJsonDependency =
+					convertKebabCaseToCapitalSnakeCase(packageJsonDependency);
+				const internalDep =
+					nameToPackageJson[capitalSnakeCasePackageJsonDependency];
 				if (internalDep) {
-					resourceDependencies.push(packageJsonDependency);
+					resourceDependencies.push(capitalSnakeCasePackageJsonDependency);
 				}
 			}
 		}
