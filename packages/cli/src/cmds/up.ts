@@ -1,10 +1,7 @@
 import { createActor, setup, waitFor } from "xstate";
 import { setConfig } from "../modules/config.js";
 import { setResourcesWithUp } from "../modules/resources.js";
-import {
-	setUpResourceNameToDependencies,
-	setUpResources,
-} from "../modules/up-resources.js";
+import { setUpResources } from "../modules/up-resources.js";
 
 const machine = setup({}).createMachine({
 	id: "root",
@@ -20,12 +17,9 @@ export async function runUp() {
 
 	const upResources = await setUpResources(config.upJsonPath);
 
-	const upResourceNameToDependencies =
-		setUpResourceNameToDependencies(upResources);
-
 	const resources = await setResourcesWithUp(
 		config.containerDirPath,
-		upResourceNameToDependencies,
+		upResources,
 	);
 
 	const actor = createActor(machine).start();
