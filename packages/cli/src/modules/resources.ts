@@ -323,6 +323,8 @@ async function runNodeJsConfigScript(
 	});
 }
 
+export type ResourceGroupToDepthToNames = GraphGroupToDepthToNodes;
+
 export type Resources = {
 	containerDirPath: ResourceContainerDirPath;
 	containerSubdirPaths: ResourceContainerSubdirPaths;
@@ -333,7 +335,7 @@ export type Resources = {
 	nameToIndexFileContent: ResourceNameToIndexFileContent;
 	nameToConfigData: ResourceNameToConfigData;
 	nameToDependencies: ResourceNameToDependencies;
-	groupToDepthToNames: GraphGroupToDepthToNodes;
+	groupToDepthToNames: ResourceGroupToDepthToNames;
 	namesWithIndegreesOfZero: GraphNodesWithInDegreesOfZero;
 	nameToIntermediates: GraphNodeToIntermediates;
 	depthToNames: GraphDepthToNodes;
@@ -451,7 +453,53 @@ export async function setResources(
 	return await init(containerDirPath);
 }
 
-type ResourcesWithUp = Resources & {};
+export type ResourceNameToState = {
+	[name: string]: "CREATED" | "DELETED" | "PENDING" | "UNCHANGED" | "UPDATED";
+};
+
+function setNameToState(
+	nameToConfig: ResourceNameToConfig,
+	nameToDependencies: ResourceNameToDependencies,
+	upResources: UpResources,
+): ResourceNameToState {
+	const nameToState: ResourceNameToState = {};
+
+	for (const name in upResources) {
+		if (!(name in nameToConfig)) {
+			nameToState[name] = "DELETED";
+		}
+	}
+
+	for (const name in nameToConfig) {
+		if (!(name in upResources[name].config)) {
+			nameToState[name] = "CREATED";
+		} else {
+			if (
+				JSON.stringify(nameToConfig[name]) !==
+				JSON.stringify(upResources[name].config)
+			) {
+				nameToState[name] = "UPDATED";
+				continue;
+			}
+
+			if (
+				JSON.stringify(nameToDependencies[name]) !==
+				JSON.stringify(upResources[name].dependencies)
+			) {
+				nameToState[name] = "UPDATED";
+				continue;
+			}
+
+			nameToState[name] = "UNCHANGED";
+		}
+	}
+
+	return nameToState;
+}
+
+type ResourcesWithUp = Resources & {
+	nameToState: ResourceNameToState;
+};
 
 async function initWithUp(
 	containerDirPath: ResourceContainerDirPath,
@@ -461,7 +509,13 @@ async function initWithUp(
 		upResources,
 	});
 
-	return resources;
+	const nameToState = setNameToState(
+		resources.nameToConfig,
+		resources.nameToDependencies,
+		upResources,
+	);
+
+	return { ...resources, nameToState };
 }
 
 export async function setResourcesWithUp(

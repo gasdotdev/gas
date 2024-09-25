@@ -1,7 +1,35 @@
 import { createActor, setup, waitFor } from "xstate";
 import { setConfig } from "../modules/config.js";
-import { setResourcesWithUp } from "../modules/resources.js";
+import {
+	type ResourceGroupToDepthToNames,
+	type ResourceNameToState,
+	setResourcesWithUp,
+} from "../modules/resources.js";
 import { setUpResources } from "../modules/up-resources.js";
+
+function logPreDeployNameToState(
+	groupToDepthToNames: ResourceGroupToDepthToNames,
+	nameToState: ResourceNameToState,
+) {
+	console.log("# Pre-Deploy States:");
+	for (const group in groupToDepthToNames) {
+		for (const depth in groupToDepthToNames[group]) {
+			for (const name of groupToDepthToNames[group][depth]) {
+				console.log(
+					`Group ${group} -> Depth ${depth} -> ${name} -> ${nameToState[name]}`,
+				);
+			}
+		}
+	}
+}
+
+function setNameToDeployStateOfPending(nameToState: ResourceNameToState) {
+	for (const name in nameToState) {
+		if (nameToState[name] !== "UNCHANGED") {
+			nameToState[name] = "PENDING";
+		}
+	}
+}
 
 const machine = setup({}).createMachine({
 	id: "root",
