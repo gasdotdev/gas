@@ -65,9 +65,35 @@ function setRootDeployMachine() {
 	}
 
 	const groupsProcessor = fromCallback(({ sendBack }) => {
-		setTimeout(() => {
-			sendBack({ type: "OK" });
-		}, 1000);
+		const numOfGroupsToDeploy = resourcesWithUp.groupsWithStateChanges.length;
+
+		let numOfGroupsDeployedWithOk = 0;
+		let numOfGroupsDeployedWithErr = 0;
+
+		for (const group of resourcesWithUp.groupsWithStateChanges) {
+			const groupDeployMachine = setGroupDeployMachine();
+
+			const groupDeployMachineActor = createActor(groupDeployMachine).start();
+
+			groupDeployMachineActor.subscribe((state) => {
+				if (state.matches("ok")) {
+					numOfGroupsDeployedWithOk++;
+				} else if (state.matches("err")) {
+					numOfGroupsDeployedWithErr++;
+				}
+
+				const numOfGroupsFinishedDeploying =
+					numOfGroupsDeployedWithOk + numOfGroupsDeployedWithErr;
+
+				if (numOfGroupsToDeploy === numOfGroupsFinishedDeploying) {
+					if (numOfGroupsDeployedWithErr > 0) {
+						sendBack({ type: "ERR" });
+					} else {
+						sendBack({ type: "OK" });
+					}
+				}
+			});
+		}
 	});
 
 	return setup({
