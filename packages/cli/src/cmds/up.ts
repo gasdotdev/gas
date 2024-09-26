@@ -9,7 +9,7 @@ import { setUpResources } from "../modules/up-resources.js";
 let resourcesWithUp = {} as ResourcesWithUp;
 
 function setGroupDeployMachine() {
-	const processor = fromCallback(({ sendBack }) => {
+	const groupProcessor = fromCallback(({ sendBack }) => {
 		setTimeout(() => {
 			sendBack({ type: "OK" });
 		}, 1000);
@@ -17,7 +17,7 @@ function setGroupDeployMachine() {
 
 	return setup({
 		actors: {
-			processor,
+			groupProcessor,
 		},
 	}).createMachine({
 		id: "group",
@@ -25,49 +25,58 @@ function setGroupDeployMachine() {
 		states: {
 			processingGroup: {
 				invoke: {
-					src: "processor",
+					src: "groupProcessor",
 				},
 				on: {
 					OK: {
 						target: "ok",
 					},
-					ERROR: {
-						target: "error",
+					ERR: {
+						target: "err",
 					},
 				},
 			},
 			ok: { type: "final" },
-			error: { type: "final" },
+			err: { type: "final" },
 		},
 	});
 }
 
-function logPreDeployNameToState() {
-	console.log("# Pre-Deploy States:");
-	for (const group in resourcesWithUp.groupToDepthToNames) {
-		for (const depth in resourcesWithUp.groupToDepthToNames[group]) {
-			for (const name of resourcesWithUp.groupToDepthToNames[group][depth]) {
-				console.log(
-					`Group ${group} -> Depth ${depth} -> ${name} -> ${resourcesWithUp.nameToState[name]}`,
-				);
+function setRootDeployMachine() {
+	function logPreDeployNameToState() {
+		console.log("# Pre-Deploy States:");
+		for (const group in resourcesWithUp.groupToDepthToNames) {
+			for (const depth in resourcesWithUp.groupToDepthToNames[group]) {
+				for (const name of resourcesWithUp.groupToDepthToNames[group][depth]) {
+					console.log(
+						`Group ${group} -> Depth ${depth} -> ${name} -> ${resourcesWithUp.nameToState[name]}`,
+					);
+				}
 			}
 		}
 	}
-}
 
-function setNameToDeployStateOfPending() {
-	for (const name in resourcesWithUp.nameToState) {
-		if (resourcesWithUp.nameToState[name] !== "UNCHANGED") {
-			resourcesWithUp.nameToState[name] = "PENDING";
+	function setNameToDeployStateOfPending() {
+		for (const name in resourcesWithUp.nameToState) {
+			if (resourcesWithUp.nameToState[name] !== "UNCHANGED") {
+				resourcesWithUp.nameToState[name] = "PENDING";
+			}
 		}
 	}
-}
 
-function setRootDeployMachine() {
+	const groupsProcessor = fromCallback(({ sendBack }) => {
+		setTimeout(() => {
+			sendBack({ type: "OK" });
+		}, 1000);
+	});
+
 	return setup({
 		actions: {
 			logPreDeployNameToState,
 			setNameToDeployStateOfPending,
+		},
+		actors: {
+			groupsProcessor,
 		},
 	}).createMachine({
 		id: "root",
@@ -83,12 +92,24 @@ function setRootDeployMachine() {
 					},
 				],
 				always: {
-					target: "ok",
+					target: "processingGroups",
 				},
 			},
-			processingGroups: {},
+			processingGroups: {
+				invoke: {
+					src: "groupsProcessor",
+				},
+				on: {
+					OK: {
+						target: "ok",
+					},
+					ERR: {
+						target: "err",
+					},
+				},
+			},
 			ok: { type: "final" },
-			error: { type: "final" },
+			err: { type: "final" },
 		},
 	});
 }
@@ -109,13 +130,13 @@ export async function runUp() {
 
 	const snapshot = await waitFor(
 		actor,
-		(snapshot) => snapshot.matches("ok") || snapshot.matches("error"),
+		(snapshot) => snapshot.matches("ok") || snapshot.matches("err"),
 		{
 			timeout: 3600_000,
 		},
 	);
 
-	if (snapshot.value === "error") {
+	if (snapshot.value === "err") {
 		throw new Error("Unable to deploy resources");
 	}
 }
