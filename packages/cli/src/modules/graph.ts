@@ -16,6 +16,10 @@ export type GraphNodeToGroup = {
 	[node: string]: number;
 };
 
+export type GraphGroupToNodes = {
+	[group: number]: string[];
+};
+
 export type GraphDepthToNodes = {
 	[depth: number]: string[];
 };
@@ -36,6 +40,7 @@ export type Graph = {
 	nodesWithInDegreesOfZero: GraphNodesWithInDegreesOfZero;
 	nodeToIntermediates: GraphNodeToIntermediates;
 	nodeToGroup: GraphNodeToGroup;
+	groupToNodes: GraphGroupToNodes;
 	depthToNodes: GraphDepthToNodes;
 	nodeToDepth: GraphNodeToDepth;
 	groupToDepthToNodes: GraphGroupToDepthToNodes;
@@ -43,26 +48,35 @@ export type Graph = {
 
 export function setGraph(nameToDependencies: GraphNodeToDependencies): Graph {
 	const nodeToInDegrees = setNodeToInDegrees(nameToDependencies);
+
 	const nodesWithInDegreesOfZero = setNodesWithInDegreesOfZero(nodeToInDegrees);
+
 	const nodeToIntermediates = setNodeToIntermediates(nameToDependencies);
+
 	const nodeToGroup = setNodeToGroup(
 		nodesWithInDegreesOfZero,
 		nodeToIntermediates,
 	);
-	const depthToNode = setDepthToNodes(
+
+	const groupToNodes = setGroupToNodes(nodeToGroup);
+
+	const depthToNodes = setDepthToNodes(
 		nameToDependencies,
 		nodesWithInDegreesOfZero,
 	);
-	const nodeToDepth = setNodeToDepth(depthToNode);
+
+	const nodeToDepth = setNodeToDepth(depthToNodes);
+
 	const groupToDepthToNodes = setGroupToDepthToNodes(nodeToGroup, nodeToDepth);
 
 	return {
-		nameToDependencies: nameToDependencies,
+		nameToDependencies,
 		nodeToInDegrees,
 		nodesWithInDegreesOfZero,
 		nodeToIntermediates,
 		nodeToGroup,
-		depthToNodes: depthToNode,
+		groupToNodes,
+		depthToNodes,
 		nodeToDepth,
 		groupToDepthToNodes,
 	};
@@ -212,6 +226,17 @@ function setNodeToGroup(
 			}
 			group++;
 		}
+	}
+	return res;
+}
+
+function setGroupToNodes(nodeToGroup: GraphNodeToGroup): GraphGroupToNodes {
+	const res: GraphGroupToNodes = {};
+	for (const [node, group] of Object.entries(nodeToGroup)) {
+		if (!(group in res)) {
+			res[group] = [];
+		}
+		res[group].push(node);
 	}
 	return res;
 }

@@ -5,6 +5,8 @@ import {
 	type GraphDepthToNodes,
 	type GraphGroupToDepthToNodes,
 	type GraphNodeToDepth,
+	type GraphNodeToGroup,
+	type GraphNodeToInDegrees,
 	type GraphNodeToIntermediates,
 	type GraphNodesWithInDegreesOfZero,
 	setGraph,
@@ -339,11 +341,13 @@ export type Resources = {
 	nameToIndexFileContent: ResourceNameToIndexFileContent;
 	nameToConfigData: ResourceNameToConfigData;
 	nameToDependencies: ResourceNameToDependencies;
-	groupToDepthToNames: ResourceGroupToDepthToNames;
+	nameToIndegrees: GraphNodeToInDegrees;
 	namesWithIndegreesOfZero: GraphNodesWithInDegreesOfZero;
 	nameToIntermediates: GraphNodeToIntermediates;
+	nameToGroup: GraphNodeToGroup;
 	depthToNames: GraphDepthToNodes;
 	nameToDepth: GraphNodeToDepth;
+	groupToDepthToNames: ResourceGroupToDepthToNames;
 	nodeJsConfigScript: ResourceNodeJsConfigScript;
 	runNodeJsConfigScriptResult: ResourceRunNodeJsConfigScriptResult;
 	nameToConfig: ResourceNameToConfig;
@@ -404,15 +408,19 @@ async function factory(
 
 	const graph = setGraph(nameToDependencies);
 
-	const groupToDepthToNames = graph.groupToDepthToNodes;
+	const nameToIndegrees = graph.nodeToInDegrees;
 
 	const namesWithIndegreesOfZero = graph.nodesWithInDegreesOfZero;
 
 	const nameToIntermediates = graph.nodeToIntermediates;
 
+	const nameToGroup = graph.nodeToGroup;
+
 	const depthToNames = graph.depthToNodes;
 
 	const nameToDepth = graph.nodeToDepth;
+
+	const groupToDepthToNames = graph.groupToDepthToNodes;
 
 	const nodeJsConfigScript = setNodeJsConfigScript(
 		nameToConfigData,
@@ -430,13 +438,15 @@ async function factory(
 		list,
 		nameToPackageJson,
 		nameToDependencies,
+		nameToIndegrees,
+		namesWithIndegreesOfZero,
+		nameToIntermediates,
+		nameToGroup,
 		nameToIndexFilePath,
 		nameToBuildIndexFilePath,
 		nameToIndexFileContent,
 		nameToConfigData,
 		groupToDepthToNames,
-		namesWithIndegreesOfZero,
-		nameToIntermediates,
 		depthToNames,
 		nameToDepth,
 		nodeJsConfigScript,
@@ -500,6 +510,10 @@ function setNameToState(
 
 	return nameToState;
 }
+
+// TODO:
+// groupsWithStateChanges
+// groupToHighestDeployDepth
 
 export type ResourcesWithUp = Resources & {
 	nameToState: ResourceNameToState;
