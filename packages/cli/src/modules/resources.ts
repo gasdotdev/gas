@@ -4,6 +4,7 @@ import path from "node:path";
 import {
 	type GraphDepthToNodes,
 	type GraphGroupToDepthToNodes,
+	type GraphGroupToNodes,
 	type GraphNodeToDepth,
 	type GraphNodeToGroup,
 	type GraphNodeToInDegrees,
@@ -345,6 +346,7 @@ export type Resources = {
 	namesWithIndegreesOfZero: GraphNodesWithInDegreesOfZero;
 	nameToIntermediates: GraphNodeToIntermediates;
 	nameToGroup: GraphNodeToGroup;
+	groupToNames: GraphGroupToNodes;
 	depthToNames: GraphDepthToNodes;
 	nameToDepth: GraphNodeToDepth;
 	groupToDepthToNames: ResourceGroupToDepthToNames;
@@ -416,6 +418,8 @@ async function factory(
 
 	const nameToGroup = graph.nodeToGroup;
 
+	const groupToNames = graph.groupToNodes;
+
 	const depthToNames = graph.depthToNodes;
 
 	const nameToDepth = graph.nodeToDepth;
@@ -442,11 +446,12 @@ async function factory(
 		namesWithIndegreesOfZero,
 		nameToIntermediates,
 		nameToGroup,
+		groupToNames,
+		groupToDepthToNames,
 		nameToIndexFilePath,
 		nameToBuildIndexFilePath,
 		nameToIndexFileContent,
 		nameToConfigData,
-		groupToDepthToNames,
 		depthToNames,
 		nameToDepth,
 		nodeJsConfigScript,
@@ -511,12 +516,74 @@ function setNameToState(
 	return nameToState;
 }
 
-// TODO:
-// groupsWithStateChanges
-// groupToHighestDeployDepth
+type GroupsWithStateChanges = number[];
+
+function setGroupsWithStateChanges(
+	nameToState: ResourceNameToState,
+	nameToGroup: GraphNodeToGroup,
+): GroupsWithStateChanges {
+	const res: GroupsWithStateChanges = [];
+	const seenGroups = new Set<number>();
+	for (const name in nameToState) {
+		if (nameToState[name] !== "UNCHANGED") {
+			const group = nameToGroup[name];
+			if (!seenGroups.has(group)) {
+				res.push(group);
+				seenGroups.add(group);
+			}
+		}
+	}
+	return res;
+}
+
+type GroupToHighestDeployDepth = {
+	[group: number]: number;
+};
+
+function setGroupToHighestDeployDepth(
+	groupsWithStateChanges: GroupsWithStateChanges,
+	groupToNames: GraphGroupToNodes,
+	nameToState: ResourceNameToState,
+	nameToDepth: GraphNodeToDepth,
+): GroupToHighestDeployDepth {
+	const res: GroupToHighestDeployDepth = {};
+
+	for (const group of groupsWithStateChanges) {
+		let deployDepth = 0;
+		let isFirstResourceToProcess = true;
+
+		for (const name of groupToNames[group]) {
+			// UNCHANGED resources aren't deployed, so its depth
+			// can't be the deploy depth.
+			if (nameToState[name] === "UNCHANGED") {
+				continue;
+			}
+
+			// If resource is first to make it this far set deploy
+			// depth so it can be used for comparison in future loops.
+			if (isFirstResourceToProcess) {
+				res[group] = nameToDepth[name];
+				deployDepth = nameToDepth[name];
+				isFirstResourceToProcess = false;
+				continue;
+			}
+
+			// Update deploy depth if resource's depth is greater than
+			// the comparative deploy depth.
+			if (nameToDepth[name] > deployDepth) {
+				res[group] = nameToDepth[name];
+				deployDepth = nameToDepth[name];
+			}
+		}
+	}
+
+	return res;
+}
 
 export type ResourcesWithUp = Resources & {
 	nameToState: ResourceNameToState;
+	groupToHighestDeployDepth: GroupToHighestDeployDepth;
+	groupsWithStateChanges: GroupsWithStateChanges;
 };
 
 async function initWithUp(
@@ -533,7 +600,23 @@ async function initWithUp(
 		upResources,
 	);
 
-	return { ...resources, nameToState };
+	const groupsWithStateChanges = setGroupsWithStateChanges(
+		nameToState,
+		resources.nameToGroup,
+	);
+
+	const groupToHighestDeployDepth = setGroupToHighestDeployDepth(
+		groupsWithStateChanges,
+		resources.groupToNames,
+		nameToState,
+		resources.nameToDepth,
+	);
+	return {
+		...resources,
+		nameToState,
+		groupToHighestDeployDepth,
+		groupsWithStateChanges,
+	};
 }
 
 export async function setResourcesWithUp(
