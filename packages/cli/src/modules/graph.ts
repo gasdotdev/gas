@@ -1,86 +1,10 @@
-export type GraphNodeToDependencies = {
+type GraphNodeToDependencies = {
 	[node: string]: string[];
 };
 
 export type GraphNodeToInDegrees = {
 	[node: string]: number;
 };
-
-export type GraphNodesWithInDegreesOfZero = string[];
-
-export type GraphNodeToIntermediates = {
-	[node: string]: string[];
-};
-
-export type GraphNodeToGroup = {
-	[node: string]: number;
-};
-
-export type GraphGroupToNodes = {
-	[group: number]: string[];
-};
-
-export type GraphDepthToNodes = {
-	[depth: number]: string[];
-};
-
-export type GraphNodeToDepth = {
-	[node: string]: number;
-};
-
-export type GraphGroupToDepthToNodes = {
-	[group: number]: {
-		[depth: number]: string[];
-	};
-};
-
-export type Graph = {
-	nameToDependencies: GraphNodeToDependencies;
-	nodeToInDegrees: GraphNodeToInDegrees;
-	nodesWithInDegreesOfZero: GraphNodesWithInDegreesOfZero;
-	nodeToIntermediates: GraphNodeToIntermediates;
-	nodeToGroup: GraphNodeToGroup;
-	groupToNodes: GraphGroupToNodes;
-	depthToNodes: GraphDepthToNodes;
-	nodeToDepth: GraphNodeToDepth;
-	groupToDepthToNodes: GraphGroupToDepthToNodes;
-};
-
-export function setGraph(nameToDependencies: GraphNodeToDependencies): Graph {
-	const nodeToInDegrees = setNodeToInDegrees(nameToDependencies);
-
-	const nodesWithInDegreesOfZero = setNodesWithInDegreesOfZero(nodeToInDegrees);
-
-	const nodeToIntermediates = setNodeToIntermediates(nameToDependencies);
-
-	const nodeToGroup = setNodeToGroup(
-		nodesWithInDegreesOfZero,
-		nodeToIntermediates,
-	);
-
-	const groupToNodes = setGroupToNodes(nodeToGroup);
-
-	const depthToNodes = setDepthToNodes(
-		nameToDependencies,
-		nodesWithInDegreesOfZero,
-	);
-
-	const nodeToDepth = setNodeToDepth(depthToNodes);
-
-	const groupToDepthToNodes = setGroupToDepthToNodes(nodeToGroup, nodeToDepth);
-
-	return {
-		nameToDependencies,
-		nodeToInDegrees,
-		nodesWithInDegreesOfZero,
-		nodeToIntermediates,
-		nodeToGroup,
-		groupToNodes,
-		depthToNodes,
-		nodeToDepth,
-		groupToDepthToNodes,
-	};
-}
 
 // In degrees is how many incoming edges a target node has.
 function setNodeToInDegrees(
@@ -107,6 +31,8 @@ function setNodeToInDegrees(
 	return res;
 }
 
+export type GraphNodesWithInDegreesOfZero = string[];
+
 // Nodes with in degrees of 0 are nodes with no incoming edges.
 function setNodesWithInDegreesOfZero(
 	nodeToInDegrees: GraphNodeToInDegrees,
@@ -120,37 +46,9 @@ function setNodesWithInDegreesOfZero(
 	return res;
 }
 
-function walkDependencies(
-	node: string,
-	nodeToDependencies: GraphNodeToDependencies,
-	memo: Record<string, string[]>,
-): string[] {
-	if (node in memo) {
-		return memo[node];
-	}
-
-	const res: string[] = [];
-	const dependencies = nodeToDependencies[node] || [];
-
-	for (const dependency of dependencies) {
-		if (!res.includes(dependency)) {
-			res.push(dependency);
-			for (const transitiveDep of walkDependencies(
-				dependency,
-				nodeToDependencies,
-				memo,
-			)) {
-				if (!res.includes(transitiveDep)) {
-					res.push(transitiveDep);
-				}
-			}
-		}
-	}
-
-	memo[node] = res;
-
-	return res;
-}
+export type GraphNodeToIntermediates = {
+	[node: string]: string[];
+};
 
 // Intermediate nodes are nodes within the source resource's
 // directed graph path.
@@ -165,6 +63,38 @@ function walkDependencies(
 function setNodeToIntermediates(
 	nodeToDependencies: GraphNodeToDependencies,
 ): GraphNodeToIntermediates {
+	function walkDependencies(
+		node: string,
+		nodeToDependencies: GraphNodeToDependencies,
+		memo: Record<string, string[]>,
+	): string[] {
+		if (node in memo) {
+			return memo[node];
+		}
+
+		const res: string[] = [];
+		const dependencies = nodeToDependencies[node] || [];
+
+		for (const dependency of dependencies) {
+			if (!res.includes(dependency)) {
+				res.push(dependency);
+				for (const transitiveDep of walkDependencies(
+					dependency,
+					nodeToDependencies,
+					memo,
+				)) {
+					if (!res.includes(transitiveDep)) {
+						res.push(transitiveDep);
+					}
+				}
+			}
+		}
+
+		memo[node] = res;
+
+		return res;
+	}
+
 	const res: GraphNodeToIntermediates = {};
 	const memo: Record<string, string[]> = {};
 	for (const node of Object.keys(nodeToDependencies)) {
@@ -172,6 +102,10 @@ function setNodeToIntermediates(
 	}
 	return res;
 }
+
+export type GraphNodeToGroup = {
+	[node: string]: number;
+};
 
 // A group is an integer assigned to nodes that share
 // at least one common relative.
@@ -230,6 +164,10 @@ function setNodeToGroup(
 	return res;
 }
 
+export type GraphGroupToNodes = {
+	[group: number]: string[];
+};
+
 function setGroupToNodes(nodeToGroup: GraphNodeToGroup): GraphGroupToNodes {
 	const res: GraphGroupToNodes = {};
 	for (const [node, group] of Object.entries(nodeToGroup)) {
@@ -240,6 +178,10 @@ function setGroupToNodes(nodeToGroup: GraphNodeToGroup): GraphGroupToNodes {
 	}
 	return res;
 }
+
+export type GraphDepthToNodes = {
+	[depth: number]: string[];
+};
 
 // Depth is an integer that describes how far down the graph
 // a resource is.
@@ -281,6 +223,10 @@ function setDepthToNodes(
 	return res;
 }
 
+export type GraphNodeToDepth = {
+	[node: string]: number;
+};
+
 function setNodeToDepth(depthToNode: GraphDepthToNodes): GraphNodeToDepth {
 	const res: GraphNodeToDepth = {};
 	for (const [depthStr, nodes] of Object.entries(depthToNode)) {
@@ -291,6 +237,12 @@ function setNodeToDepth(depthToNode: GraphDepthToNodes): GraphNodeToDepth {
 	}
 	return res;
 }
+
+export type GraphGroupToDepthToNodes = {
+	[group: number]: {
+		[depth: number]: string[];
+	};
+};
 
 function setGroupToDepthToNodes(
 	nodeToGroup: GraphNodeToGroup,
@@ -311,4 +263,52 @@ function setGroupToDepthToNodes(
 		res[group][depth].push(node);
 	}
 	return res;
+}
+
+export type Graph = {
+	nameToDependencies: GraphNodeToDependencies;
+	nodeToInDegrees: GraphNodeToInDegrees;
+	nodesWithInDegreesOfZero: GraphNodesWithInDegreesOfZero;
+	nodeToIntermediates: GraphNodeToIntermediates;
+	nodeToGroup: GraphNodeToGroup;
+	groupToNodes: GraphGroupToNodes;
+	depthToNodes: GraphDepthToNodes;
+	nodeToDepth: GraphNodeToDepth;
+	groupToDepthToNodes: GraphGroupToDepthToNodes;
+};
+
+export function setGraph(nameToDependencies: GraphNodeToDependencies): Graph {
+	const nodeToInDegrees = setNodeToInDegrees(nameToDependencies);
+
+	const nodesWithInDegreesOfZero = setNodesWithInDegreesOfZero(nodeToInDegrees);
+
+	const nodeToIntermediates = setNodeToIntermediates(nameToDependencies);
+
+	const nodeToGroup = setNodeToGroup(
+		nodesWithInDegreesOfZero,
+		nodeToIntermediates,
+	);
+
+	const groupToNodes = setGroupToNodes(nodeToGroup);
+
+	const depthToNodes = setDepthToNodes(
+		nameToDependencies,
+		nodesWithInDegreesOfZero,
+	);
+
+	const nodeToDepth = setNodeToDepth(depthToNodes);
+
+	const groupToDepthToNodes = setGroupToDepthToNodes(nodeToGroup, nodeToDepth);
+
+	return {
+		nameToDependencies,
+		nodeToInDegrees,
+		nodesWithInDegreesOfZero,
+		nodeToIntermediates,
+		nodeToGroup,
+		groupToNodes,
+		depthToNodes,
+		nodeToDepth,
+		groupToDepthToNodes,
+	};
 }
