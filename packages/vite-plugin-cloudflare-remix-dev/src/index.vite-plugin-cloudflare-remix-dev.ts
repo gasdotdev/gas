@@ -136,7 +136,11 @@ export const cloudflareRemixDevPlugin = <Env>(
 				return env;
 			}
 
-			const env = await setEnv();
+			let env = undefined;
+
+			if (process.env.NODE_ENV === "development") {
+				env = await setEnv();
+			}
 
 			const context = {
 				cloudflare: {
