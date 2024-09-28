@@ -472,8 +472,15 @@ export async function setResources(
 	return await init(containerDirPath);
 }
 
+export type ResourceState =
+	| "CREATED"
+	| "DELETED"
+	| "PENDING"
+	| "UNCHANGED"
+	| "UPDATED";
+
 export type ResourceNameToState = {
-	[name: string]: "CREATED" | "DELETED" | "PENDING" | "UNCHANGED" | "UPDATED";
+	[name: string]: ResourceState;
 };
 
 function setNameToState(

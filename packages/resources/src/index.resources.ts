@@ -26,16 +26,14 @@ export function cloudflareD1<T extends CloudflareD1>(resource: T): T {
 	return resource;
 }
 
-export type CloudflareWorkerApi = {
+export type CloudflareWorker = {
 	name: string;
 	db?: Array<{
 		binding: string;
 	}>;
 };
 
-export function cloudflareWorkerApi<T extends CloudflareWorkerApi>(
-	resource: T,
-): T {
+export function cloudflareWorker<T extends CloudflareWorker>(resource: T): T {
 	return resource;
 }
 

@@ -1,12 +1,38 @@
 import { createActor, fromCallback, setup, waitFor } from "xstate";
 import { setConfig } from "../modules/config.js";
 import {
+	type ResourceState,
 	type ResourcesWithUp,
 	setResourcesWithUp,
 } from "../modules/resources.js";
 import { setUpResources } from "../modules/up-resources.js";
 
 let resourcesWithUp = {} as ResourcesWithUp;
+
+type NameToResult = {
+	[name: string]: unknown;
+};
+
+const nameToResult = {};
+
+async function processCloudflareWorker(
+	resourcesWithUp: ResourcesWithUp,
+	state: ResourceState,
+	nameToResult: NameToResult,
+) {
+	switch (state) {
+		case "CREATED":
+			break;
+		case "DELETED":
+			break;
+		case "UPDATED":
+			break;
+	}
+}
+
+const resourceProcessors = {
+	cloudflareWorker: processCloudflareWorker,
+};
 
 function setGroupDeployMachine() {
 	const groupProcessor = fromCallback(({ sendBack }) => {
