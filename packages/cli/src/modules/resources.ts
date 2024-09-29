@@ -618,6 +618,7 @@ async function initWithUp(
 		nameToState,
 		resources.nameToDepth,
 	);
+
 	return {
 		...resources,
 		nameToState,

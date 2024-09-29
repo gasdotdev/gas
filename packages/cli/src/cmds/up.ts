@@ -1,6 +1,9 @@
 import { createActor, fromCallback, setup, waitFor } from "xstate";
 import { setConfig } from "../modules/config.js";
+import type { GraphGroupToDepthToNodes } from "../modules/graph.js";
 import {
+	type ResourceNameToDependencies,
+	type ResourceNameToState,
 	type ResourceState,
 	type ResourcesWithUp,
 	setResourcesWithUp,
@@ -34,11 +37,106 @@ const resourceProcessors = {
 	cloudflareWorker: processCloudflareWorker,
 };
 
-function setGroupDeployMachine() {
+function setGroupDeployMachine(group: number) {
+	type InitGroupNamesToDeploy = string[];
+
+	// Deployments can't only start at the highest depth
+	// containing a resource to deploy (i.e. a resource
+	// with a deploy state of PENDING).
+
+	// For example, given a graph of:
+	// a -> b
+	// b -> c
+	// c -> d
+	// a -> e
+
+	// d has a depth of 3 and e has a depth of 1.
+
+	// If just d and e need to be deployed, the deployment can't start
+	// at depth 3 only. e would be blocked until d finished because
+	// d has a higher depth than e. That's not optimal. They should
+	// be started at the same time and deployed concurrently.
+	function setInitGroupNamesToDeploy(
+		highestDepthContainingAResourceToDeploy: number,
+		group: number,
+		groupToDepthToNames: GraphGroupToDepthToNodes,
+		nameToDependencies: ResourceNameToDependencies,
+		nameToState: ResourceNameToState,
+	): InitGroupNamesToDeploy {
+		const result: InitGroupNamesToDeploy = [];
+
+		// Add every resource at highest deploy depth containing
+		// a resource to deploy.
+		result.push(
+			...groupToDepthToNames[group][highestDepthContainingAResourceToDeploy],
+		);
+
+		// Check all other depths, except 0, for resources that can
+		// start deploying on deployment initiation (0 is skipped
+		// because a resource at that depth can only be deployed
+		// first if it's being deployed in isolation).
+		let depthToCheck = highestDepthContainingAResourceToDeploy - 1;
+		while (depthToCheck > 0) {
+			const resourceNamesAtDepthToCheck =
+				groupToDepthToNames[group][depthToCheck];
+			for (const resourceNameAtDepthToCheck of resourceNamesAtDepthToCheck) {
+				const dependencies = nameToDependencies[resourceNameAtDepthToCheck];
+				for (const dependencyName of dependencies) {
+					// If resource at depth to check is PENDING and is not
+					// dependent on any resource in the ongoing result, then
+					// append it to the result.
+					if (
+						nameToState[resourceNameAtDepthToCheck] === "PENDING" &&
+						!result.includes(dependencyName)
+					) {
+						result.push(resourceNameAtDepthToCheck);
+					}
+				}
+			}
+			depthToCheck--;
+		}
+
+		return result;
+	}
+
+	type NumInGroupToDeploy = number;
+
+	function setNumInGroupToDeploy(group: number): NumInGroupToDeploy {
+		let result = 0;
+		for (const resourceName of resourcesWithUp.groupToNames[group]) {
+			if (resourcesWithUp.nameToState[resourceName] !== "UNCHANGED") {
+				result++;
+			}
+		}
+		return result;
+	}
+
 	const groupProcessor = fromCallback(({ sendBack }) => {
 		setTimeout(() => {
 			sendBack({ type: "OK" });
 		}, 1000);
+
+		const highestGroupDeployDepth =
+			resourcesWithUp.groupToHighestDeployDepth[group];
+
+		const initialGroupResourceNamesToDeploy = setInitGroupNamesToDeploy(
+			highestGroupDeployDepth,
+			group,
+			resourcesWithUp.groupToDepthToNames,
+			resourcesWithUp.nameToDependencies,
+			resourcesWithUp.nameToState,
+		);
+
+		for (const name of initialGroupResourceNamesToDeploy) {
+			const depth = resourcesWithUp.nameToDepth[name];
+			// go r.deployName(name, deployNameOkChan, group, depth)
+		}
+
+		const numOfNamesInGroupToDeploy = setNumInGroupToDeploy(group);
+
+		const numOfNamesDeployedOk = 0;
+		const numOfNamesDeployedErr = 0;
+		const numOfNamesDeployedCanceled = 0;
 	});
 
 	return setup({
@@ -97,7 +195,7 @@ function setRootDeployMachine() {
 		let numOfGroupsDeployedWithErr = 0;
 
 		for (const group of resourcesWithUp.groupsWithStateChanges) {
-			const groupDeployMachine = setGroupDeployMachine();
+			const groupDeployMachine = setGroupDeployMachine(group);
 
 			const groupDeployMachineActor = createActor(groupDeployMachine).start();
 
@@ -113,6 +211,7 @@ function setRootDeployMachine() {
 
 				if (numOfGroupsToDeploy === numOfGroupsFinishedDeploying) {
 					if (numOfGroupsDeployedWithErr > 0) {
+						console.error("Error deploying resources");
 						sendBack({ type: "ERR" });
 					} else {
 						sendBack({ type: "OK" });
