@@ -38,7 +38,7 @@ const resourceProcessors = {
 };
 
 function setGroupDeployMachine(group: number) {
-	type InitGroupNamesToDeploy = string[];
+	type InitialGroupNamesToDeploy = string[];
 
 	// Deployments can't only start at the highest depth
 	// containing a resource to deploy (i.e. a resource
@@ -56,14 +56,14 @@ function setGroupDeployMachine(group: number) {
 	// at depth 3 only. e would be blocked until d finished because
 	// d has a higher depth than e. That's not optimal. They should
 	// be started at the same time and deployed concurrently.
-	function setInitGroupNamesToDeploy(
+	function setInitialNamesToDeploy(
 		highestDepthContainingAResourceToDeploy: number,
 		group: number,
 		groupToDepthToNames: GraphGroupToDepthToNodes,
 		nameToDependencies: ResourceNameToDependencies,
 		nameToState: ResourceNameToState,
-	): InitGroupNamesToDeploy {
-		const result: InitGroupNamesToDeploy = [];
+	): InitialGroupNamesToDeploy {
+		const result: InitialGroupNamesToDeploy = [];
 
 		// Add every resource at highest deploy depth containing
 		// a resource to deploy.
@@ -99,9 +99,9 @@ function setGroupDeployMachine(group: number) {
 		return result;
 	}
 
-	type NumInGroupToDeploy = number;
+	type NumToDeploy = number;
 
-	function setNumInGroupToDeploy(group: number): NumInGroupToDeploy {
+	function setNumToDeploy(group: number): NumToDeploy {
 		let result = 0;
 		for (const resourceName of resourcesWithUp.groupToNames[group]) {
 			if (resourcesWithUp.nameToState[resourceName] !== "UNCHANGED") {
@@ -111,7 +111,7 @@ function setGroupDeployMachine(group: number) {
 		return result;
 	}
 
-	const groupProcessor = fromCallback(({ sendBack }) => {
+	const processGroup = fromCallback(({ sendBack }) => {
 		setTimeout(() => {
 			sendBack({ type: "OK" });
 		}, 1000);
@@ -119,7 +119,7 @@ function setGroupDeployMachine(group: number) {
 		const highestGroupDeployDepth =
 			resourcesWithUp.groupToHighestDeployDepth[group];
 
-		const initialGroupResourceNamesToDeploy = setInitGroupNamesToDeploy(
+		const initialeNamesToDeploy = setInitialNamesToDeploy(
 			highestGroupDeployDepth,
 			group,
 			resourcesWithUp.groupToDepthToNames,
@@ -127,12 +127,12 @@ function setGroupDeployMachine(group: number) {
 			resourcesWithUp.nameToState,
 		);
 
-		for (const name of initialGroupResourceNamesToDeploy) {
+		for (const name of initialeNamesToDeploy) {
 			const depth = resourcesWithUp.nameToDepth[name];
 			// go r.deployName(name, deployNameOkChan, group, depth)
 		}
 
-		const numOfNamesInGroupToDeploy = setNumInGroupToDeploy(group);
+		const numOfNamesInGroupToDeploy = setNumToDeploy(group);
 
 		const numOfNamesDeployedOk = 0;
 		const numOfNamesDeployedErr = 0;
@@ -141,16 +141,21 @@ function setGroupDeployMachine(group: number) {
 
 	return setup({
 		actors: {
-			groupProcessor,
+			processGroup,
 		},
 	}).createMachine({
 		id: "group",
 		initial: "processingGroup",
+		invoke: [
+			{
+				id: "initializeResourceProcessors",
+				src: "initializeResourceProcessors",
+			},
+			{ id: "processResource", src: "processResource" },
+			{ id: "processResourceDoneEvent", src: "processResourceDoneEvent" },
+		],
 		states: {
 			processingGroup: {
-				invoke: {
-					src: "groupProcessor",
-				},
 				on: {
 					OK: {
 						target: "ok",
@@ -188,7 +193,7 @@ function setRootDeployMachine() {
 		}
 	}
 
-	const groupsProcessor = fromCallback(({ sendBack }) => {
+	const processGroups = fromCallback(({ sendBack }) => {
 		const numOfGroupsToDeploy = resourcesWithUp.groupsWithStateChanges.length;
 
 		let numOfGroupsDeployedWithOk = 0;
@@ -227,7 +232,7 @@ function setRootDeployMachine() {
 			setNameToDeployStateOfPending,
 		},
 		actors: {
-			groupsProcessor,
+			processGroups,
 		},
 	}).createMachine({
 		id: "root",
@@ -248,7 +253,7 @@ function setRootDeployMachine() {
 			},
 			processingGroups: {
 				invoke: {
-					src: "groupsProcessor",
+					src: "processGroups",
 				},
 				on: {
 					OK: {
