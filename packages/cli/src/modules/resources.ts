@@ -246,9 +246,17 @@ function setNodeJsConfigScript(
 		return "";
 	}
 
-	const functionNames = Object.values(nameToConfigData).map(
-		(data) => data.functionName,
-	);
+	const functionNamesSet = new Set<string>();
+	const functionNames: string[] = [];
+
+	for (const name in nameToConfigData) {
+		const functionName = nameToConfigData[name].functionName;
+		if (!functionNamesSet.has(functionName)) {
+			functionNamesSet.add(functionName);
+			functionNames.push(functionName);
+		}
+	}
+
 	let script = `import {\n${functionNames.join(",\n")}\n} from "@gasdotdev/resources"\n`;
 
 	for (const group of Object.keys(groupToDepthToNames).map(Number)) {
