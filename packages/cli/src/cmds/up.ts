@@ -1,4 +1,4 @@
-import { createActor, fromCallback, setup, waitFor } from "xstate";
+import { createActor, fromCallback, sendTo, setup, waitFor } from "xstate";
 import { setConfig } from "../modules/config.js";
 import type { GraphGroupToDepthToNodes } from "../modules/graph.js";
 import {
@@ -111,51 +111,65 @@ function setGroupDeployMachine(group: number) {
 		return result;
 	}
 
-	const processGroup = fromCallback(({ sendBack }) => {
+	const highestGroupDeployDepth =
+		resourcesWithUp.groupToHighestDeployDepth[group];
+
+	const initialNamesToDeploy = setInitialNamesToDeploy(
+		highestGroupDeployDepth,
+		group,
+		resourcesWithUp.groupToDepthToNames,
+		resourcesWithUp.nameToDependencies,
+		resourcesWithUp.nameToState,
+	);
+
+	const numOfNamesInGroupToDeploy = setNumToDeploy(group);
+
+	const numOfNamesDeployedOk = 0;
+	const numOfNamesDeployedErr = 0;
+	const numOfNamesDeployedCanceled = 0;
+
+	const processResource = fromCallback(({ sendBack, receive }) => {
+		console.log("Processing resource");
+
+		receive((event) => {
+			console.log("Received event", event);
+		});
+
+		setTimeout(() => {
+			sendBack({ type: "OK" });
+		}, 2000);
+	});
+
+	const processResourceDoneEvent = fromCallback(({ sendBack }) => {
 		setTimeout(() => {
 			sendBack({ type: "OK" });
 		}, 1000);
-
-		const highestGroupDeployDepth =
-			resourcesWithUp.groupToHighestDeployDepth[group];
-
-		const initialeNamesToDeploy = setInitialNamesToDeploy(
-			highestGroupDeployDepth,
-			group,
-			resourcesWithUp.groupToDepthToNames,
-			resourcesWithUp.nameToDependencies,
-			resourcesWithUp.nameToState,
-		);
-
-		for (const name of initialeNamesToDeploy) {
-			const depth = resourcesWithUp.nameToDepth[name];
-			// go r.deployName(name, deployNameOkChan, group, depth)
-		}
-
-		const numOfNamesInGroupToDeploy = setNumToDeploy(group);
-
-		const numOfNamesDeployedOk = 0;
-		const numOfNamesDeployedErr = 0;
-		const numOfNamesDeployedCanceled = 0;
 	});
 
 	return setup({
 		actors: {
-			processGroup,
+			processResource,
+			processResourceDoneEvent,
 		},
 	}).createMachine({
 		id: "group",
 		initial: "processingGroup",
 		invoke: [
-			{
-				id: "initializeResourceProcessors",
-				src: "initializeResourceProcessors",
-			},
+			//{
+			//	id: "initializeResourceProcessors",
+			//	src: "initializeResourceProcessors",
+			//},
 			{ id: "processResource", src: "processResource" },
 			{ id: "processResourceDoneEvent", src: "processResourceDoneEvent" },
 		],
 		states: {
 			processingGroup: {
+				entry: initialNamesToDeploy.map((name) =>
+					sendTo("processResource", {
+						type: "processResource",
+						name,
+					}),
+				),
 				on: {
 					OK: {
 						target: "ok",
@@ -226,6 +240,10 @@ function setRootDeployMachine() {
 		}
 	});
 
+	logPreDeployNameToState();
+
+	setNameToDeployStateOfPending();
+
 	return setup({
 		actions: {
 			logPreDeployNameToState,
@@ -236,21 +254,8 @@ function setRootDeployMachine() {
 		},
 	}).createMachine({
 		id: "root",
-		initial: "logPreDeployNameToState",
+		initial: "processingGroups",
 		states: {
-			logPreDeployNameToState: {
-				entry: [
-					{
-						type: "logPreDeployNameToState",
-					},
-					{
-						type: "setNameToDeployStateOfPending",
-					},
-				],
-				always: {
-					target: "processingGroups",
-				},
-			},
 			processingGroups: {
 				invoke: {
 					src: "processGroups",
