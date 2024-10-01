@@ -63,11 +63,11 @@ function setGroupDeployMachine(group: number) {
 		nameToDependencies: ResourceNameToDependencies,
 		nameToState: ResourceNameToState,
 	): InitialGroupNamesToDeploy {
-		const result: InitialGroupNamesToDeploy = [];
+		const res: InitialGroupNamesToDeploy = [];
 
 		// Add every resource at highest deploy depth containing
 		// a resource to deploy.
-		result.push(
+		res.push(
 			...groupToDepthToNames[group][highestDepthContainingAResourceToDeploy],
 		);
 
@@ -87,28 +87,36 @@ function setGroupDeployMachine(group: number) {
 					// append it to the result.
 					if (
 						nameToState[resourceNameAtDepthToCheck] === "PENDING" &&
-						!result.includes(dependencyName)
+						!res.includes(dependencyName)
 					) {
-						result.push(resourceNameAtDepthToCheck);
+						res.push(resourceNameAtDepthToCheck);
 					}
 				}
 			}
 			depthToCheck--;
 		}
 
-		return result;
+		return res;
 	}
 
 	type NumToDeploy = number;
 
 	function setNumToDeploy(group: number): NumToDeploy {
-		let result = 0;
+		let res = 0;
 		for (const resourceName of resourcesWithUp.groupToNames[group]) {
 			if (resourcesWithUp.nameToState[resourceName] !== "UNCHANGED") {
-				result++;
+				res++;
 			}
 		}
-		return result;
+		return res;
+	}
+
+	function setNameToDeployStatePendingOfCanceled() {
+		for (const name in resourcesWithUp.nameToState) {
+			if (resourcesWithUp.nameToState[name] === "PENDING") {
+				resourcesWithUp.nameToState[name] = "CANCELED";
+			}
+		}
 	}
 
 	const highestGroupDeployDepth =
@@ -124,8 +132,8 @@ function setGroupDeployMachine(group: number) {
 
 	const numOfNamesInGroupToDeploy = setNumToDeploy(group);
 
-	const numOfNamesDeployedOk = 0;
-	const numOfNamesDeployedErr = 0;
+	let numOfNamesDeployedOk = 0;
+	let numOfNamesDeployedErr = 0;
 	const numOfNamesDeployedCanceled = 0;
 
 	type ProcessResourceStartEvent = {
@@ -134,9 +142,11 @@ function setGroupDeployMachine(group: number) {
 	};
 
 	type ProcessResoureDoneEvent = {
-		type: "PROCESS_RESOURCE_DONE_OK";
 		name: string;
-	};
+	} & (
+		| { type: "PROCESS_RESOURCE_DONE_OK" }
+		| { type: "PROCESS_RESOURCE_DONE_ERR" }
+	);
 
 	const processResourceEvent = fromCallback(
 		({
@@ -161,14 +171,46 @@ function setGroupDeployMachine(group: number) {
 	const processResourceDoneEvent = fromCallback(
 		({
 			receive,
-			sendBack,
 		}: {
 			receive: (cb: (event: ProcessResoureDoneEvent) => void) => void;
-			sendBack: (event: { type: string }) => void;
 		}) => {
 			receive((event) => {
-				console.log("Received processResourceDoneEvent", event);
-				sendBack({ type: "OK" });
+				switch (event.type) {
+					case "PROCESS_RESOURCE_DONE_OK":
+						console.log("Received processResourceDoneOkEvent", event);
+						numOfNamesDeployedOk++;
+						break;
+					case "PROCESS_RESOURCE_DONE_ERR":
+						console.log("Received processResourceDoneErrEvent", event);
+						numOfNamesDeployedErr++;
+						if (numOfNamesDeployedCanceled === 0) {
+							// Cancel PENDING resources.
+							// Check for 0 because resources should only
+							// be canceled one time.
+							setNameToDeployStatePendingOfCanceled();
+						}
+						break;
+					default: {
+						const never: never = event;
+						throw new Error(`Invalid processResourceDoneEvent: ${never}`);
+					}
+				}
+
+				const numOfNamesInFinalDeployState =
+					numOfNamesDeployedOk +
+					numOfNamesDeployedErr +
+					numOfNamesDeployedCanceled;
+
+				// Group finished deploying
+				if (numOfNamesInFinalDeployState === numOfNamesInGroupToDeploy) {
+					if (numOfNamesDeployedErr === 0) {
+						// group deploy ok chan
+					} else {
+						// group deploy err chan
+					}
+					// Continue deploying resources in group
+				} else {
+				}
 			});
 		},
 	);

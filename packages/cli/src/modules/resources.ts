@@ -481,6 +481,7 @@ export async function setResources(
 }
 
 export type ResourceState =
+	| "CANCELED"
 	| "CREATED"
 	| "DELETED"
 	| "PENDING"
