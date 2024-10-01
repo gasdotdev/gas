@@ -128,17 +128,27 @@ function setGroupDeployMachine(group: number) {
 	const numOfNamesDeployedErr = 0;
 	const numOfNamesDeployedCanceled = 0;
 
-	const processResource = fromCallback(({ sendBack, receive }) => {
-		console.log("Processing resource");
+	type ProcessResourceEvent = {
+		type: "processResource";
+		name: string;
+	};
 
-		receive((event) => {
-			console.log("Received event", event);
-		});
-
-		setTimeout(() => {
-			sendBack({ type: "OK" });
-		}, 2000);
-	});
+	const processResource = fromCallback(
+		({
+			receive,
+			sendBack,
+		}: {
+			receive: (cb: (event: ProcessResourceEvent) => void) => void;
+			sendBack: (event: { type: string }) => void;
+		}) => {
+			receive((event) => {
+				console.log("Received event", event);
+				setTimeout(() => {
+					sendBack({ type: "OK" });
+				}, 2000);
+			});
+		},
+	);
 
 	const processResourceDoneEvent = fromCallback(({ sendBack }) => {
 		setTimeout(() => {
@@ -155,10 +165,6 @@ function setGroupDeployMachine(group: number) {
 		id: "group",
 		initial: "processingGroup",
 		invoke: [
-			//{
-			//	id: "initializeResourceProcessors",
-			//	src: "initializeResourceProcessors",
-			//},
 			{ id: "processResource", src: "processResource" },
 			{ id: "processResourceDoneEvent", src: "processResourceDoneEvent" },
 		],
@@ -168,7 +174,7 @@ function setGroupDeployMachine(group: number) {
 					sendTo("processResource", {
 						type: "processResource",
 						name,
-					}),
+					} as ProcessResourceEvent),
 				),
 				on: {
 					OK: {
