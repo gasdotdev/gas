@@ -486,7 +486,16 @@ export type ResourceState =
 	| "DELETED"
 	| "PENDING"
 	| "UNCHANGED"
-	| "UPDATED";
+	| "UPDATED"
+	| "CREATE_COMPLETE"
+	| "CREATE_FAILED"
+	| "CREATE_IN_PROGRESS"
+	| "DELETE_COMPLETE"
+	| "DELETE_FAILED"
+	| "DELETE_IN_PROGRESS"
+	| "UPDATE_COMPLETE"
+	| "UPDATE_FAILED"
+	| "UPDATE_IN_PROGRESS";
 
 export type ResourceNameToState = {
 	[name: string]: ResourceState;

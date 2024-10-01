@@ -111,12 +111,27 @@ function setGroupDeployMachine(group: number) {
 		return res;
 	}
 
-	function setNameToDeployStatePendingOfCanceled() {
+	function setNameToStatePendingAsCanceled() {
 		for (const name in resourcesWithUp.nameToState) {
 			if (resourcesWithUp.nameToState[name] === "PENDING") {
 				resourcesWithUp.nameToState[name] = "CANCELED";
 			}
 		}
+	}
+
+	function checkIfResourceIsDependentOnOneDeploying(name: string) {
+		const dependencies = resourcesWithUp.nameToDependencies[name];
+		for (const dependencyName of dependencies) {
+			if (
+				resourcesWithUp.nameToState[dependencyName] === "CREATE_IN_PROGRESS" ||
+				resourcesWithUp.nameToState[dependencyName] === "DELETE_IN_PROGRESS" ||
+				resourcesWithUp.nameToState[dependencyName] === "PENDING" ||
+				resourcesWithUp.nameToState[dependencyName] === "UPDATE_IN_PROGRESS"
+			) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	const highestGroupDeployDepth =
@@ -137,7 +152,7 @@ function setGroupDeployMachine(group: number) {
 	const numOfNamesDeployedCanceled = 0;
 
 	type ProcessResourceStartEvent = {
-		type: "processResource";
+		type: "PROCESS_RESOURCE_START";
 		name: string;
 	};
 
@@ -158,7 +173,9 @@ function setGroupDeployMachine(group: number) {
 		}) => {
 			receive((event) => {
 				console.log("Received processResourceStartEvent", event);
+				resourcesWithUp.nameToState[event.name] = "CREATE_IN_PROGRESS";
 				setTimeout(() => {
+					resourcesWithUp.nameToState[event.name] = "CREATE_COMPLETE";
 					sendBack({
 						type: "PROCESS_RESOURCE_DONE_OK",
 						name: event.name,
@@ -171,8 +188,12 @@ function setGroupDeployMachine(group: number) {
 	const processResourceDoneEvent = fromCallback(
 		({
 			receive,
+			sendBack,
 		}: {
 			receive: (cb: (event: ProcessResoureDoneEvent) => void) => void;
+			sendBack: (
+				event: ProcessGroupDoneEvent | ProcessResourceStartEvent,
+			) => void;
 		}) => {
 			receive((event) => {
 				switch (event.type) {
@@ -187,7 +208,7 @@ function setGroupDeployMachine(group: number) {
 							// Cancel PENDING resources.
 							// Check for 0 because resources should only
 							// be canceled one time.
-							setNameToDeployStatePendingOfCanceled();
+							setNameToStatePendingAsCanceled();
 						}
 						break;
 					default: {
@@ -201,21 +222,48 @@ function setGroupDeployMachine(group: number) {
 					numOfNamesDeployedErr +
 					numOfNamesDeployedCanceled;
 
-				// Group finished deploying
 				if (numOfNamesInFinalDeployState === numOfNamesInGroupToDeploy) {
 					if (numOfNamesDeployedErr === 0) {
-						// group deploy ok chan
+						sendBack({ type: "PROCESS_GROUP_DONE_OK" });
 					} else {
-						// group deploy err chan
+						sendBack({ type: "PROCESS_GROUP_DONE_ERR" });
 					}
-					// Continue deploying resources in group
 				} else {
+					for (const name in resourcesWithUp.groupToNames[group]) {
+						if (resourcesWithUp.nameToState[name] === "PENDING") {
+							let deployResource = true;
+
+							const isResourceDependentOnOneDeploying =
+								checkIfResourceIsDependentOnOneDeploying(name);
+
+							if (isResourceDependentOnOneDeploying) {
+								deployResource = false;
+							}
+
+							if (deployResource) {
+								sendBack({
+									type: "PROCESS_RESOURCE_START",
+									name,
+								} as ProcessResourceStartEvent);
+							}
+						}
+					}
 				}
 			});
 		},
 	);
 
+	type ProcessGroupDoneEvent =
+		| { type: "PROCESS_GROUP_DONE_OK" }
+		| { type: "PROCESS_GROUP_DONE_ERR" };
+
 	return setup({
+		types: {
+			events: {} as
+				| ProcessResourceStartEvent
+				| ProcessResoureDoneEvent
+				| ProcessGroupDoneEvent,
+		},
 		actors: {
 			processResourceEvent,
 			processResourceDoneEvent,
@@ -231,7 +279,7 @@ function setGroupDeployMachine(group: number) {
 			processingGroup: {
 				entry: initialNamesToDeploy.map((name) =>
 					sendTo("processResourceEvent", {
-						type: "processResource",
+						type: "PROCESS_RESOURCE_START",
 						name,
 					} as ProcessResourceStartEvent),
 				),
@@ -244,10 +292,10 @@ function setGroupDeployMachine(group: number) {
 							),
 						],
 					},
-					OK: {
+					PROCESS_GROUP_DONE_OK: {
 						target: "ok",
 					},
-					ERR: {
+					PROCESS_GROUP_DONE_ERR: {
 						target: "err",
 					},
 				},
@@ -304,9 +352,9 @@ function setRootDeployMachine() {
 				if (numOfGroupsToDeploy === numOfGroupsFinishedDeploying) {
 					if (numOfGroupsDeployedWithErr > 0) {
 						console.error("Error deploying resources");
-						sendBack({ type: "ERR" });
+						sendBack({ type: "PROCESS_GROUPS_DONE_ERR" });
 					} else {
-						sendBack({ type: "OK" });
+						sendBack({ type: "PROCESS_GROUPS_DONE_OK" });
 					}
 				}
 			});
@@ -334,10 +382,10 @@ function setRootDeployMachine() {
 					src: "processGroups",
 				},
 				on: {
-					OK: {
+					PROCESS_GROUPS_DONE_OK: {
 						target: "ok",
 					},
-					ERR: {
+					PROCESS_GROUPS_DONE_ERR: {
 						target: "err",
 					},
 				},
