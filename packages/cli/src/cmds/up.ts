@@ -128,55 +128,80 @@ function setGroupDeployMachine(group: number) {
 	const numOfNamesDeployedErr = 0;
 	const numOfNamesDeployedCanceled = 0;
 
-	type ProcessResourceEvent = {
+	type ProcessResourceStartEvent = {
 		type: "processResource";
 		name: string;
 	};
 
-	const processResource = fromCallback(
+	type ProcessResoureDoneEvent = {
+		type: "PROCESS_RESOURCE_DONE_OK";
+		name: string;
+	};
+
+	const processResourceEvent = fromCallback(
 		({
 			receive,
 			sendBack,
 		}: {
-			receive: (cb: (event: ProcessResourceEvent) => void) => void;
-			sendBack: (event: { type: string }) => void;
+			receive: (cb: (event: ProcessResourceStartEvent) => void) => void;
+			sendBack: (event: ProcessResoureDoneEvent) => void;
 		}) => {
 			receive((event) => {
-				console.log("Received event", event);
+				console.log("Received processResourceStartEvent", event);
 				setTimeout(() => {
-					sendBack({ type: "OK" });
-				}, 2000);
+					sendBack({
+						type: "PROCESS_RESOURCE_DONE_OK",
+						name: event.name,
+					});
+				}, 2500);
 			});
 		},
 	);
 
-	const processResourceDoneEvent = fromCallback(({ sendBack }) => {
-		setTimeout(() => {
-			sendBack({ type: "OK" });
-		}, 1000);
-	});
+	const processResourceDoneEvent = fromCallback(
+		({
+			receive,
+			sendBack,
+		}: {
+			receive: (cb: (event: ProcessResoureDoneEvent) => void) => void;
+			sendBack: (event: { type: string }) => void;
+		}) => {
+			receive((event) => {
+				console.log("Received processResourceDoneEvent", event);
+				sendBack({ type: "OK" });
+			});
+		},
+	);
 
 	return setup({
 		actors: {
-			processResource,
+			processResourceEvent,
 			processResourceDoneEvent,
 		},
 	}).createMachine({
 		id: "group",
 		initial: "processingGroup",
 		invoke: [
-			{ id: "processResource", src: "processResource" },
+			{ id: "processResourceEvent", src: "processResourceEvent" },
 			{ id: "processResourceDoneEvent", src: "processResourceDoneEvent" },
 		],
 		states: {
 			processingGroup: {
 				entry: initialNamesToDeploy.map((name) =>
-					sendTo("processResource", {
+					sendTo("processResourceEvent", {
 						type: "processResource",
 						name,
-					} as ProcessResourceEvent),
+					} as ProcessResourceStartEvent),
 				),
 				on: {
+					PROCESS_RESOURCE_DONE_OK: {
+						actions: [
+							sendTo(
+								"processResourceDoneEvent",
+								({ event }) => event as ProcessResoureDoneEvent,
+							),
+						],
+					},
 					OK: {
 						target: "ok",
 					},
