@@ -229,7 +229,7 @@ function setGroupDeployMachine(group: number) {
 						sendBack({ type: "PROCESS_GROUP_DONE_ERR" });
 					}
 				} else {
-					for (const name in resourcesWithUp.groupToNames[group]) {
+					for (const name of resourcesWithUp.groupToNames[group]) {
 						if (resourcesWithUp.nameToState[name] === "PENDING") {
 							let deployResource = true;
 
@@ -284,7 +284,23 @@ function setGroupDeployMachine(group: number) {
 					} as ProcessResourceStartEvent),
 				),
 				on: {
+					PROCESS_RESOURCE_START: {
+						actions: [
+							sendTo(
+								"processResourceEvent",
+								({ event }) => event as ProcessResourceStartEvent,
+							),
+						],
+					},
 					PROCESS_RESOURCE_DONE_OK: {
+						actions: [
+							sendTo(
+								"processResourceDoneEvent",
+								({ event }) => event as ProcessResoureDoneEvent,
+							),
+						],
+					},
+					PROCESS_RESOURCE_DONE_ERR: {
 						actions: [
 							sendTo(
 								"processResourceDoneEvent",
