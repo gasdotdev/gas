@@ -156,12 +156,15 @@ function setGroupDeployMachine(group: number) {
 		name: string;
 	};
 
-	type ProcessResoureDoneEvent = {
+	type ProcessResourceDoneOkEvent = {
+		type: "PROCESS_RESOURCE_DONE_OK";
 		name: string;
-	} & (
-		| { type: "PROCESS_RESOURCE_DONE_OK" }
-		| { type: "PROCESS_RESOURCE_DONE_ERR" }
-	);
+	};
+
+	type ProcessResourceDoneErrEvent = {
+		type: "PROCESS_RESOURCE_DONE_ERR";
+		name: string;
+	};
 
 	const processResourceEvent = fromCallback(
 		({
@@ -169,7 +172,9 @@ function setGroupDeployMachine(group: number) {
 			sendBack,
 		}: {
 			receive: (cb: (event: ProcessResourceStartEvent) => void) => void;
-			sendBack: (event: ProcessResoureDoneEvent) => void;
+			sendBack: (
+				event: ProcessResourceDoneOkEvent | ProcessResourceDoneErrEvent,
+			) => void;
 		}) => {
 			receive((event) => {
 				console.log("Received processResourceStartEvent", event);
@@ -190,9 +195,16 @@ function setGroupDeployMachine(group: number) {
 			receive,
 			sendBack,
 		}: {
-			receive: (cb: (event: ProcessResoureDoneEvent) => void) => void;
+			receive: (
+				cb: (
+					event: ProcessResourceDoneOkEvent | ProcessResourceDoneErrEvent,
+				) => void,
+			) => void;
 			sendBack: (
-				event: ProcessGroupDoneEvent | ProcessResourceStartEvent,
+				event:
+					| ProcessResourceStartEvent
+					| ProcessGroupDoneOkEvent
+					| ProcessGroupDoneErrEvent,
 			) => void;
 		}) => {
 			receive((event) => {
@@ -253,16 +265,17 @@ function setGroupDeployMachine(group: number) {
 		},
 	);
 
-	type ProcessGroupDoneEvent =
-		| { type: "PROCESS_GROUP_DONE_OK" }
-		| { type: "PROCESS_GROUP_DONE_ERR" };
+	type ProcessGroupDoneOkEvent = { type: "PROCESS_GROUP_DONE_OK" };
+	type ProcessGroupDoneErrEvent = { type: "PROCESS_GROUP_DONE_ERR" };
 
 	return setup({
 		types: {
 			events: {} as
 				| ProcessResourceStartEvent
-				| ProcessResoureDoneEvent
-				| ProcessGroupDoneEvent,
+				| ProcessResourceDoneOkEvent
+				| ProcessResourceDoneErrEvent
+				| ProcessGroupDoneOkEvent
+				| ProcessGroupDoneErrEvent,
 		},
 		actors: {
 			processResourceEvent,
@@ -296,7 +309,7 @@ function setGroupDeployMachine(group: number) {
 						actions: [
 							sendTo(
 								"processResourceDoneEvent",
-								({ event }) => event as ProcessResoureDoneEvent,
+								({ event }) => event as ProcessResourceDoneOkEvent,
 							),
 						],
 					},
@@ -304,7 +317,7 @@ function setGroupDeployMachine(group: number) {
 						actions: [
 							sendTo(
 								"processResourceDoneEvent",
-								({ event }) => event as ProcessResoureDoneEvent,
+								({ event }) => event as ProcessResourceDoneErrEvent,
 							),
 						],
 					},
