@@ -480,22 +480,7 @@ export async function setResources(
 	return await init(containerDirPath);
 }
 
-export type ResourceState =
-	| "CANCELED"
-	| "CREATED"
-	| "DELETED"
-	| "PENDING"
-	| "UNCHANGED"
-	| "UPDATED"
-	| "CREATE_COMPLETE"
-	| "CREATE_FAILED"
-	| "CREATE_IN_PROGRESS"
-	| "DELETE_COMPLETE"
-	| "DELETE_FAILED"
-	| "DELETE_IN_PROGRESS"
-	| "UPDATE_COMPLETE"
-	| "UPDATE_FAILED"
-	| "UPDATE_IN_PROGRESS";
+export type ResourceState = "CREATED" | "DELETED" | "UNCHANGED" | "UPDATED";
 
 export type ResourceNameToState = {
 	[name: string]: ResourceState;
@@ -540,6 +525,23 @@ function setNameToState(
 
 	return nameToState;
 }
+
+export type ResourceDeployState =
+	| "CANCELED"
+	| "CREATE_COMPLETE"
+	| "CREATE_FAILED"
+	| "CREATE_IN_PROGRESS"
+	| "DELETE_COMPLETE"
+	| "DELETE_FAILED"
+	| "DELETE_IN_PROGRESS"
+	| "PENDING"
+	| "UPDATE_COMPLETE"
+	| "UPDATE_FAILED"
+	| "UPDATE_IN_PROGRESS";
+
+export type ResourceNameToDeployState = {
+	[name: string]: ResourceState | ResourceDeployState;
+};
 
 type GroupsWithStateChanges = number[];
 
@@ -607,6 +609,7 @@ function setGroupToHighestDeployDepth(
 
 export type ResourcesWithUp = Resources & {
 	nameToState: ResourceNameToState;
+	nameToDeployState: ResourceNameToDeployState;
 	groupToHighestDeployDepth: GroupToHighestDeployDepth;
 	groupsWithStateChanges: GroupsWithStateChanges;
 };
@@ -640,6 +643,7 @@ async function initWithUp(
 	return {
 		...resources,
 		nameToState,
+		nameToDeployState: { ...nameToState },
 		groupToHighestDeployDepth,
 		groupsWithStateChanges,
 	};

@@ -3,7 +3,7 @@ import { setConfig } from "../modules/config.js";
 import type { GraphGroupToDepthToNodes } from "../modules/graph.js";
 import {
 	type ResourceNameToDependencies,
-	type ResourceNameToState,
+	type ResourceNameToDeployState,
 	type ResourcesWithUp,
 	setResourcesWithUp,
 } from "../modules/resources.js";
@@ -25,6 +25,7 @@ async function processCloudflareWorker(
 	return new Promise((resolve, reject) => {
 		switch (resourcesWithUp.nameToState[resourceName]) {
 			case "CREATED":
+				console.log("Creating Cloudflare Worker", resourceName);
 				setTimeout(() => {
 					resolve();
 				}, 2500);
@@ -65,7 +66,7 @@ function setGroupDeployMachine(group: number) {
 		group: number,
 		groupToDepthToNames: GraphGroupToDepthToNodes,
 		nameToDependencies: ResourceNameToDependencies,
-		nameToState: ResourceNameToState,
+		nameToDeployState: ResourceNameToDeployState,
 	): InitialGroupNamesToDeploy {
 		const res: InitialGroupNamesToDeploy = [];
 
@@ -90,7 +91,7 @@ function setGroupDeployMachine(group: number) {
 					// dependent on any resource in the ongoing result, then
 					// append it to the result.
 					if (
-						nameToState[resourceNameAtDepthToCheck] === "PENDING" &&
+						nameToDeployState[resourceNameAtDepthToCheck] === "PENDING" &&
 						!res.includes(dependencyName)
 					) {
 						res.push(resourceNameAtDepthToCheck);
@@ -108,7 +109,7 @@ function setGroupDeployMachine(group: number) {
 	function setNumToDeploy(group: number): NumToDeploy {
 		let res = 0;
 		for (const resourceName of resourcesWithUp.groupToNames[group]) {
-			if (resourcesWithUp.nameToState[resourceName] !== "UNCHANGED") {
+			if (resourcesWithUp.nameToDeployState[resourceName] !== "UNCHANGED") {
 				res++;
 			}
 		}
@@ -116,9 +117,9 @@ function setGroupDeployMachine(group: number) {
 	}
 
 	function setNameToStatePendingAsCanceled() {
-		for (const name in resourcesWithUp.nameToState) {
-			if (resourcesWithUp.nameToState[name] === "PENDING") {
-				resourcesWithUp.nameToState[name] = "CANCELED";
+		for (const name in resourcesWithUp.nameToDeployState) {
+			if (resourcesWithUp.nameToDeployState[name] === "PENDING") {
+				resourcesWithUp.nameToDeployState[name] = "CANCELED";
 			}
 		}
 	}
@@ -127,10 +128,13 @@ function setGroupDeployMachine(group: number) {
 		const dependencies = resourcesWithUp.nameToDependencies[name];
 		for (const dependencyName of dependencies) {
 			if (
-				resourcesWithUp.nameToState[dependencyName] === "CREATE_IN_PROGRESS" ||
-				resourcesWithUp.nameToState[dependencyName] === "DELETE_IN_PROGRESS" ||
-				resourcesWithUp.nameToState[dependencyName] === "PENDING" ||
-				resourcesWithUp.nameToState[dependencyName] === "UPDATE_IN_PROGRESS"
+				resourcesWithUp.nameToDeployState[dependencyName] ===
+					"CREATE_IN_PROGRESS" ||
+				resourcesWithUp.nameToDeployState[dependencyName] ===
+					"DELETE_IN_PROGRESS" ||
+				resourcesWithUp.nameToDeployState[dependencyName] === "PENDING" ||
+				resourcesWithUp.nameToDeployState[dependencyName] ===
+					"UPDATE_IN_PROGRESS"
 			) {
 				return true;
 			}
@@ -138,49 +142,49 @@ function setGroupDeployMachine(group: number) {
 		return false;
 	}
 
-	function setNameToStateAsInProgress(name: string) {
+	function setNameToDeployStateAsInProgress(name: string) {
 		switch (resourcesWithUp.nameToState[name]) {
 			case "CREATED":
-				resourcesWithUp.nameToState[name] = "CREATE_IN_PROGRESS";
+				resourcesWithUp.nameToDeployState[name] = "CREATE_IN_PROGRESS";
 				break;
 			case "DELETED":
-				resourcesWithUp.nameToState[name] = "DELETE_IN_PROGRESS";
+				resourcesWithUp.nameToDeployState[name] = "DELETE_IN_PROGRESS";
 				break;
 			case "UPDATED":
-				resourcesWithUp.nameToState[name] = "UPDATE_IN_PROGRESS";
+				resourcesWithUp.nameToDeployState[name] = "UPDATE_IN_PROGRESS";
 				break;
 		}
 	}
 
-	function setNameToStateAsComplete(name: string) {
-		switch (resourcesWithUp.nameToState[name]) {
+	function setNameToDeployStateAsComplete(name: string) {
+		switch (resourcesWithUp.nameToDeployState[name]) {
 			case "CREATE_IN_PROGRESS":
-				resourcesWithUp.nameToState[name] = "CREATE_COMPLETE";
+				resourcesWithUp.nameToDeployState[name] = "CREATE_COMPLETE";
 				break;
 			case "DELETE_IN_PROGRESS":
-				resourcesWithUp.nameToState[name] = "DELETE_COMPLETE";
+				resourcesWithUp.nameToDeployState[name] = "DELETE_COMPLETE";
 				break;
 			case "UPDATE_IN_PROGRESS":
-				resourcesWithUp.nameToState[name] = "UPDATE_COMPLETE";
+				resourcesWithUp.nameToDeployState[name] = "UPDATE_COMPLETE";
 				break;
 		}
 	}
 
-	function setNameToStateAsFailed(name: string) {
-		switch (resourcesWithUp.nameToState[name]) {
+	function setNameToDeployStateAsFailed(name: string) {
+		switch (resourcesWithUp.nameToDeployState[name]) {
 			case "CREATE_IN_PROGRESS":
-				resourcesWithUp.nameToState[name] = "CREATE_FAILED";
+				resourcesWithUp.nameToDeployState[name] = "CREATE_FAILED";
 				break;
 			case "DELETE_IN_PROGRESS":
-				resourcesWithUp.nameToState[name] = "DELETE_FAILED";
+				resourcesWithUp.nameToDeployState[name] = "DELETE_FAILED";
 				break;
 			case "UPDATE_IN_PROGRESS":
-				resourcesWithUp.nameToState[name] = "UPDATE_FAILED";
+				resourcesWithUp.nameToDeployState[name] = "UPDATE_FAILED";
 				break;
 		}
 	}
 
-	function logNameToState(name: string, group: number, depth: number) {
+	function logNameToDeployState(name: string, group: number, depth: number) {
 		const now = new Date();
 		const hours = now.getHours().toString().padStart(2, "0");
 		const minutes = now.getMinutes().toString().padStart(2, "0");
@@ -188,7 +192,7 @@ function setGroupDeployMachine(group: number) {
 		const formattedTime = `${hours}:${minutes}:${seconds}`;
 
 		console.log(
-			`[${formattedTime}] Group ${group} -> Depth ${depth} -> ${name} -> ${resourcesWithUp.nameToState[name]}`,
+			`[${formattedTime}] Group ${group} -> Depth ${depth} -> ${name} -> ${resourcesWithUp.nameToDeployState[name]}`,
 		);
 	}
 
@@ -200,7 +204,7 @@ function setGroupDeployMachine(group: number) {
 		group,
 		resourcesWithUp.groupToDepthToNames,
 		resourcesWithUp.nameToDependencies,
-		resourcesWithUp.nameToState,
+		resourcesWithUp.nameToDeployState,
 	);
 
 	const numOfNamesInGroupToDeploy = setNumToDeploy(group);
@@ -237,9 +241,9 @@ function setGroupDeployMachine(group: number) {
 			receive(async (event) => {
 				console.log("Received processResourceStartEvent", event);
 
-				setNameToStateAsInProgress(event.name);
+				setNameToDeployStateAsInProgress(event.name);
 
-				logNameToState(
+				logNameToDeployState(
 					event.name,
 					group,
 					resourcesWithUp.nameToDepth[event.name],
@@ -258,9 +262,9 @@ function setGroupDeployMachine(group: number) {
 						event.name,
 					);
 
-					setNameToStateAsComplete(event.name);
+					setNameToDeployStateAsComplete(event.name);
 
-					logNameToState(
+					logNameToDeployState(
 						event.name,
 						group,
 						resourcesWithUp.nameToDepth[event.name],
@@ -271,9 +275,9 @@ function setGroupDeployMachine(group: number) {
 						name: event.name,
 					});
 				} catch (err) {
-					setNameToStateAsFailed(event.name);
+					setNameToDeployStateAsFailed(event.name);
 
-					logNameToState(
+					logNameToDeployState(
 						event.name,
 						group,
 						resourcesWithUp.nameToDepth[event.name],
@@ -340,7 +344,7 @@ function setGroupDeployMachine(group: number) {
 					}
 				} else {
 					for (const name of resourcesWithUp.groupToNames[group]) {
-						if (resourcesWithUp.nameToState[name] === "PENDING") {
+						if (resourcesWithUp.nameToDeployState[name] === "PENDING") {
 							let deployResource = true;
 
 							const isResourceDependentOnOneDeploying =
@@ -440,17 +444,17 @@ function setRootDeployMachine() {
 			for (const depth in resourcesWithUp.groupToDepthToNames[group]) {
 				for (const name of resourcesWithUp.groupToDepthToNames[group][depth]) {
 					console.log(
-						`Group ${group} -> Depth ${depth} -> ${name} -> ${resourcesWithUp.nameToState[name]}`,
+						`Group ${group} -> Depth ${depth} -> ${name} -> ${resourcesWithUp.nameToDeployState[name]}`,
 					);
 				}
 			}
 		}
 	}
 
-	function setNameToDeployStateOfPending() {
-		for (const name in resourcesWithUp.nameToState) {
-			if (resourcesWithUp.nameToState[name] !== "UNCHANGED") {
-				resourcesWithUp.nameToState[name] = "PENDING";
+	function setNameToDeployStateAsPending() {
+		for (const name in resourcesWithUp.nameToDeployState) {
+			if (resourcesWithUp.nameToDeployState[name] !== "UNCHANGED") {
+				resourcesWithUp.nameToDeployState[name] = "PENDING";
 			}
 		}
 	}
@@ -478,7 +482,6 @@ function setRootDeployMachine() {
 
 				if (numOfGroupsToDeploy === numOfGroupsFinishedDeploying) {
 					if (numOfGroupsDeployedWithErr > 0) {
-						console.error("Error deploying resources");
 						sendBack({ type: "PROCESS_GROUPS_DONE_ERR" });
 					} else {
 						sendBack({ type: "PROCESS_GROUPS_DONE_OK" });
@@ -490,13 +493,9 @@ function setRootDeployMachine() {
 
 	logPreDeployNameToState();
 
-	setNameToDeployStateOfPending();
+	setNameToDeployStateAsPending();
 
 	return setup({
-		actions: {
-			logPreDeployNameToState,
-			setNameToDeployStateOfPending,
-		},
 		actors: {
 			processGroups,
 		},
