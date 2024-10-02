@@ -25,7 +25,6 @@ async function processCloudflareWorker(
 	return new Promise((resolve, reject) => {
 		switch (resourcesWithUp.nameToState[resourceName]) {
 			case "CREATED":
-				console.log("Creating Cloudflare Worker", resourceName);
 				setTimeout(() => {
 					resolve();
 				}, 2500);
@@ -239,8 +238,6 @@ function setGroupDeployMachine(group: number) {
 			) => void;
 		}) => {
 			receive(async (event) => {
-				console.log("Received processResourceStartEvent", event);
-
 				setNameToDeployStateAsInProgress(event.name);
 
 				logNameToDeployState(
@@ -312,11 +309,9 @@ function setGroupDeployMachine(group: number) {
 			receive((event) => {
 				switch (event.type) {
 					case "PROCESS_RESOURCE_DONE_OK":
-						console.log("Received processResourceDoneOkEvent", event);
 						numOfNamesDeployedOk++;
 						break;
 					case "PROCESS_RESOURCE_DONE_ERR":
-						console.log("Received processResourceDoneErrEvent", event);
 						numOfNamesDeployedErr++;
 						if (numOfNamesDeployedCanceled === 0) {
 							// Cancel PENDING resources.
