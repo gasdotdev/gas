@@ -4,7 +4,6 @@ import type { GraphGroupToDepthToNodes } from "../modules/graph.js";
 import {
 	type ResourceNameToDependencies,
 	type ResourceNameToState,
-	type ResourceState,
 	type ResourcesWithUp,
 	setResourcesWithUp,
 } from "../modules/resources.js";
@@ -12,25 +11,30 @@ import { setUpResources } from "../modules/up-resources.js";
 
 let resourcesWithUp = {} as ResourcesWithUp;
 
-type NameToResult = {
+type ResourceNameToResult = {
 	[name: string]: unknown;
 };
 
-const nameToResult = {};
+const resourceNameToResult: ResourceNameToResult = {};
 
 async function processCloudflareWorker(
 	resourcesWithUp: ResourcesWithUp,
-	state: ResourceState,
-	nameToResult: NameToResult,
-) {
-	switch (state) {
-		case "CREATED":
-			break;
-		case "DELETED":
-			break;
-		case "UPDATED":
-			break;
-	}
+	resourceNameToResult: ResourceNameToResult,
+	resourceName: string,
+): Promise<void> {
+	return new Promise((resolve, reject) => {
+		switch (resourcesWithUp.nameToState[resourceName]) {
+			case "CREATED":
+				setTimeout(() => {
+					resolve();
+				}, 2500);
+				break;
+			case "DELETED":
+				break;
+			case "UPDATED":
+				break;
+		}
+	});
 }
 
 const resourceProcessors = {
@@ -134,6 +138,65 @@ function setGroupDeployMachine(group: number) {
 		return false;
 	}
 
+	function setNameToStateAsInProgress(name: string) {
+		switch (resourcesWithUp.nameToState[name]) {
+			case "CREATED":
+				resourcesWithUp.nameToState[name] = "CREATE_IN_PROGRESS";
+				break;
+			case "DELETED":
+				resourcesWithUp.nameToState[name] = "DELETE_IN_PROGRESS";
+				break;
+			case "UPDATED":
+				resourcesWithUp.nameToState[name] = "UPDATE_IN_PROGRESS";
+				break;
+		}
+	}
+
+	function setNameToStateAsComplete(name: string) {
+		switch (resourcesWithUp.nameToState[name]) {
+			case "CREATE_IN_PROGRESS":
+				resourcesWithUp.nameToState[name] = "CREATE_COMPLETE";
+				break;
+			case "DELETE_IN_PROGRESS":
+				resourcesWithUp.nameToState[name] = "DELETE_COMPLETE";
+				break;
+			case "UPDATE_IN_PROGRESS":
+				resourcesWithUp.nameToState[name] = "UPDATE_COMPLETE";
+				break;
+		}
+	}
+
+	function setNameToStateAsFailed(name: string) {
+		switch (resourcesWithUp.nameToState[name]) {
+			case "CREATE_IN_PROGRESS":
+				resourcesWithUp.nameToState[name] = "CREATE_FAILED";
+				break;
+			case "DELETE_IN_PROGRESS":
+				resourcesWithUp.nameToState[name] = "DELETE_FAILED";
+				break;
+			case "UPDATE_IN_PROGRESS":
+				resourcesWithUp.nameToState[name] = "UPDATE_FAILED";
+				break;
+		}
+	}
+
+	function logNameToState(
+		name: string,
+		group: number,
+		depth: number,
+		timestamp: number,
+	) {
+		const date = new Date(timestamp * 1000);
+		const hours = date.getHours().toString().padStart(2, "0");
+		const minutes = date.getMinutes().toString().padStart(2, "0");
+		const seconds = date.getSeconds().toString().padStart(2, "0");
+		const formattedTime = `${hours}:${minutes}:${seconds}`;
+
+		console.log(
+			`[${formattedTime}] Group ${group} -> Depth ${depth} -> ${name} -> ${resourcesWithUp.nameToState[name]}`,
+		);
+	}
+
 	const highestGroupDeployDepth =
 		resourcesWithUp.groupToHighestDeployDepth[group];
 
@@ -176,16 +239,74 @@ function setGroupDeployMachine(group: number) {
 				event: ProcessResourceDoneOkEvent | ProcessResourceDoneErrEvent,
 			) => void;
 		}) => {
-			receive((event) => {
+			receive(async (event) => {
 				console.log("Received processResourceStartEvent", event);
-				resourcesWithUp.nameToState[event.name] = "CREATE_IN_PROGRESS";
-				setTimeout(() => {
-					resourcesWithUp.nameToState[event.name] = "CREATE_COMPLETE";
+
+				setNameToStateAsInProgress(event.name);
+
+				let timestamp = Date.now();
+
+				logNameToState(
+					event.name,
+					group,
+					resourcesWithUp.nameToDepth[event.name],
+					timestamp,
+				);
+
+				console.log(
+					"Processing resource",
+					resourcesWithUp.nameToConfigData[event.name].functionName,
+				);
+
+				try {
+					const resourceProcessor =
+						resourceProcessors[
+							resourcesWithUp.nameToConfigData[event.name]
+								.functionName as keyof typeof resourceProcessors
+						];
+
+					console.log("Resource processor", resourceProcessor);
+
+					const res = await resourceProcessor(
+						resourcesWithUp,
+						resourceNameToResult,
+						event.name,
+					);
+
+					console.log("Resource processor result", res);
+
+					setNameToStateAsComplete(event.name);
+
+					timestamp = Date.now();
+
+					logNameToState(
+						event.name,
+						group,
+						resourcesWithUp.nameToDepth[event.name],
+						timestamp,
+					);
+
 					sendBack({
 						type: "PROCESS_RESOURCE_DONE_OK",
 						name: event.name,
 					});
-				}, 2500);
+				} catch (err) {
+					setNameToStateAsFailed(event.name);
+
+					timestamp = Date.now();
+
+					logNameToState(
+						event.name,
+						group,
+						resourcesWithUp.nameToDepth[event.name],
+						timestamp,
+					);
+
+					sendBack({
+						type: "PROCESS_RESOURCE_DONE_ERR",
+						name: event.name,
+					});
+				}
 			});
 		},
 	);
