@@ -635,7 +635,6 @@ async function updateAddedResourceIndexFiles(
 		// for this discrepancy is unknown.
 		// @ts-ignore
 		const exportDeclaration = ast.body.find(
-			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 			(node: any) =>
 				node.type === "ExportNamedDeclaration" &&
 				node.declaration?.type === "VariableDeclaration" &&

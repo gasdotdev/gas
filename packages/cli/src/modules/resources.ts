@@ -280,7 +280,6 @@ function setNodeJsConfigScript(
 	return script;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 type ResourceConfig = Record<string, any>;
 
 export type ResourceNameToConfig = Record<string, ResourceConfig>;
