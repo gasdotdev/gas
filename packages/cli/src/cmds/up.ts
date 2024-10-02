@@ -180,16 +180,11 @@ function setGroupDeployMachine(group: number) {
 		}
 	}
 
-	function logNameToState(
-		name: string,
-		group: number,
-		depth: number,
-		timestamp: number,
-	) {
-		const date = new Date(timestamp * 1000);
-		const hours = date.getHours().toString().padStart(2, "0");
-		const minutes = date.getMinutes().toString().padStart(2, "0");
-		const seconds = date.getSeconds().toString().padStart(2, "0");
+	function logNameToState(name: string, group: number, depth: number) {
+		const now = new Date();
+		const hours = now.getHours().toString().padStart(2, "0");
+		const minutes = now.getMinutes().toString().padStart(2, "0");
+		const seconds = now.getSeconds().toString().padStart(2, "0");
 		const formattedTime = `${hours}:${minutes}:${seconds}`;
 
 		console.log(
@@ -244,13 +239,10 @@ function setGroupDeployMachine(group: number) {
 
 				setNameToStateAsInProgress(event.name);
 
-				let timestamp = Date.now();
-
 				logNameToState(
 					event.name,
 					group,
 					resourcesWithUp.nameToDepth[event.name],
-					timestamp,
 				);
 
 				try {
@@ -268,13 +260,10 @@ function setGroupDeployMachine(group: number) {
 
 					setNameToStateAsComplete(event.name);
 
-					timestamp = Date.now();
-
 					logNameToState(
 						event.name,
 						group,
 						resourcesWithUp.nameToDepth[event.name],
-						timestamp,
 					);
 
 					sendBack({
@@ -284,13 +273,10 @@ function setGroupDeployMachine(group: number) {
 				} catch (err) {
 					setNameToStateAsFailed(event.name);
 
-					timestamp = Date.now();
-
 					logNameToState(
 						event.name,
 						group,
 						resourcesWithUp.nameToDepth[event.name],
-						timestamp,
 					);
 
 					sendBack({
