@@ -253,11 +253,6 @@ function setGroupDeployMachine(group: number) {
 					timestamp,
 				);
 
-				console.log(
-					"Processing resource",
-					resourcesWithUp.nameToConfigData[event.name].functionName,
-				);
-
 				try {
 					const resourceProcessor =
 						resourceProcessors[
@@ -265,15 +260,11 @@ function setGroupDeployMachine(group: number) {
 								.functionName as keyof typeof resourceProcessors
 						];
 
-					console.log("Resource processor", resourceProcessor);
-
 					const res = await resourceProcessor(
 						resourcesWithUp,
 						resourceNameToResult,
 						event.name,
 					);
-
-					console.log("Resource processor result", res);
 
 					setNameToStateAsComplete(event.name);
 
