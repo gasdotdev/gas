@@ -29,6 +29,7 @@
 		"@hono/node-server": "^1.12.2",
 		"@hono/zod-validator": "^0.2.2",
 		"@inquirer/prompts": "^5.3.8",
+		"dotenv": "^16.4.5",
 		"giget": "^1.2.3",
 		"hono": "^4.5.11",
 		"magicast": "^0.3.5",

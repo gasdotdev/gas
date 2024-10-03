@@ -8,6 +8,8 @@ import {
 	setResourcesWithUp,
 } from "../modules/resources.js";
 import { setUpResources } from "../modules/up-resources.js";
+import "dotenv/config";
+import { cloudflareWorkersUploadVersion } from "../modules/cloudflare.js";
 
 let resourcesWithUp = {} as ResourcesWithUp;
 
@@ -22,19 +24,15 @@ async function processCloudflareWorker(
 	resourceNameToResult: ResourceNameToResult,
 	resourceName: string,
 ): Promise<void> {
-	return new Promise((resolve, reject) => {
-		switch (resourcesWithUp.nameToState[resourceName]) {
-			case "CREATED":
-				setTimeout(() => {
-					resolve();
-				}, 2500);
-				break;
-			case "DELETED":
-				break;
-			case "UPDATED":
-				break;
-		}
-	});
+	switch (resourcesWithUp.nameToState[resourceName]) {
+		case "CREATED":
+			await cloudflareWorkersUploadVersion();
+			break;
+		case "DELETED":
+			break;
+		case "UPDATED":
+			break;
+	}
 }
 
 const resourceProcessors = {

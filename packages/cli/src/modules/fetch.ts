@@ -24,11 +24,13 @@ export async function fetchWrapper<T>(
 		...restOptions,
 	});
 
+	const data = await res.json();
+
+	console.log(JSON.stringify(data));
+
 	if (!res.ok) {
 		throw new Error(`HTTP error: status: ${res.status}`);
 	}
-
-	const data = await res.json();
 
 	return data as T;
 }
