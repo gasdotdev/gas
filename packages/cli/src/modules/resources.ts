@@ -111,13 +111,18 @@ function setNameToDependencies(
 	return res;
 }
 
-export type ResourceNameToIndexFilePath = Record<string, string>;
+type NameToIndexFilePaths = {
+	[name: string]: { main: string; build: string };
+};
 
-async function setNameToIndexFilePath(
+async function setNameToIndexFilePaths(
+	containerDirPath: ResourceContainerDirPath,
 	containerSubdirPaths: ResourceContainerSubdirPaths,
-): Promise<ResourceNameToIndexFilePath> {
-	const res: ResourceNameToIndexFilePath = {};
+): Promise<NameToIndexFilePaths> {
+	const res: NameToIndexFilePaths = {};
+
 	const indexFilePathPattern = /^index\.[^.]+\.[^.]+\.[^.]+\.[^.]+\.[^.]+\.ts$/;
+
 	for (const subdirPath of containerSubdirPaths) {
 		const resourceName = convertContainerSubdirPathToName(subdirPath);
 		const srcPath = path.join(subdirPath, "src");
@@ -129,7 +134,14 @@ async function setNameToIndexFilePath(
 			const files = await fs.readdir(srcPath);
 			for (const file of files) {
 				if (indexFilePathPattern.test(file)) {
-					res[resourceName] = path.join(srcPath, file);
+					const mainPath = path.join(srcPath, file);
+					const relativePath = path.relative(containerDirPath, mainPath);
+					const parts = relativePath.split(path.sep);
+					parts.splice(1, 0, "build");
+					const buildPath = path
+						.join(containerDirPath, ...parts)
+						.replace(/\.ts$/, ".js");
+					res[resourceName] = { main: mainPath, build: buildPath };
 					break;
 				}
 			}
@@ -144,32 +156,14 @@ async function setNameToIndexFilePath(
 	return res;
 }
 
-export type ResourceNameToBuildIndexFilePath = Record<string, string>;
-
-function setNameToBuildIndexFilePath(
-	containerDirPath: ResourceContainerDirPath,
-	nameToIndexFilePath: ResourceNameToIndexFilePath,
-): ResourceNameToBuildIndexFilePath {
-	const res: ResourceNameToBuildIndexFilePath = {};
-	for (const name in nameToIndexFilePath) {
-		const indexFilePath = nameToIndexFilePath[name];
-		const relativePath = path.relative(containerDirPath, indexFilePath);
-		const parts = relativePath.split(path.sep);
-		parts.splice(1, 0, "build");
-		const buildPath = path.join(containerDirPath, ...parts);
-		res[name] = buildPath.replace(/\.ts$/, ".js");
-	}
-	return res;
-}
-
 export type ResourceNameToIndexFileContent = Record<string, string>;
 
-async function setNameToIndexFileContent(
-	nameToIndexFilePath: ResourceNameToIndexFilePath,
-): Promise<ResourceNameToIndexFileContent> {
+async function setNameToIndexFileContent(indexFilePaths: {
+	[name: string]: { main: string; build: string };
+}): Promise<ResourceNameToIndexFileContent> {
 	const res: ResourceNameToIndexFileContent = {};
-	for (const name in nameToIndexFilePath) {
-		const indexFilePath = nameToIndexFilePath[name];
+	for (const name in indexFilePaths) {
+		const indexFilePath = indexFilePaths[name].main;
 		try {
 			const content = await fs.readFile(indexFilePath, "utf8");
 			res[name] = content;
@@ -344,8 +338,7 @@ export type Resources = {
 	containerSubdirPaths: ResourceContainerSubdirPaths;
 	list: ResourceList;
 	nameToPackageJson: ResourceNameToPackageJson;
-	nameToIndexFilePath: ResourceNameToIndexFilePath;
-	nameToBuildIndexFilePath: ResourceNameToBuildIndexFilePath;
+	nameToIndexFilePaths: NameToIndexFilePaths;
 	nameToIndexFileContent: ResourceNameToIndexFileContent;
 	nameToConfigData: ResourceNameToConfigData;
 	nameToDependencies: ResourceNameToDependencies;
@@ -386,16 +379,13 @@ async function factory(
 
 	const nameToPackageJson = await setNameToPackageJson(containerSubdirPaths);
 
-	const nameToIndexFilePath =
-		await setNameToIndexFilePath(containerSubdirPaths);
-
-	const nameToBuildIndexFilePath = setNameToBuildIndexFilePath(
+	const nameToIndexFilePaths = await setNameToIndexFilePaths(
 		containerDirPath,
-		nameToIndexFilePath,
+		containerSubdirPaths,
 	);
 
 	const nameToIndexFileContent =
-		await setNameToIndexFileContent(nameToIndexFilePath);
+		await setNameToIndexFileContent(nameToIndexFilePaths);
 
 	const nameToConfigData = setNameToConfigData(nameToIndexFileContent);
 
@@ -455,8 +445,7 @@ async function factory(
 		nameToGroup,
 		groupToNames,
 		groupToDepthToNames,
-		nameToIndexFilePath,
-		nameToBuildIndexFilePath,
+		nameToIndexFilePaths,
 		nameToIndexFileContent,
 		nameToConfigData,
 		depthToNames,
