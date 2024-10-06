@@ -106,14 +106,24 @@ async function runSelectApiEntityGroupPrompt(
 async function runInputApiEntityGroupPrompt() {
 	return await input({
 		message: "Enter API entity group:",
-		required: true,
+		validate: (value) => {
+			if (!value.trim()) {
+				return "Entity group is required";
+			}
+			return true;
+		},
 	});
 }
 
 async function runInputWebEntityPrompt() {
 	return await input({
 		message: "Enter web resource entity: (e.g. app, blog, landing)",
-		required: true,
+		validate: (value) => {
+			if (!value.trim()) {
+				return "Entity is required";
+			}
+			return true;
+		},
 	});
 }
 
@@ -146,7 +156,12 @@ async function runSelectApiEntityPrompt(
 async function runInputApiEntityPrompt() {
 	return await input({
 		message: "Enter API entity:",
-		required: true,
+		validate: (value) => {
+			if (!value.trim()) {
+				return "Entity is required";
+			}
+			return true;
+		},
 	});
 }
 
@@ -185,14 +200,24 @@ async function runSelectDbResourcePrompt(resourceTemplates: ResourceTemplates) {
 async function runInputEntityGroupPrompt() {
 	return await input({
 		message: "Entity group:",
-		required: true,
+		validate: (value) => {
+			if (!value.trim()) {
+				return "Entity group is required";
+			}
+			return true;
+		},
 	});
 }
 
 async function runInputEntityPrompt() {
 	return await input({
 		message: "Entity:",
-		required: true,
+		validate: (value) => {
+			if (!value.trim()) {
+				return "Entity is required";
+			}
+			return true;
+		},
 	});
 }
 
