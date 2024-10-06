@@ -78,9 +78,9 @@ function setNameToDependencies(
 			for (const packageJsonDependency in packageJsonDependencies) {
 				const capitalSnakeCasePackageJsonDependency =
 					convertKebabCaseToCapitalSnakeCase(packageJsonDependency);
-				const internalDep =
+				const internalDependency =
 					nameToPackageJson[capitalSnakeCasePackageJsonDependency];
-				if (internalDep) {
+				if (internalDependency) {
 					resourceDependencies.push(capitalSnakeCasePackageJsonDependency);
 				}
 			}
