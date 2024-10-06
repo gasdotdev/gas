@@ -9,7 +9,9 @@
 	"engines": {
 		"node": ">=20.0.0"
 	},
-	"files": ["build/"],
+	"files": [
+		"build/"
+	],
 	"homepage": "https://gas.dev",
 	"license": "MIT",
 	"repository": {
@@ -33,6 +35,7 @@
 		"magicast": "^0.3.5",
 		"miniflare": "^3.20240821.1",
 		"xstate": "^5.18.2",
+		"yoctocolors": "^2.1.1",
 		"zod": "^3.23.8"
 	}
 }

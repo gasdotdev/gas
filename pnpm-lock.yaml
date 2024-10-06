@@ -51,6 +51,9 @@ importers:
       xstate:
         specifier: ^5.18.2
         version: 5.18.2
+      yoctocolors:
+        specifier: ^2.1.1
+        version: 2.1.1
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -3363,6 +3366,10 @@ packages:
 
   yoctocolors-cjs@2.1.2:
     resolution: {integrity: sha512-cYVsTjKl8b+FrnidjibDWskAv7UKOfcwaVZdp/it9n1s9fU3IkgDbhdIRKCW4JDsAlECJY0ytoVPT3sK6kideA==}
+    engines: {node: '>=18'}
+
+  yoctocolors@2.1.1:
+    resolution: {integrity: sha512-GQHQqAopRhwU8Kt1DDM8NjibDXHC8eoh1erhGAJPEyveY9qqVeXvVikNKrDz69sHowPMorbPUrH/mx8c50eiBQ==}
     engines: {node: '>=18'}
 
   youch@3.3.3:
@@ -6801,6 +6808,8 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   yoctocolors-cjs@2.1.2: {}
+
+  yoctocolors@2.1.1: {}
 
   youch@3.3.3:
     dependencies:

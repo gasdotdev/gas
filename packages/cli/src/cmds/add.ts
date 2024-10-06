@@ -6,6 +6,7 @@ import util from "node:util";
 import { confirm, input, select } from "@inquirer/prompts";
 import { downloadTemplate as giget } from "giget";
 import { builders, generateCode, loadFile } from "magicast";
+import colors from "yoctocolors";
 import { type Config, setConfig } from "../modules/config.js";
 import {
 	type ResourceTemplateCategory,
@@ -788,7 +789,9 @@ async function newGraph(
 	}
 
 	addedEntryResourceEntityGroup === "web" &&
-		console.log("✔ Entity group set to web");
+		console.log(
+			`${colors.green("✔")} ${colors.bold("Entity group set to web")}`,
+		);
 
 	let addedEntryResourceEntity = "";
 
