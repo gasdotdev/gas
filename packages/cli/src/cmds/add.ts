@@ -13,7 +13,7 @@ import {
 	setResourceTemplates,
 } from "../modules/resource-templates.js";
 import {
-	type ResourceList,
+	type ResourceNameToFiles,
 	type Resources,
 	setResourceEntities,
 	setResourceEntityGroups,
@@ -69,10 +69,12 @@ async function runSelectEntryResourcePrompt(
 	});
 }
 
-async function runSelectApiEntityGroupPrompt(resourceList: ResourceList) {
+async function runSelectApiEntityGroupPrompt(
+	resourceNameToFiles: ResourceNameToFiles,
+) {
 	const choices: { name: string; value: string }[] = [];
 
-	const apiResourceEntityGroups = setResourceEntityGroups(resourceList, [
+	const apiResourceEntityGroups = setResourceEntityGroups(resourceNameToFiles, [
 		"api",
 	]);
 
@@ -114,10 +116,12 @@ async function runInputWebEntityPrompt() {
 	});
 }
 
-async function runSelectApiEntityPrompt(resourceList: ResourceList) {
+async function runSelectApiEntityPrompt(
+	resourceNameToFiles: ResourceNameToFiles,
+) {
 	const choices = [];
 
-	const resourceEntities = setResourceEntities(resourceList, ["api"]);
+	const resourceEntities = setResourceEntities(resourceNameToFiles, ["api"]);
 
 	const entityChoices = resourceEntities.map((entity) => ({
 		name: entity,
@@ -775,7 +779,7 @@ async function newGraph(
 		addedEntryResourceEntityGroup = "web";
 	} else if (addedEntryResourceTemplate.category === "api") {
 		addedEntryResourceEntityGroup = await runSelectApiEntityGroupPrompt(
-			resources.list,
+			resources.nameToFiles,
 		);
 
 		if (addedEntryResourceEntityGroup === "new") {
@@ -797,7 +801,9 @@ async function newGraph(
 		addedEntryResourceEntityGroup &&
 		addedEntryResourceTemplate.category === "api"
 	) {
-		addedEntryResourceEntity = await runSelectApiEntityPrompt(resources.list);
+		addedEntryResourceEntity = await runSelectApiEntityPrompt(
+			resources.nameToFiles,
+		);
 
 		if (addedEntryResourceEntity === "new") {
 			addedEntryResourceEntity = await runInputApiEntityPrompt();
@@ -836,7 +842,7 @@ async function newGraph(
 	let addedApiResourceEntityGroup = "";
 	if (addedApiResourceTemplateId) {
 		addedApiResourceEntityGroup = await runSelectApiEntityGroupPrompt(
-			resources.list,
+			resources.nameToFiles,
 		);
 
 		if (addedApiResourceEntityGroup === "new") {
@@ -848,7 +854,9 @@ async function newGraph(
 	let addedApiResourceName = "";
 
 	if (addedApiResourceEntityGroup) {
-		addedApiResourceEntity = await runSelectApiEntityPrompt(resources.list);
+		addedApiResourceEntity = await runSelectApiEntityPrompt(
+			resources.nameToFiles,
+		);
 
 		if (addedApiResourceEntity === "new") {
 			addedApiResourceEntity = await runInputApiEntityPrompt();

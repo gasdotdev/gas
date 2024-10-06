@@ -36,27 +36,6 @@ async function setContainerSubdirPaths(
 	}
 }
 
-export type Resource = {
-	entityGroup: string;
-	entity: string;
-	cloud: string;
-	cloudService: string;
-	descriptor: string;
-};
-
-export type ResourceList = Resource[];
-
-function setList(
-	containerSubdirPaths: ResourceContainerSubdirPaths,
-): ResourceList {
-	return containerSubdirPaths.map((subdirPath) => {
-		const subdirName = path.basename(subdirPath);
-		const [entityGroup, entity, cloud, cloudService, descriptor] =
-			subdirName.split("-");
-		return { entityGroup, entity, cloud, cloudService, descriptor };
-	});
-}
-
 export type ResourceNameToPackageJson = Record<string, PackageJson>;
 
 function convertContainerSubdirPathToName(subdirPath: string): string {
@@ -111,7 +90,7 @@ function setNameToDependencies(
 	return res;
 }
 
-type NameToFiles = {
+export type ResourceNameToFiles = {
 	[name: string]: {
 		configPath: string;
 		buildPath: string;
@@ -126,8 +105,8 @@ type NameToFiles = {
 async function setNameToFiles(
 	containerDirPath: ResourceContainerDirPath,
 	containerSubdirPaths: ResourceContainerSubdirPaths,
-): Promise<NameToFiles> {
-	const res: NameToFiles = {};
+): Promise<ResourceNameToFiles> {
+	const res: ResourceNameToFiles = {};
 
 	const configPathPattern = /^index\.[^.]+\.[^.]+\.[^.]+\.[^.]+\.[^.]+\.ts$/;
 
@@ -180,7 +159,7 @@ async function setNameToFiles(
 export type ResourceNameToConfigFileContent = Record<string, string>;
 
 async function setNameToConfigFileContent(
-	nameToFiles: NameToFiles,
+	nameToFiles: ResourceNameToFiles,
 ): Promise<ResourceNameToConfigFileContent> {
 	const res: ResourceNameToConfigFileContent = {};
 	for (const name in nameToFiles) {
@@ -357,9 +336,8 @@ export type ResourceGroupToDepthToNames = GraphGroupToDepthToNodes;
 export type Resources = {
 	containerDirPath: ResourceContainerDirPath;
 	containerSubdirPaths: ResourceContainerSubdirPaths;
-	list: ResourceList;
 	nameToPackageJson: ResourceNameToPackageJson;
-	nameToFiles: NameToFiles;
+	nameToFiles: ResourceNameToFiles;
 	nameToConfigFileContent: ResourceNameToConfigFileContent;
 	nameToConfigData: ResourceNameToConfigData;
 	nameToDependencies: ResourceNameToDependencies;
@@ -395,8 +373,6 @@ async function factory(
 	options?: FactoryOptions,
 ): Promise<Resources> {
 	const containerSubdirPaths = await setContainerSubdirPaths(containerDirPath);
-
-	const list = setList(containerSubdirPaths);
 
 	const nameToPackageJson = await setNameToPackageJson(containerSubdirPaths);
 
@@ -456,7 +432,6 @@ async function factory(
 	return {
 		containerDirPath,
 		containerSubdirPaths,
-		list,
 		nameToPackageJson,
 		nameToDependencies,
 		nameToIndegrees,
@@ -667,18 +642,19 @@ export async function setResourcesWithUp(
 export type ResourceEntityGroups = string[];
 
 export function setResourceEntityGroups(
-	resourceList: ResourceList,
+	nameToFiles: ResourceNameToFiles,
 	descriptorFilters?: string[],
 ): ResourceEntityGroups {
 	const entityGroupSet = new Set<string>();
-	for (const resource of resourceList) {
+	for (const name in nameToFiles) {
+		const files = nameToFiles[name];
 		if (
 			(!descriptorFilters ||
 				descriptorFilters.length === 0 ||
-				descriptorFilters.includes(resource.descriptor)) &&
-			!entityGroupSet.has(resource.entityGroup)
+				descriptorFilters.includes(files.descriptor)) &&
+			!entityGroupSet.has(files.entityGroup)
 		) {
-			entityGroupSet.add(resource.entityGroup);
+			entityGroupSet.add(files.entityGroup);
 		}
 	}
 	return Array.from(entityGroupSet);
@@ -687,18 +663,19 @@ export function setResourceEntityGroups(
 export type ResourceEntities = string[];
 
 export function setResourceEntities(
-	resourceList: ResourceList,
+	nameToFiles: ResourceNameToFiles,
 	descriptorFilters?: string[],
 ): ResourceEntities {
 	const entitySet = new Set<string>();
-	for (const resource of resourceList) {
+	for (const name in nameToFiles) {
+		const files = nameToFiles[name];
 		if (
 			(!descriptorFilters ||
 				descriptorFilters.length === 0 ||
-				descriptorFilters.includes(resource.descriptor)) &&
-			!entitySet.has(resource.entity)
+				descriptorFilters.includes(files.descriptor)) &&
+			!entitySet.has(files.entity)
 		) {
-			entitySet.add(resource.entity);
+			entitySet.add(files.entity);
 		}
 	}
 	return Array.from(entitySet);
