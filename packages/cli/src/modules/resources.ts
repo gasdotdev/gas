@@ -111,17 +111,25 @@ function setNameToDependencies(
 	return res;
 }
 
-type NameToIndexFilePaths = {
-	[name: string]: { main: string; build: string };
+type NameToFiles = {
+	[name: string]: {
+		configPath: string;
+		buildPath: string;
+		entityGroup: string;
+		entity: string;
+		cloud: string;
+		cloudService: string;
+		descriptor: string;
+	};
 };
 
-async function setNameToIndexFilePaths(
+async function setNameToFiles(
 	containerDirPath: ResourceContainerDirPath,
 	containerSubdirPaths: ResourceContainerSubdirPaths,
-): Promise<NameToIndexFilePaths> {
-	const res: NameToIndexFilePaths = {};
+): Promise<NameToFiles> {
+	const res: NameToFiles = {};
 
-	const indexFilePathPattern = /^index\.[^.]+\.[^.]+\.[^.]+\.[^.]+\.[^.]+\.ts$/;
+	const configPathPattern = /^index\.[^.]+\.[^.]+\.[^.]+\.[^.]+\.[^.]+\.ts$/;
 
 	for (const subdirPath of containerSubdirPaths) {
 		const resourceName = convertContainerSubdirPathToName(subdirPath);
@@ -133,15 +141,28 @@ async function setNameToIndexFilePaths(
 
 			const files = await fs.readdir(srcPath);
 			for (const file of files) {
-				if (indexFilePathPattern.test(file)) {
-					const mainPath = path.join(srcPath, file);
-					const relativePath = path.relative(containerDirPath, mainPath);
+				if (configPathPattern.test(file)) {
+					const configPath = path.join(srcPath, file);
+					const relativePath = path.relative(containerDirPath, configPath);
 					const parts = relativePath.split(path.sep);
 					parts.splice(1, 0, "build");
 					const buildPath = path
 						.join(containerDirPath, ...parts)
 						.replace(/\.ts$/, ".js");
-					res[resourceName] = { main: mainPath, build: buildPath };
+
+					const [entityGroup, entity, cloud, cloudService, descriptor] = path
+						.basename(subdirPath)
+						.split("-");
+
+					res[resourceName] = {
+						configPath,
+						buildPath,
+						entityGroup,
+						entity,
+						cloud,
+						cloudService,
+						descriptor,
+					};
 					break;
 				}
 			}
@@ -156,20 +177,20 @@ async function setNameToIndexFilePaths(
 	return res;
 }
 
-export type ResourceNameToIndexFileContent = Record<string, string>;
+export type ResourceNameToConfigFileContent = Record<string, string>;
 
-async function setNameToIndexFileContent(indexFilePaths: {
-	[name: string]: { main: string; build: string };
-}): Promise<ResourceNameToIndexFileContent> {
-	const res: ResourceNameToIndexFileContent = {};
-	for (const name in indexFilePaths) {
-		const indexFilePath = indexFilePaths[name].main;
+async function setNameToConfigFileContent(
+	nameToFiles: NameToFiles,
+): Promise<ResourceNameToConfigFileContent> {
+	const res: ResourceNameToConfigFileContent = {};
+	for (const name in nameToFiles) {
+		const configPath = nameToFiles[name].configPath;
 		try {
-			const content = await fs.readFile(indexFilePath, "utf8");
+			const content = await fs.readFile(configPath, "utf8");
 			res[name] = content;
 		} catch (err) {
 			throw new Error(
-				`Unable to read file ${indexFilePath}: ${(err as Error).message}`,
+				`Unable to read file ${configPath}: ${(err as Error).message}`,
 			);
 		}
 	}
@@ -185,14 +206,14 @@ type ConfigData = {
 export type ResourceNameToConfigData = Record<string, ConfigData>;
 
 function setNameToConfigData(
-	nameToIndexFileContent: ResourceNameToIndexFileContent,
+	nameToConfigFileContent: ResourceNameToConfigFileContent,
 ): ResourceNameToConfigData {
 	const res: ResourceNameToConfigData = {};
-	for (const name in nameToIndexFileContent) {
-		const indexFileContent = nameToIndexFileContent[name];
+	for (const name in nameToConfigFileContent) {
+		const configFileContent = nameToConfigFileContent[name];
 		const configSetterFunctionNameRegex =
 			/import\s+\{[^}]*\b([a-z]+[A-Z][a-zA-Z]*)\b[^}]*\}\s+from\s+['"]@gasdotdev\/resources['"]/;
-		const configSetterFunctionNameMatch = indexFileContent.match(
+		const configSetterFunctionNameMatch = configFileContent.match(
 			configSetterFunctionNameRegex,
 		);
 		if (!configSetterFunctionNameMatch) continue;
@@ -201,7 +222,7 @@ function setNameToConfigData(
 		const exportedConfigRegex =
 			/export\s+const\s+\w+\s*=\s*\w+\([\s\S]*?\)\s*(?:as\s*const\s*)?;?/gm;
 		const possibleExportedConfigs =
-			indexFileContent.match(exportedConfigRegex) || [];
+			configFileContent.match(exportedConfigRegex) || [];
 
 		const possibleExportedConfigVariableNameRegex =
 			/export\s+const\s+(\w+)\s*=\s*\w+\(/;
@@ -338,8 +359,8 @@ export type Resources = {
 	containerSubdirPaths: ResourceContainerSubdirPaths;
 	list: ResourceList;
 	nameToPackageJson: ResourceNameToPackageJson;
-	nameToIndexFilePaths: NameToIndexFilePaths;
-	nameToIndexFileContent: ResourceNameToIndexFileContent;
+	nameToFiles: NameToFiles;
+	nameToConfigFileContent: ResourceNameToConfigFileContent;
 	nameToConfigData: ResourceNameToConfigData;
 	nameToDependencies: ResourceNameToDependencies;
 	nameToIndegrees: GraphNodeToInDegrees;
@@ -379,15 +400,14 @@ async function factory(
 
 	const nameToPackageJson = await setNameToPackageJson(containerSubdirPaths);
 
-	const nameToIndexFilePaths = await setNameToIndexFilePaths(
+	const nameToFiles = await setNameToFiles(
 		containerDirPath,
 		containerSubdirPaths,
 	);
 
-	const nameToIndexFileContent =
-		await setNameToIndexFileContent(nameToIndexFilePaths);
+	const nameToConfigFileContent = await setNameToConfigFileContent(nameToFiles);
 
-	const nameToConfigData = setNameToConfigData(nameToIndexFileContent);
+	const nameToConfigData = setNameToConfigData(nameToConfigFileContent);
 
 	let nameToDependencies = setNameToDependencies(nameToPackageJson);
 
@@ -445,8 +465,8 @@ async function factory(
 		nameToGroup,
 		groupToNames,
 		groupToDepthToNames,
-		nameToIndexFilePaths,
-		nameToIndexFileContent,
+		nameToFiles,
+		nameToConfigFileContent,
 		nameToConfigData,
 		depthToNames,
 		nameToDepth,

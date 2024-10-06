@@ -72,11 +72,11 @@ async function writeCloudflarePagesResourceDotEnvFiles(
 	for (const [port, resourceName] of Object.entries(
 		portToCloudflarePagesResourceName,
 	)) {
-		const mainIndexFilePath = resources.nameToIndexFilePaths[resourceName].main;
-		if (mainIndexFilePath) {
+		const configFilePath = resources.nameToFiles[resourceName].configPath;
+		if (configFilePath) {
 			const envContent = `GAS_DEV_SERVER_PORT=${devServerPort}\nGAS_${resourceName}_PORT=${port}\n`;
 			const envFilePath = path.join(
-				path.dirname(mainIndexFilePath),
+				path.dirname(configFilePath),
 				"..",
 				".env.dev",
 			);

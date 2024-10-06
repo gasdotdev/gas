@@ -99,7 +99,7 @@ export async function runDevStart() {
 			workers.push({
 				name,
 				modules: true,
-				scriptPath: devManifest.resources.nameToIndexFilePaths[name].build,
+				scriptPath: devManifest.resources.nameToFiles[name].buildPath,
 			});
 		}
 	}
