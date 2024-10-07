@@ -10,6 +10,7 @@ import {
 } from "../modules/resources.js";
 import "dotenv/config";
 import { cloudflareWorkersUploadVersion } from "../modules/cloudflare.js";
+import { setTurboSummary } from "../modules/turbo.js";
 
 let resourcesWithUp = {} as ResourcesWithUp;
 
@@ -545,6 +546,10 @@ export async function runUp() {
 			output: resourceNameToDeployOutput[name],
 		};
 	}
+
+	const turboSummary = await setTurboSummary();
+
+	console.log(turboSummary);
 
 	const newUpResourcesJson: UpResources = {
 		...resourcesWithUp.upResources,
