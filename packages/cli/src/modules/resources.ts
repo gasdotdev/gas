@@ -13,7 +13,6 @@ import {
 	setGraph,
 } from "./graph.js";
 import { convertKebabCaseToCapitalSnakeCase } from "./strings.js";
-import type { UpResources } from "./up-resources.js";
 
 type PackageJson = Record<string, unknown>;
 
@@ -463,6 +462,25 @@ export async function setResources(
 	return await init(containerDirPath);
 }
 
+export type UpResourceConfig = Record<string, unknown>;
+
+export type UpResourceDependencies = string[];
+
+export type UpResourceOutput = Record<string, unknown>;
+
+export type UpResources = {
+	[name: string]: {
+		config: UpResourceConfig;
+		dependencies: UpResourceDependencies;
+		output: UpResourceOutput;
+	};
+};
+
+export async function setUpResources(path: string): Promise<UpResources> {
+	const data = await fs.readFile(path, "utf8");
+	return JSON.parse(data) as UpResources;
+}
+
 export type ResourceState = "CREATED" | "DELETED" | "UNCHANGED" | "UPDATED";
 
 export type ResourceNameToState = {
@@ -591,6 +609,7 @@ function setGroupToHighestDeployDepth(
 }
 
 export type ResourcesWithUp = Resources & {
+	upResources: UpResources;
 	nameToState: ResourceNameToState;
 	nameToDeployState: ResourceNameToDeployState;
 	groupToHighestDeployDepth: GroupToHighestDeployDepth;
@@ -599,8 +618,10 @@ export type ResourcesWithUp = Resources & {
 
 async function initWithUp(
 	containerDirPath: ResourceContainerDirPath,
-	upResources: UpResources,
+	upJsonPath: string,
 ): Promise<ResourcesWithUp> {
+	const upResources = await setUpResources(upJsonPath);
+
 	const resources = await factory(containerDirPath, {
 		upResources,
 	});
@@ -625,6 +646,7 @@ async function initWithUp(
 
 	return {
 		...resources,
+		upResources,
 		nameToState,
 		nameToDeployState: { ...nameToState },
 		groupToHighestDeployDepth,
@@ -634,9 +656,9 @@ async function initWithUp(
 
 export async function setResourcesWithUp(
 	containerDirPath: ResourceContainerDirPath,
-	upResources: UpResources,
+	upJsonPath: string,
 ): Promise<ResourcesWithUp> {
-	return await initWithUp(containerDirPath, upResources);
+	return await initWithUp(containerDirPath, upJsonPath);
 }
 
 export type ResourceEntityGroups = string[];

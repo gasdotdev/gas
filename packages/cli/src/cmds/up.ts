@@ -5,29 +5,30 @@ import {
 	type ResourceNameToDependencies,
 	type ResourceNameToDeployState,
 	type ResourcesWithUp,
+	type UpResources,
 	setResourcesWithUp,
 } from "../modules/resources.js";
-import { setUpResources } from "../modules/up-resources.js";
 import "dotenv/config";
 import { cloudflareWorkersUploadVersion } from "../modules/cloudflare.js";
 
 let resourcesWithUp = {} as ResourcesWithUp;
 
-type ResourceNameToResult = {
-	[name: string]: unknown;
+type ResourceNameToDeployOutput = {
+	[name: string]: Record<string, unknown>;
 };
 
-const resourceNameToResult: ResourceNameToResult = {};
+const resourceNameToDeployOutput: ResourceNameToDeployOutput = {};
 
 async function processCloudflareWorker(
 	resourcesWithUp: ResourcesWithUp,
-	resourceNameToResult: ResourceNameToResult,
 	resourceName: string,
 ): Promise<void> {
 	switch (resourcesWithUp.nameToState[resourceName]) {
-		case "CREATED":
-			await cloudflareWorkersUploadVersion();
+		case "CREATED": {
+			const res = await cloudflareWorkersUploadVersion();
+			resourceNameToDeployOutput[resourceName] = res;
 			break;
+		}
 		case "DELETED":
 			break;
 		case "UPDATED":
@@ -251,11 +252,7 @@ function setGroupDeployMachine(group: number) {
 								.functionName as keyof typeof resourceProcessors
 						];
 
-					const res = await resourceProcessor(
-						resourcesWithUp,
-						resourceNameToResult,
-						event.name,
-					);
+					const res = await resourceProcessor(resourcesWithUp, event.name);
 
 					setNameToDeployStateAsComplete(event.name);
 
@@ -518,11 +515,9 @@ function setRootDeployMachine() {
 export async function runUp() {
 	const config = await setConfig();
 
-	const upResources = await setUpResources(config.upJsonPath);
-
 	resourcesWithUp = await setResourcesWithUp(
 		config.containerDirPath,
-		upResources,
+		config.upJsonPath,
 	);
 
 	const rootMachine = setRootDeployMachine();
@@ -540,4 +535,23 @@ export async function runUp() {
 	if (snapshot.value === "err") {
 		throw new Error("Unable to deploy resources");
 	}
+
+	const deployedUpResources: UpResources = {};
+
+	for (const name in resourceNameToDeployOutput) {
+		deployedUpResources[name] = {
+			config: resourcesWithUp.nameToConfig[name],
+			dependencies: resourcesWithUp.nameToDependencies[name],
+			output: resourceNameToDeployOutput[name],
+		};
+	}
+
+	const newUpResourcesJson: UpResources = {
+		...resourcesWithUp.upResources,
+		...deployedUpResources,
+	};
+
+	console.log("new up resources json");
+
+	console.log(JSON.stringify(newUpResourcesJson, null, 2));
 }
