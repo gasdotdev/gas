@@ -3,6 +3,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
+		"build": "turbo build --summarize",
 		"dev": "turbo dev dev:start",
 		"dev:setup": "gas dev:setup",
 		"dev:start": "gas dev:start"
