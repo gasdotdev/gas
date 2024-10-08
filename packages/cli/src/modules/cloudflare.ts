@@ -100,7 +100,7 @@ export async function cloudflareWorkersUploadVersion(): Promise<UploadVersionRes
 	const response = await fetchWrapper<BaseResponse<UploadVersionResponse>>(
 		`${baseUrl}/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${scriptName}/versions`,
 		{
-			method: "POST",
+			method: "PUT",
 			headers: {
 				Authorization: `Bearer ${process.env.CLOUDFLARE_API_KEY}`,
 			},
