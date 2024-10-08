@@ -94,7 +94,7 @@ export type TurboRunJson = {
 	};
 };
 
-export async function getTurboRunJson(): Promise<TurboRunJson> {
+export async function setTurboRunJson(): Promise<TurboRunJson> {
 	const res = {} as TurboRunJson;
 
 	const turboRunsDir = ".turbo/runs";
@@ -148,7 +148,7 @@ export type TurboSummary = {
 };
 
 export async function setTurboSummary(): Promise<TurboSummary> {
-	const turboRunJson = await getTurboRunJson();
+	const turboRunJson = await setTurboRunJson();
 	const packageToHash = setPackageToHash(turboRunJson);
 	return { packageToHash };
 }
