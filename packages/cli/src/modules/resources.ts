@@ -15,7 +15,7 @@ import {
 } from "./graph.js";
 import { deepMergeObjects } from "./objects.js";
 import { convertKebabCaseToCapitalSnakeCase } from "./strings.js";
-import type { TurboSummary } from "./turbo.js";
+import type { TurboPackageToHash } from "./turbo-summary.js";
 
 //
 // Main resource setters.
@@ -726,7 +726,7 @@ export function setPostDeployUpResources(
 	nameToConfig: ResourceNameToConfig,
 	nameToDependencies: ResourceNameToDependencies,
 	nameToUpOutput: ResourceNameToUpOutput,
-	turboSummary: TurboSummary,
+	packageToHash: TurboPackageToHash,
 ): UpResources {
 	const newUpResources: UpResources = {};
 	for (const name in nameToUpOutput) {

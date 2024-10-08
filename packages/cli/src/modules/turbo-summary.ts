@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-export type TurboSummary = {
+export type TurboRunJson = {
 	id: string;
 	version: string;
 	turboVersion: string;
@@ -94,8 +94,8 @@ export type TurboSummary = {
 	};
 };
 
-export async function setTurboSummary(): Promise<TurboSummary> {
-	const res = {} as TurboSummary;
+export async function getTurboRunJson(): Promise<TurboRunJson> {
+	const res = {} as TurboRunJson;
 
 	const turboRunsDir = ".turbo/runs";
 
@@ -131,4 +131,24 @@ export async function setTurboSummary(): Promise<TurboSummary> {
 	} catch (err) {
 		throw new Error(`Error reading Turbo summary: ${(err as Error).message}`);
 	}
+}
+
+export type TurboPackageToHash = Record<string, string>;
+
+function setPackageToHash(turboSummary: TurboRunJson): TurboPackageToHash {
+	const res: TurboPackageToHash = {};
+	for (const task of turboSummary.tasks) {
+		res[task.package] = task.hash;
+	}
+	return res;
+}
+
+export type TurboSummary = {
+	packageToHash: TurboPackageToHash;
+};
+
+export async function setTurboSummary(): Promise<TurboSummary> {
+	const turboRunJson = await getTurboRunJson();
+	const packageToHash = setPackageToHash(turboRunJson);
+	return { packageToHash };
 }
