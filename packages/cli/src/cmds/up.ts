@@ -6,6 +6,7 @@ import {
 	type ResourceNameToDeployState,
 	type ResourcesWithUp,
 	type UpResources,
+	setPostDeployUpResources,
 	setResourcesWithUp,
 } from "../modules/resources.js";
 import "dotenv/config";
@@ -14,11 +15,11 @@ import { setTurboSummary } from "../modules/turbo.js";
 
 let resourcesWithUp = {} as ResourcesWithUp;
 
-type ResourceNameToDeployOutput = {
+export type ResourceNameToUpOutput = {
 	[name: string]: Record<string, unknown>;
 };
 
-const resourceNameToDeployOutput: ResourceNameToDeployOutput = {};
+const resourceNameToUpOutput: ResourceNameToUpOutput = {};
 
 async function processCloudflareWorker(
 	resourcesWithUp: ResourcesWithUp,
@@ -27,7 +28,7 @@ async function processCloudflareWorker(
 	switch (resourcesWithUp.nameToState[resourceName]) {
 		case "CREATED": {
 			const res = await cloudflareWorkersUploadVersion();
-			resourceNameToDeployOutput[resourceName] = res;
+			resourceNameToUpOutput[resourceName] = res;
 			break;
 		}
 		case "DELETED":
@@ -539,24 +540,25 @@ export async function runUp() {
 
 	const deployedUpResources: UpResources = {};
 
-	for (const name in resourceNameToDeployOutput) {
+	for (const name in resourceNameToUpOutput) {
 		deployedUpResources[name] = {
 			config: resourcesWithUp.nameToConfig[name],
 			dependencies: resourcesWithUp.nameToDependencies[name],
-			output: resourceNameToDeployOutput[name],
+			output: resourceNameToUpOutput[name],
 		};
 	}
 
 	const turboSummary = await setTurboSummary();
 
-	console.log(turboSummary);
+	const postDeployUpResources = setPostDeployUpResources(
+		deployedUpResources,
+		resourcesWithUp.nameToConfig,
+		resourcesWithUp.nameToDependencies,
+		resourceNameToUpOutput,
+		turboSummary,
+	);
 
-	const newUpResourcesJson: UpResources = {
-		...resourcesWithUp.upResources,
-		...deployedUpResources,
-	};
+	console.log("post deploy up resources json");
 
-	console.log("new up resources json");
-
-	console.log(JSON.stringify(newUpResourcesJson, null, 2));
+	console.log(JSON.stringify(postDeployUpResources, null, 2));
 }

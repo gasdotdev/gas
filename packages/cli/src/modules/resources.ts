@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { ResourceNameToUpOutput } from "../cmds/up.js";
 import {
 	type GraphDepthToNodes,
 	type GraphGroupToDepthToNodes,
@@ -12,7 +13,9 @@ import {
 	type GraphNodesWithInDegreesOfZero,
 	setGraph,
 } from "./graph.js";
+import { deepMergeObjects } from "./objects.js";
 import { convertKebabCaseToCapitalSnakeCase } from "./strings.js";
+import type { TurboSummary } from "./turbo.js";
 
 type PackageJson = Record<string, unknown>;
 
@@ -701,4 +704,28 @@ export function setResourceEntities(
 		}
 	}
 	return Array.from(entitySet);
+}
+
+export type PostDeployUpResources = UpResources;
+
+export function setPostDeployUpResources(
+	preDeployUpResources: UpResources,
+	nameToConfig: ResourceNameToConfig,
+	nameToDependencies: ResourceNameToDependencies,
+	nameToUpOutput: ResourceNameToUpOutput,
+	turboSummary: TurboSummary,
+): PostDeployUpResources {
+	const newUpResources: UpResources = {};
+	for (const name in nameToUpOutput) {
+		newUpResources[name] = {
+			config: nameToConfig[name],
+			dependencies: nameToDependencies[name],
+			output: nameToUpOutput[name],
+		};
+	}
+
+	return deepMergeObjects<PostDeployUpResources>(
+		preDeployUpResources,
+		newUpResources,
+	);
 }

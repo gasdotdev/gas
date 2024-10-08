@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-type TurboSummary = {
+export type TurboSummary = {
 	id: string;
 	version: string;
 	turboVersion: string;
