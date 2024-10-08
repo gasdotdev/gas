@@ -17,6 +17,10 @@ import { deepMergeObjects } from "./objects.js";
 import { convertKebabCaseToCapitalSnakeCase } from "./strings.js";
 import type { TurboSummary } from "./turbo.js";
 
+//
+// Main resource setters.
+//
+
 type PackageJson = Record<string, unknown>;
 
 export type ResourceContainerDirPath = string;
@@ -465,6 +469,55 @@ export async function setResources(
 	return await init(containerDirPath);
 }
 
+//
+// Main resource helpers.
+//
+export type ResourceEntityGroups = string[];
+
+export function setResourceEntityGroups(
+	nameToFiles: ResourceNameToFiles,
+	descriptorFilters?: string[],
+): ResourceEntityGroups {
+	const entityGroupSet = new Set<string>();
+	for (const name in nameToFiles) {
+		const files = nameToFiles[name];
+		if (
+			(!descriptorFilters ||
+				descriptorFilters.length === 0 ||
+				descriptorFilters.includes(files.descriptor)) &&
+			!entityGroupSet.has(files.entityGroup)
+		) {
+			entityGroupSet.add(files.entityGroup);
+		}
+	}
+	return Array.from(entityGroupSet);
+}
+
+export type ResourceEntities = string[];
+
+export function setResourceEntities(
+	nameToFiles: ResourceNameToFiles,
+	descriptorFilters?: string[],
+): ResourceEntities {
+	const entitySet = new Set<string>();
+	for (const name in nameToFiles) {
+		const files = nameToFiles[name];
+		if (
+			(!descriptorFilters ||
+				descriptorFilters.length === 0 ||
+				descriptorFilters.includes(files.descriptor)) &&
+			!entitySet.has(files.entity)
+		) {
+			entitySet.add(files.entity);
+		}
+	}
+	return Array.from(entitySet);
+}
+
+//
+// Up resource setters.
+//
+
 export type UpResourceConfig = Record<string, unknown>;
 
 export type UpResourceDependencies = string[];
@@ -664,49 +717,9 @@ export async function setResourcesWithUp(
 	return await initWithUp(containerDirPath, upJsonPath);
 }
 
-export type ResourceEntityGroups = string[];
-
-export function setResourceEntityGroups(
-	nameToFiles: ResourceNameToFiles,
-	descriptorFilters?: string[],
-): ResourceEntityGroups {
-	const entityGroupSet = new Set<string>();
-	for (const name in nameToFiles) {
-		const files = nameToFiles[name];
-		if (
-			(!descriptorFilters ||
-				descriptorFilters.length === 0 ||
-				descriptorFilters.includes(files.descriptor)) &&
-			!entityGroupSet.has(files.entityGroup)
-		) {
-			entityGroupSet.add(files.entityGroup);
-		}
-	}
-	return Array.from(entityGroupSet);
-}
-
-export type ResourceEntities = string[];
-
-export function setResourceEntities(
-	nameToFiles: ResourceNameToFiles,
-	descriptorFilters?: string[],
-): ResourceEntities {
-	const entitySet = new Set<string>();
-	for (const name in nameToFiles) {
-		const files = nameToFiles[name];
-		if (
-			(!descriptorFilters ||
-				descriptorFilters.length === 0 ||
-				descriptorFilters.includes(files.descriptor)) &&
-			!entitySet.has(files.entity)
-		) {
-			entitySet.add(files.entity);
-		}
-	}
-	return Array.from(entitySet);
-}
-
-export type PostDeployUpResources = UpResources;
+//
+// Up resource helpers.
+//
 
 export function setPostDeployUpResources(
 	preDeployUpResources: UpResources,
@@ -714,7 +727,7 @@ export function setPostDeployUpResources(
 	nameToDependencies: ResourceNameToDependencies,
 	nameToUpOutput: ResourceNameToUpOutput,
 	turboSummary: TurboSummary,
-): PostDeployUpResources {
+): UpResources {
 	const newUpResources: UpResources = {};
 	for (const name in nameToUpOutput) {
 		newUpResources[name] = {
@@ -724,8 +737,5 @@ export function setPostDeployUpResources(
 		};
 	}
 
-	return deepMergeObjects<PostDeployUpResources>(
-		preDeployUpResources,
-		newUpResources,
-	);
+	return deepMergeObjects<UpResources>(preDeployUpResources, newUpResources);
 }
