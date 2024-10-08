@@ -14,7 +14,10 @@ import {
 	setGraph,
 } from "./graph.js";
 import { deepMergeObjects } from "./objects.js";
-import { convertKebabCaseToCapitalSnakeCase } from "./strings.js";
+import {
+	convertCapitalSnakeCaseToKebabCase,
+	convertKebabCaseToCapitalSnakeCase,
+} from "./strings.js";
 import type { TurboPackageToHash } from "./turbo-summary.js";
 
 //
@@ -528,6 +531,7 @@ export type UpResources = {
 	[name: string]: {
 		config: UpResourceConfig;
 		dependencies: UpResourceDependencies;
+		hash?: string;
 		output: UpResourceOutput;
 	};
 };
@@ -665,7 +669,7 @@ function setGroupToHighestDeployDepth(
 }
 
 export type ResourcesWithUp = Resources & {
-	upResources: UpResources;
+	preDeployUpResources: UpResources;
 	nameToState: ResourceNameToState;
 	nameToDeployState: ResourceNameToDeployState;
 	groupToHighestDeployDepth: GroupToHighestDeployDepth;
@@ -676,16 +680,16 @@ async function initWithUp(
 	containerDirPath: ResourceContainerDirPath,
 	upJsonPath: string,
 ): Promise<ResourcesWithUp> {
-	const upResources = await setUpResources(upJsonPath);
+	const preDeployUpResources = await setUpResources(upJsonPath);
 
 	const resources = await factory(containerDirPath, {
-		upResources,
+		upResources: preDeployUpResources,
 	});
 
 	const nameToState = setNameToState(
 		resources.nameToConfig,
 		resources.nameToDependencies,
-		upResources,
+		preDeployUpResources,
 	);
 
 	const groupsWithStateChanges = setGroupsWithStateChanges(
@@ -702,7 +706,7 @@ async function initWithUp(
 
 	return {
 		...resources,
-		upResources,
+		preDeployUpResources,
 		nameToState,
 		nameToDeployState: { ...nameToState },
 		groupToHighestDeployDepth,
@@ -733,9 +737,9 @@ export function setPostDeployUpResources(
 		newUpResources[name] = {
 			config: nameToConfig[name],
 			dependencies: nameToDependencies[name],
+			hash: packageToHash[convertCapitalSnakeCaseToKebabCase(name)],
 			output: nameToUpOutput[name],
 		};
 	}
-
 	return deepMergeObjects<UpResources>(preDeployUpResources, newUpResources);
 }

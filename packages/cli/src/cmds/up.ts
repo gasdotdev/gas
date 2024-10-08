@@ -5,7 +5,6 @@ import {
 	type ResourceNameToDependencies,
 	type ResourceNameToDeployState,
 	type ResourcesWithUp,
-	type UpResources,
 	setPostDeployUpResources,
 	setResourcesWithUp,
 } from "../modules/resources.js";
@@ -538,20 +537,10 @@ export async function runUp() {
 		throw new Error("Unable to deploy resources");
 	}
 
-	const deployedUpResources: UpResources = {};
-
-	for (const name in resourceNameToUpOutput) {
-		deployedUpResources[name] = {
-			config: resourcesWithUp.nameToConfig[name],
-			dependencies: resourcesWithUp.nameToDependencies[name],
-			output: resourceNameToUpOutput[name],
-		};
-	}
-
 	const turboSummary = await setTurboSummary();
 
 	const postDeployUpResources = setPostDeployUpResources(
-		deployedUpResources,
+		resourcesWithUp.preDeployUpResources,
 		resourcesWithUp.nameToConfig,
 		resourcesWithUp.nameToDependencies,
 		resourceNameToUpOutput,
