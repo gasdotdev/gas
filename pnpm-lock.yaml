@@ -156,6 +156,49 @@ importers:
         specifier: ^4.5.11
         version: 4.5.11
 
+  templates/cloudflare-worker-remix:
+    dependencies:
+      '@gasdotdev/resources':
+        specifier: file:../../../gas/packages/resources
+        version: link:../../packages/resources
+      '@remix-run/cloudflare':
+        specifier: '*'
+        version: 2.11.2(@cloudflare/workers-types@4.20240903.0)(typescript@5.5.4)
+      '@remix-run/node':
+        specifier: ^2.11.1
+        version: 2.11.2(typescript@5.5.4)
+      '@remix-run/react':
+        specifier: '*'
+        version: 2.11.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.4)
+      isbot:
+        specifier: ^4.1.0
+        version: 4.4.0
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@gasdotdev/vite-plugin-cloudflare-remix-dev':
+        specifier: file:../../../gas/packages/vite-plugin-cloudflare-remix-dev
+        version: link:../../packages/vite-plugin-cloudflare-remix-dev
+      '@remix-run/dev':
+        specifier: '*'
+        version: 2.11.2(@remix-run/react@2.11.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.5.4))(@types/node@22.5.3)(typescript@5.5.4)(vite@5.4.3(@types/node@22.5.3))(wrangler@3.74.0(@cloudflare/workers-types@4.20240903.0))
+      '@types/react':
+        specifier: ^18.2.20
+        version: 18.3.5
+      '@types/react-dom':
+        specifier: ^18.2.7
+        version: 18.3.0
+      vite:
+        specifier: ^5.1.0
+        version: 5.4.3(@types/node@22.5.3)
+      vite-tsconfig-paths:
+        specifier: ^4.2.1
+        version: 4.3.2(typescript@5.5.4)(vite@5.4.3(@types/node@22.5.3))
+
 packages:
 
   '@ampproject/remapping@2.3.0':

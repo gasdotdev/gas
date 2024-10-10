@@ -2,9 +2,9 @@ export type ResourceTemplateCategory = "api" | "db" | "web";
 
 export type ResourceTemplateCloud = "cf";
 
-export type ResourceTemplateCloudService = "pages" | "worker" | "d1";
+export type ResourceTemplateCloudService = "d1" | "pages" | "worker";
 
-export type ResourceTemplateDescriptor = "ssr" | "api" | "db";
+export type ResourceTemplateDescriptor = "api" | "db" | "site";
 
 export type ResourceTemplate = {
 	name: string;
@@ -17,12 +17,12 @@ export type ResourceTemplate = {
 export type ResourceTemplates = Record<string, ResourceTemplate>;
 
 const resourceTemplates: ResourceTemplates = {
-	"cloudflare-pages-remix": {
-		name: "Cloudflare Pages + Remix",
-		category: "web",
+	"cloudflare-d1": {
+		name: "Cloudflare D1",
+		category: "db",
 		cloud: "cf",
-		cloudService: "pages",
-		descriptor: "ssr",
+		cloudService: "d1",
+		descriptor: "db",
 	},
 	"cloudflare-worker-hono": {
 		name: "Cloudflare Worker + Hono",
@@ -31,12 +31,12 @@ const resourceTemplates: ResourceTemplates = {
 		cloudService: "worker",
 		descriptor: "api",
 	},
-	"cloudflare-d1": {
-		name: "Cloudflare D1",
-		category: "db",
+	"cloudflare-worker-remix": {
+		name: "Cloudflare Worker + Remix",
+		category: "web",
 		cloud: "cf",
-		cloudService: "d1",
-		descriptor: "db",
+		cloudService: "worker",
+		descriptor: "site",
 	},
 };
 
