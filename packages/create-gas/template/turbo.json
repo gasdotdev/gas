@@ -5,8 +5,7 @@
 			"dependsOn": ["^build"]
 		},
 		"//#dev:setup": {
-			"cache": false,
-			"dependsOn": ["^//#dev:setup"]
+			"cache": false
 		},
 		"//#dev:start": {
 			"cache": false,
