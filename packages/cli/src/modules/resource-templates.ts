@@ -1,12 +1,16 @@
+// "skip" exists for type safety.
+// Users can skip over adding various resources in "gas add"
+// input prompts.
+
 export type ResourceTemplateName = string;
 
-export type ResourceTemplateCategory = "api" | "db" | "web";
+export type ResourceTemplateCategory = "api" | "db" | "skip" | "web";
 
-export type ResourceTemplateCloud = "cf";
+export type ResourceTemplateCloud = "cf" | "skip";
 
-export type ResourceTemplateCloudService = "d1" | "worker";
+export type ResourceTemplateCloudService = "d1" | "skip" | "worker";
 
-export type ResourceTemplateDescriptor = "api" | "db" | "site";
+export type ResourceTemplateDescriptor = "api" | "db" | "site" | "skip";
 
 export type ResourceTemplate = {
 	name: ResourceTemplateName;
@@ -16,7 +20,13 @@ export type ResourceTemplate = {
 	descriptor: ResourceTemplateDescriptor;
 };
 
-export type ResourceTemplates = Record<string, ResourceTemplate>;
+export type ResourceTemplateKey =
+	| "cloudflare-d1"
+	| "cloudflare-worker-hono"
+	| "cloudflare-worker-remix"
+	| "skip";
+
+export type ResourceTemplates = Record<ResourceTemplateKey, ResourceTemplate>;
 
 const resourceTemplates: ResourceTemplates = {
 	"cloudflare-d1": {
@@ -39,6 +49,13 @@ const resourceTemplates: ResourceTemplates = {
 		cloud: "cf",
 		cloudService: "worker",
 		descriptor: "site",
+	},
+	skip: {
+		name: "Skip",
+		category: "skip",
+		cloud: "skip",
+		cloudService: "skip",
+		descriptor: "skip",
 	},
 };
 

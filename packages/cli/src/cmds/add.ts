@@ -13,7 +13,6 @@ import {
 	type ResourceTemplateCloud,
 	type ResourceTemplateCloudService,
 	type ResourceTemplateDescriptor,
-	type ResourceTemplateName,
 	type ResourceTemplates,
 	setResourceTemplates,
 } from "../modules/resource-templates.js";
@@ -43,10 +42,13 @@ async function runSelectWhichPrompt() {
 	});
 }
 
-export type ResourceTemplatesSelectPromptListItems = {
+export type ResourceTemplateSelectPromptListItem = {
 	name: string;
-	value: string;
-}[];
+	value: keyof ResourceTemplates;
+};
+
+export type ResourceTemplatesSelectPromptListItems =
+	ResourceTemplateSelectPromptListItem[];
 
 export const setResourceTemplateSelectPromptListItems = (
 	record: ResourceTemplates,
@@ -56,8 +58,14 @@ export const setResourceTemplateSelectPromptListItems = (
 	return categories
 		? entries
 				.filter(([_, value]) => categories.includes(value.category))
-				.map(([key, value]) => ({ name: value.name, value: key }))
-		: entries.map(([key, value]) => ({ name: value.name, value: key }));
+				.map(([key, value]) => ({
+					name: value.name,
+					value: key as keyof ResourceTemplates,
+				}))
+		: entries.map(([key, value]) => ({
+				name: value.name,
+				value: key as keyof ResourceTemplates,
+			}));
 };
 
 async function runSelectEntryResourcePrompt(
@@ -172,13 +180,10 @@ async function runInputApiEntityPrompt() {
 async function runSelectApiResourcePrompt(
 	resourceTemplates: ResourceTemplates,
 ) {
-	const resourceTemplatesSelectPromptListItems =
-		setResourceTemplateSelectPromptListItems(resourceTemplates, ["api"]);
-
-	const choices = [
-		...resourceTemplatesSelectPromptListItems,
-		{ name: "skip", value: "" },
-	];
+	const choices = setResourceTemplateSelectPromptListItems(resourceTemplates, [
+		"api",
+		"skip",
+	]);
 
 	return await select({
 		message: "Select API resource:",
@@ -187,13 +192,10 @@ async function runSelectApiResourcePrompt(
 }
 
 async function runSelectDbResourcePrompt(resourceTemplates: ResourceTemplates) {
-	const resourceTemplatesSelectPromptListItems =
-		setResourceTemplateSelectPromptListItems(resourceTemplates, ["db"]);
-
-	const choices = [
-		...resourceTemplatesSelectPromptListItems,
-		{ name: "skip", value: "" },
-	];
+	const choices = setResourceTemplateSelectPromptListItems(resourceTemplates, [
+		"db",
+		"skip",
+	]);
 
 	return await select({
 		message: "Select DB resource:",
@@ -231,7 +233,7 @@ type AddedResource = {
 	cloud: ResourceTemplateCloud;
 	cloudService: ResourceTemplateCloudService;
 	descriptor: ResourceTemplateDescriptor;
-	templateName: ResourceTemplateName;
+	templateKey: keyof ResourceTemplates;
 	camelCase: string;
 	dotCase: string;
 	kebabCase: string;
@@ -249,7 +251,7 @@ function setAddedResource(params: {
 	cloud: ResourceTemplateCloud;
 	cloudService: ResourceTemplateCloudService;
 	descriptor: ResourceTemplateDescriptor;
-	templateName: ResourceTemplateName;
+	templateKey: keyof ResourceTemplates;
 	resourceContainerDir: string;
 }): AddedResource {
 	const kebabCase = convertCapitalSnakeCaseToKebabCase(params.name);
@@ -259,7 +261,7 @@ function setAddedResource(params: {
 		cloud: params.cloud,
 		cloudService: params.cloudService,
 		descriptor: params.descriptor,
-		templateName: params.templateName,
+		templateKey: params.templateKey,
 		camelCase: convertCapitalSnakeCaseToCamelCase(params.name),
 		dotCase: convertCapitalSnakeCaseToDotCase(params.name),
 		kebabCase,
@@ -290,7 +292,7 @@ function setAddedResourceTemplatesToCopy(
 			resource.kebabCase,
 		);
 		res.push({
-			src: join(gigetLocalPath, resource.templateName),
+			src: join(gigetLocalPath, resource.templateKey),
 			dest: templateDestinationDir,
 		});
 	}
@@ -797,11 +799,11 @@ async function newGraph(
 ) {
 	const nameToAddedResources: NameToAddedResource = {};
 
-	const addedEntryResourceTemplateName =
+	const addedEntryResourceTemplateKey =
 		await runSelectEntryResourcePrompt(resourceTemplates);
 
 	const addedEntryResourceTemplate =
-		resourceTemplates[addedEntryResourceTemplateName];
+		resourceTemplates[addedEntryResourceTemplateKey];
 
 	let addedEntryResourceEntityGroup = "";
 
@@ -857,22 +859,24 @@ async function newGraph(
 		cloud: addedEntryResourceTemplate.cloud,
 		cloudService: addedEntryResourceTemplate.cloudService,
 		descriptor: addedEntryResourceTemplate.descriptor,
-		templateName: addedEntryResourceTemplateName,
+		templateKey: addedEntryResourceTemplateKey,
 		resourceContainerDir: config.containerDirPath,
 	});
 
-	let addedApiResourceTemplateName = "";
+	let addedApiResourceTemplateKey: keyof ResourceTemplates = "skip";
+
 	if (addedEntryResourceTemplate.category === "web") {
-		addedApiResourceTemplateName =
+		addedApiResourceTemplateKey =
 			await runSelectApiResourcePrompt(resourceTemplates);
 	}
 
-	const addedApiResourceTemplate = addedApiResourceTemplateName
-		? resourceTemplates[addedApiResourceTemplateName]
+	const addedApiResourceTemplate = addedApiResourceTemplateKey
+		? resourceTemplates[addedApiResourceTemplateKey]
 		: undefined;
 
 	let addedApiResourceEntityGroup = "";
-	if (addedApiResourceTemplateName) {
+
+	if (addedApiResourceTemplateKey !== "skip") {
 		addedApiResourceEntityGroup = await runSelectApiEntityGroupPrompt(
 			resources.nameToFiles,
 		);
@@ -909,25 +913,25 @@ async function newGraph(
 			cloud: addedApiResourceTemplate!.cloud,
 			cloudService: addedApiResourceTemplate!.cloudService,
 			descriptor: addedApiResourceTemplate!.descriptor,
-			templateName: addedApiResourceTemplateName,
+			templateKey: addedApiResourceTemplateKey,
 			resourceContainerDir: config.containerDirPath,
 		});
 	}
 
-	let addedDbResourceTemplateName = "";
+	let addedDbResourceTemplateKey: keyof ResourceTemplates = "skip";
 
-	if (addedApiResourceTemplateName) {
-		addedDbResourceTemplateName =
+	if (addedApiResourceTemplateKey) {
+		addedDbResourceTemplateKey =
 			await runSelectDbResourcePrompt(resourceTemplates);
 	}
 
-	const addedDbResourceTemplate = addedDbResourceTemplateName
-		? resourceTemplates[addedDbResourceTemplateName]
+	const addedDbResourceTemplate = addedDbResourceTemplateKey
+		? resourceTemplates[addedDbResourceTemplateKey]
 		: undefined;
 
 	let addedDbResourceEntityGroup = "";
 
-	if (addedDbResourceTemplateName) {
+	if (addedDbResourceTemplateKey !== "skip") {
 		addedDbResourceEntityGroup = await runInputEntityGroupPrompt();
 	}
 
@@ -952,7 +956,7 @@ async function newGraph(
 			cloud: addedDbResourceTemplate!.cloud,
 			cloudService: addedDbResourceTemplate!.cloudService,
 			descriptor: addedDbResourceTemplate!.descriptor,
-			templateName: addedDbResourceTemplateName,
+			templateKey: addedDbResourceTemplateKey,
 			resourceContainerDir: config.containerDirPath,
 		});
 	}
@@ -1007,7 +1011,7 @@ async function newGraph(
 
 	await renameAddedResourceIndexFiles(addedResourceNameToIndexFilesToRename);
 
-	if (addedEntryResourceTemplateName === "cloudflare-pages-remix") {
+	if (addedEntryResourceTemplateKey === "cloudflare-worker-remix") {
 		const addedEntryResourceViteConfigPath =
 			setAddedEntryResourceViteConfigPath(
 				config.containerDirPath,
