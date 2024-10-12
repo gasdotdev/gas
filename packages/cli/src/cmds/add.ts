@@ -10,6 +10,10 @@ import colors from "yoctocolors";
 import { type Config, setConfig } from "../modules/config.js";
 import {
 	type ResourceTemplateCategory,
+	type ResourceTemplateCloud,
+	type ResourceTemplateCloudService,
+	type ResourceTemplateDescriptor,
+	type ResourceTemplateName,
 	type ResourceTemplates,
 	setResourceTemplates,
 } from "../modules/resource-templates.js";
@@ -224,10 +228,10 @@ async function runInputEntityPrompt() {
 type AddedResource = {
 	entityGroup: string;
 	entity: string;
-	cloud: string;
-	cloudService: string;
-	descriptor: string;
-	templateId: string;
+	cloud: ResourceTemplateCloud;
+	cloudService: ResourceTemplateCloudService;
+	descriptor: ResourceTemplateDescriptor;
+	templateName: ResourceTemplateName;
 	camelCase: string;
 	dotCase: string;
 	kebabCase: string;
@@ -238,32 +242,32 @@ type NameToAddedResource = {
 	[name: string]: AddedResource;
 };
 
-function setAddedResource(input: {
+function setAddedResource(params: {
 	name: string;
 	entityGroup: string;
 	entity: string;
-	cloud: string;
-	cloudService: string;
-	descriptor: string;
-	templateId: string;
+	cloud: ResourceTemplateCloud;
+	cloudService: ResourceTemplateCloudService;
+	descriptor: ResourceTemplateDescriptor;
+	templateName: ResourceTemplateName;
 	resourceContainerDir: string;
 }): AddedResource {
-	const kebabCase = convertCapitalSnakeCaseToKebabCase(input.name);
+	const kebabCase = convertCapitalSnakeCaseToKebabCase(params.name);
 	return {
-		entityGroup: input.entityGroup,
-		entity: input.entity,
-		cloud: input.cloud,
-		cloudService: input.cloudService,
-		descriptor: input.descriptor,
-		templateId: input.templateId,
-		camelCase: convertCapitalSnakeCaseToCamelCase(input.name),
-		dotCase: convertCapitalSnakeCaseToDotCase(input.name),
+		entityGroup: params.entityGroup,
+		entity: params.entity,
+		cloud: params.cloud,
+		cloudService: params.cloudService,
+		descriptor: params.descriptor,
+		templateName: params.templateName,
+		camelCase: convertCapitalSnakeCaseToCamelCase(params.name),
+		dotCase: convertCapitalSnakeCaseToDotCase(params.name),
 		kebabCase,
 		indexFilePath: join(
-			input.resourceContainerDir,
+			params.resourceContainerDir,
 			kebabCase,
 			"src",
-			`index.${convertCapitalSnakeCaseToDotCase(input.name)}.ts`,
+			`index.${convertCapitalSnakeCaseToDotCase(params.name)}.ts`,
 		),
 	};
 }
@@ -286,7 +290,7 @@ function setAddedResourceTemplatesToCopy(
 			resource.kebabCase,
 		);
 		res.push({
-			src: join(gigetLocalPath, resource.templateId),
+			src: join(gigetLocalPath, resource.templateName),
 			dest: templateDestinationDir,
 		});
 	}
@@ -546,8 +550,8 @@ function setAddedResourceNpmInstallCommands(
 
 	if (
 		addedEntryResource.cloud === "cf" &&
-		addedEntryResource.cloudService === "pages" &&
-		addedEntryResource.descriptor === "ssr" &&
+		addedEntryResource.cloudService === "worker" &&
+		addedEntryResource.descriptor === "site" &&
 		addedApiResourceName
 	) {
 		res.push(
@@ -557,7 +561,7 @@ function setAddedResourceNpmInstallCommands(
 
 	if (
 		addedEntryResource.cloud === "cf" &&
-		addedEntryResource.cloudService === "workers" &&
+		addedEntryResource.cloudService === "worker" &&
 		addedEntryResource.descriptor === "api" &&
 		addedDbResourceName
 	) {
@@ -619,8 +623,8 @@ function setAddedResourceNameToDependencies(
 
 	if (
 		addedEntryResource.cloud === "cf" &&
-		addedEntryResource.cloudService === "pages" &&
-		addedEntryResource.descriptor === "ssr" &&
+		addedEntryResource.cloudService === "worker" &&
+		addedEntryResource.descriptor === "site" &&
 		addedApiResourceName
 	) {
 		res[addedEntryResourceName].push(addedApiResourceName);
@@ -628,7 +632,7 @@ function setAddedResourceNameToDependencies(
 
 	if (
 		addedEntryResource.cloud === "cf" &&
-		addedEntryResource.cloudService === "workers" &&
+		addedEntryResource.cloudService === "worker" &&
 		addedEntryResource.descriptor === "api" &&
 		addedDbResourceName
 	) {
@@ -690,8 +694,8 @@ async function updateAddedResourceIndexFiles(
 
 			if (
 				nameToAddedResource[name].cloud === "cf" &&
-				nameToAddedResource[name].cloudService === "pages" &&
-				nameToAddedResource[name].descriptor === "ssr" &&
+				nameToAddedResource[name].cloudService === "worker" &&
+				nameToAddedResource[name].descriptor === "site" &&
 				addedApiResourceName
 			) {
 				mod.imports.$append({
@@ -747,8 +751,8 @@ async function updateAddedResourceIndexFiles(
 		for (const depName of addedResourceNameToDependencies[name]) {
 			if (
 				nameToAddedResource[name].cloud === "cf" &&
-				nameToAddedResource[name].cloudService === "pages" &&
-				nameToAddedResource[name].descriptor === "ssr" &&
+				nameToAddedResource[name].cloudService === "worker" &&
+				nameToAddedResource[name].descriptor === "site" &&
 				addedApiResourceName
 			) {
 				code = code.replace(
@@ -793,11 +797,11 @@ async function newGraph(
 ) {
 	const nameToAddedResources: NameToAddedResource = {};
 
-	const addedEntryResourceTemplateId =
+	const addedEntryResourceTemplateName =
 		await runSelectEntryResourcePrompt(resourceTemplates);
 
 	const addedEntryResourceTemplate =
-		resourceTemplates[addedEntryResourceTemplateId];
+		resourceTemplates[addedEntryResourceTemplateName];
 
 	let addedEntryResourceEntityGroup = "";
 
@@ -853,22 +857,22 @@ async function newGraph(
 		cloud: addedEntryResourceTemplate.cloud,
 		cloudService: addedEntryResourceTemplate.cloudService,
 		descriptor: addedEntryResourceTemplate.descriptor,
-		templateId: addedEntryResourceTemplateId,
+		templateName: addedEntryResourceTemplateName,
 		resourceContainerDir: config.containerDirPath,
 	});
 
-	let addedApiResourceTemplateId = "";
+	let addedApiResourceTemplateName = "";
 	if (addedEntryResourceTemplate.category === "web") {
-		addedApiResourceTemplateId =
+		addedApiResourceTemplateName =
 			await runSelectApiResourcePrompt(resourceTemplates);
 	}
 
-	const addedApiResourceTemplate = addedApiResourceTemplateId
-		? resourceTemplates[addedApiResourceTemplateId]
+	const addedApiResourceTemplate = addedApiResourceTemplateName
+		? resourceTemplates[addedApiResourceTemplateName]
 		: undefined;
 
 	let addedApiResourceEntityGroup = "";
-	if (addedApiResourceTemplateId) {
+	if (addedApiResourceTemplateName) {
 		addedApiResourceEntityGroup = await runSelectApiEntityGroupPrompt(
 			resources.nameToFiles,
 		);
@@ -905,25 +909,25 @@ async function newGraph(
 			cloud: addedApiResourceTemplate!.cloud,
 			cloudService: addedApiResourceTemplate!.cloudService,
 			descriptor: addedApiResourceTemplate!.descriptor,
-			templateId: addedApiResourceTemplateId,
+			templateName: addedApiResourceTemplateName,
 			resourceContainerDir: config.containerDirPath,
 		});
 	}
 
-	let addedDbResourceTemplateId = "";
+	let addedDbResourceTemplateName = "";
 
-	if (addedApiResourceTemplateId) {
-		addedDbResourceTemplateId =
+	if (addedApiResourceTemplateName) {
+		addedDbResourceTemplateName =
 			await runSelectDbResourcePrompt(resourceTemplates);
 	}
 
-	const addedDbResourceTemplate = addedDbResourceTemplateId
-		? resourceTemplates[addedDbResourceTemplateId]
+	const addedDbResourceTemplate = addedDbResourceTemplateName
+		? resourceTemplates[addedDbResourceTemplateName]
 		: undefined;
 
 	let addedDbResourceEntityGroup = "";
 
-	if (addedDbResourceTemplateId) {
+	if (addedDbResourceTemplateName) {
 		addedDbResourceEntityGroup = await runInputEntityGroupPrompt();
 	}
 
@@ -948,7 +952,7 @@ async function newGraph(
 			cloud: addedDbResourceTemplate!.cloud,
 			cloudService: addedDbResourceTemplate!.cloudService,
 			descriptor: addedDbResourceTemplate!.descriptor,
-			templateId: addedDbResourceTemplateId,
+			templateName: addedDbResourceTemplateName,
 			resourceContainerDir: config.containerDirPath,
 		});
 	}
@@ -1003,7 +1007,7 @@ async function newGraph(
 
 	await renameAddedResourceIndexFiles(addedResourceNameToIndexFilesToRename);
 
-	if (addedEntryResourceTemplateId === "cloudflare-pages-remix") {
+	if (addedEntryResourceTemplateName === "cloudflare-pages-remix") {
 		const addedEntryResourceViteConfigPath =
 			setAddedEntryResourceViteConfigPath(
 				config.containerDirPath,

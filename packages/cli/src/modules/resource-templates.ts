@@ -1,13 +1,15 @@
+export type ResourceTemplateName = string;
+
 export type ResourceTemplateCategory = "api" | "db" | "web";
 
 export type ResourceTemplateCloud = "cf";
 
-export type ResourceTemplateCloudService = "d1" | "pages" | "worker";
+export type ResourceTemplateCloudService = "d1" | "worker";
 
 export type ResourceTemplateDescriptor = "api" | "db" | "site";
 
 export type ResourceTemplate = {
-	name: string;
+	name: ResourceTemplateName;
 	category: ResourceTemplateCategory;
 	cloud: ResourceTemplateCloud;
 	cloudService: ResourceTemplateCloudService;
