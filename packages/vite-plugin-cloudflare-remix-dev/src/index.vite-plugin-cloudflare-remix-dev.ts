@@ -111,15 +111,15 @@ export const cloudflareRemixDevPlugin = <Env>(
 				if (res.ok) {
 					const data = await res.json();
 
-					const cloudflarePagesResourceName =
-						data.devManifest.portToCloudflarePagesResourceName[viteServerPort];
+					const viteBasedResourceName =
+						data.devManifest.portToViteBasedResourceName[viteServerPort];
 
-					const cloudflarePagesResourceDependencies =
+					const viteBasedResourceDependencies =
 						data.devManifest.resources.nameToDependencies[
-							cloudflarePagesResourceName
+							viteBasedResourceName
 						];
 
-					for (const dependencyName of cloudflarePagesResourceDependencies) {
+					for (const dependencyName of viteBasedResourceDependencies) {
 						if (
 							data.devManifest.resources.nameToConfigData[dependencyName]
 								.functionName === "cloudflareWorkerApi"

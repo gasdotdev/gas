@@ -48,14 +48,3 @@ export function cloudflareWorkerSite<T extends CloudflareWorker>(
 ): T {
 	return resource;
 }
-
-export type CloudflarePages = {
-	name: string;
-	services?: Array<{
-		binding: string;
-	}>;
-};
-
-export function cloudflarePages<T extends CloudflarePages>(resource: T): T {
-	return resource;
-}
