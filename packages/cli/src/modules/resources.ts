@@ -24,7 +24,11 @@ import type { TurboPackageToHash } from "./turbo-summary.js";
 // Main resource setters.
 //
 
-type PackageJson = Record<string, unknown>;
+type PackageJson = {
+	name: string;
+	dependencies?: Record<string, string>;
+	devDependencies?: Record<string, string>;
+};
 
 export type ResourceContainerDirPath = string;
 

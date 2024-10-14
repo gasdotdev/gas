@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { setConfig } from "../modules/config.js";
 import {
 	type ResourceNameToConfigData,
+	type ResourceNameToPackageJson,
 	type Resources,
 	setResources,
 } from "../modules/resources.js";
@@ -41,36 +42,42 @@ async function setAvailablePort(startPort: number): Promise<number> {
 	return port;
 }
 
-type PortToCloudflarePagesResourceName = Record<number, string>;
+type PortToViteBasedResourceName = Record<number, string>;
 
-async function setPortToCloudflarePagesResourceName(
+async function setPortToViteBasedResourceName(
 	startPort: number,
 	resourceConfigData: ResourceNameToConfigData,
+	resourceNameToPackageJson: ResourceNameToPackageJson,
 ): Promise<{
-	portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName;
+	portToViteBasedResourceName: PortToViteBasedResourceName;
 	lastPortUsed: number;
 }> {
-	const portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName =
-		{};
+	const portToViteBasedResourceName: PortToViteBasedResourceName = {};
 	let lastPortUsed = startPort;
 	for (const resourceName in resourceConfigData) {
-		if (resourceConfigData[resourceName].functionName === "cloudflarePages") {
+		if (
+			resourceConfigData[resourceName].functionName ===
+				"cloudflareWorkerSite" &&
+			resourceNameToPackageJson[resourceName]?.dependencies?.[
+				"@remix-run/react"
+			]
+		) {
 			const port = await setAvailablePort(lastPortUsed);
-			portToCloudflarePagesResourceName[port] = resourceName;
+			portToViteBasedResourceName[port] = resourceName;
 			lastPortUsed = port + 1;
 		}
 	}
-	return { portToCloudflarePagesResourceName, lastPortUsed };
+	return { portToViteBasedResourceName, lastPortUsed };
 }
 
-async function writeCloudflarePagesResourceDotEnvFiles(
-	portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName,
+async function writeViteBasedResourceDotEnvFiles(
+	portToViteBasedResourceName: PortToViteBasedResourceName,
 	resources: Resources,
 	devServerPort: number,
 ): Promise<void> {
 	const promises = [];
 	for (const [port, resourceName] of Object.entries(
-		portToCloudflarePagesResourceName,
+		portToViteBasedResourceName,
 	)) {
 		const configFilePath = resources.nameToFiles[resourceName].configPath;
 		if (configFilePath) {
@@ -90,25 +97,20 @@ export type DevManifest = {
 	resources: Resources;
 	devServerPort: number;
 	miniflarePort: number;
-	portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName;
+	portToViteBasedResourceName: PortToViteBasedResourceName;
 };
 
 function setDevManifest({
 	resources,
 	devServerPort,
 	miniflarePort,
-	portToCloudflarePagesResourceName,
-}: {
-	resources: Resources;
-	devServerPort: number;
-	miniflarePort: number;
-	portToCloudflarePagesResourceName: PortToCloudflarePagesResourceName;
-}): DevManifest {
+	portToViteBasedResourceName,
+}: DevManifest): DevManifest {
 	return {
 		resources,
 		devServerPort,
 		miniflarePort,
-		portToCloudflarePagesResourceName,
+		portToViteBasedResourceName,
 	};
 }
 
@@ -119,16 +121,17 @@ export async function runDevSetup(): Promise<void> {
 
 	const devServerPort = await setAvailablePort(3000);
 
-	const { portToCloudflarePagesResourceName, lastPortUsed } =
-		await setPortToCloudflarePagesResourceName(
+	const { portToViteBasedResourceName, lastPortUsed } =
+		await setPortToViteBasedResourceName(
 			devServerPort + 1,
 			resources.nameToConfigData,
+			resources.nameToPackageJson,
 		);
 
 	const miniflarePort = await setAvailablePort(lastPortUsed + 1);
 
-	await writeCloudflarePagesResourceDotEnvFiles(
-		portToCloudflarePagesResourceName,
+	await writeViteBasedResourceDotEnvFiles(
+		portToViteBasedResourceName,
 		resources,
 		devServerPort,
 	);
@@ -137,7 +140,7 @@ export async function runDevSetup(): Promise<void> {
 		resources,
 		devServerPort,
 		miniflarePort,
-		portToCloudflarePagesResourceName,
+		portToViteBasedResourceName,
 	});
 
 	const devManifestJson = JSON.stringify(devManifest, null, 2);

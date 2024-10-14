@@ -1,12 +1,13 @@
-import { cloudflarePages } from "@gasdotdev/resources";
+import { cloudflareWorkerSite } from "@gasdotdev/resources";
 import { type ServerBuild, createRequestHandler } from "@remix-run/cloudflare";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore This file won’t exist if it hasn’t yet been built
 import * as build from "../build/server";
 
-export const entityGroupEntityCloudCloudServiceDescriptor = cloudflarePages({
-	name: "ENTITY_GROUP_ENTITY_CLOUD_CLOUD_SERVICE_DESCRIPTOR",
-} as const);
+export const entityGroupEntityCloudCloudServiceDescriptor =
+	cloudflareWorkerSite({
+		name: "ENTITY_GROUP_ENTITY_CLOUD_CLOUD_SERVICE_DESCRIPTOR",
+	} as const);
 
 type Env = {};
 

@@ -37,6 +37,18 @@ export function cloudflareWorker<T extends CloudflareWorker>(resource: T): T {
 	return resource;
 }
 
+export function cloudflareWorkerApi<T extends CloudflareWorker>(
+	resource: T,
+): T {
+	return resource;
+}
+
+export function cloudflareWorkerSite<T extends CloudflareWorker>(
+	resource: T,
+): T {
+	return resource;
+}
+
 export type CloudflarePages = {
 	name: string;
 	services?: Array<{
