@@ -24,6 +24,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@gasdotdev/resources':
+        specifier: workspace:*
+        version: link:../resources
       '@hono/node-server':
         specifier: ^1.12.2
         version: 1.12.2(hono@4.5.11)

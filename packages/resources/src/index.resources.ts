@@ -1,5 +1,11 @@
 import type { D1Database, Fetcher, Rpc } from "@cloudflare/workers-types";
 
+export type ResourceConfigAstFunctions =
+	| "cloudflareD1"
+	| "cloudflareWorker"
+	| "cloudflareWorkerApi"
+	| "cloudflareWorkerSite";
+
 export type D1Bindings<T extends ReadonlyArray<{ readonly binding: string }>> =
 	{
 		[P in T[number]["binding"]]: D1Database;

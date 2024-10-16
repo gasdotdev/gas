@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { ResourceConfigAstFunctions } from "@gasdotdev/resources";
 import type { ResourceNameToUpOutput } from "../cmds/up.js";
 import {
 	type GraphDepthToNodes,
@@ -191,7 +192,7 @@ async function setNameToConfigFileContent(
 
 type ConfigAst = {
 	variable: string;
-	function: string;
+	function: ResourceConfigAstFunctions;
 	export: string;
 };
 
@@ -249,7 +250,7 @@ function setNameToConfigAst(
 
 				res[name] = {
 					variable: configVariableMatch[1],
-					function: possibleConfigFunction,
+					function: possibleConfigFunction as ResourceConfigAstFunctions,
 					export: possibleConfigExport,
 				};
 				break;
