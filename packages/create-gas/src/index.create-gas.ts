@@ -87,27 +87,11 @@ async function selectPackageManagerPrompt() {
 	return res;
 }
 
-async function selectFormatterPrompt() {
-	const res = await select({
-		message: "Select formatter:",
-		choices: [
-			{ name: "Biome", value: "biome" },
-			{ name: "Prettier", value: "prettier" },
-		],
-	});
-	return res;
-}
-
 async function runInstallDependenciesPrompt() {
 	const res = await confirm({
 		message: "Install dependencies?",
 	});
 	return res;
-}
-
-async function getLatestPackageVersion(packageName: string): Promise<string> {
-	const { stdout } = await exec(`npm view ${packageName} version`);
-	return stdout.trim();
 }
 
 async function create() {
@@ -148,7 +132,6 @@ async function create() {
 	}
 
 	const packageManager = await selectPackageManagerPrompt();
-	const formatter = await selectFormatterPrompt();
 
 	if (!dirExists) {
 		console.log(`Creating directory ${dir}`);
@@ -189,55 +172,6 @@ async function create() {
 	const packageJsonPath = path.join(dir, "package.json");
 	const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
 	const packageJson = JSON.parse(packageJsonContent);
-
-	const vscodeDir = path.join(dir, ".vscode");
-	await fs.mkdir(vscodeDir, { recursive: true });
-
-	let vscodeSettings = {};
-
-	if (formatter === "biome") {
-		const biomeVersion = await getLatestPackageVersion("@biomejs/biome");
-		packageJson.devDependencies["@biomejs/biome"] = `^${biomeVersion}`;
-
-		vscodeSettings = {
-			"editor.formatOnSave": true,
-			"[javascript]": {
-				"editor.defaultFormatter": "biomejs.biome",
-			},
-			"[typescript]": {
-				"editor.defaultFormatter": "biomejs.biome",
-			},
-			"[javascriptreact]": {
-				"editor.defaultFormatter": "biomejs.biome",
-			},
-			"[typescriptreact]": {
-				"editor.defaultFormatter": "biomejs.biome",
-			},
-			"[json]": {
-				"editor.defaultFormatter": "biomejs.biome",
-			},
-			"[jsonc]": {
-				"editor.defaultFormatter": "biomejs.biome",
-			},
-			"editor.codeActionsOnSave": {
-				"quickfix.biome": "explicit",
-				"source.organizeImports.biome": "explicit",
-			},
-		};
-	} else if (formatter === "prettier") {
-		const prettierVersion = await getLatestPackageVersion("prettier");
-		packageJson.devDependencies.prettier = `^${prettierVersion}`;
-
-		vscodeSettings = {
-			"editor.formatOnSave": true,
-			"editor.defaultFormatter": "esbenp.prettier-vscode",
-		};
-	}
-
-	await fs.writeFile(
-		path.join(vscodeDir, "settings.json"),
-		JSON.stringify(vscodeSettings, null, 2),
-	);
 
 	await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
 

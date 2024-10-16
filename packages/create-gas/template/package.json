@@ -8,7 +8,8 @@
 		"dev:setup": "gas dev:setup",
 		"dev:start": "gas dev:start"
 	},
-	"dependencies": {},
-	"devDependencies": {},
+	"devDependencies": {
+		"prettier": "^3.0.0"
+	},
 	"workspaces": ["gas/*"]
 }
