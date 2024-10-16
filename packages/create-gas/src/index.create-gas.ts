@@ -2,11 +2,15 @@
 import { exec as execCallback } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import util from "node:util";
 import { confirm, input, select } from "@inquirer/prompts";
 
 const exec = util.promisify(execCallback);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 await main();
 
@@ -83,11 +87,27 @@ async function selectPackageManagerPrompt() {
 	return res;
 }
 
+async function selectFormatterPrompt() {
+	const res = await select({
+		message: "Select formatter:",
+		choices: [
+			{ name: "Biome", value: "biome" },
+			{ name: "Prettier", value: "prettier" },
+		],
+	});
+	return res;
+}
+
 async function runInstallDependenciesPrompt() {
 	const res = await confirm({
 		message: "Install dependencies?",
 	});
 	return res;
+}
+
+async function getLatestPackageVersion(packageName: string): Promise<string> {
+	const { stdout } = await exec(`npm view ${packageName} version`);
+	return stdout.trim();
 }
 
 async function create() {
@@ -128,6 +148,7 @@ async function create() {
 	}
 
 	const packageManager = await selectPackageManagerPrompt();
+	const formatter = await selectFormatterPrompt();
 
 	if (!dirExists) {
 		console.log(`Creating directory ${dir}`);
@@ -139,12 +160,9 @@ async function create() {
 		await fs.rm(dir, { recursive: true, force: true });
 	}
 
-	const templateDir = path.join(
-		path.dirname(path.dirname(new URL(import.meta.url).pathname)),
-		"template",
-	);
+	const templateDir = path.join(__dirname, "..", "..", "template");
 
-	console.log(`Copying template to ${dir}`);
+	console.log(`Copying template from ${templateDir} to ${dir}`);
 	await fs.cp(templateDir, dir, { recursive: true });
 
 	await fs.unlink(path.join(dir, "./gas", ".gitkeep"));
@@ -167,6 +185,21 @@ async function create() {
 		path.join(dir, "./turbo.json"),
 		JSON.stringify(turboJsonJson, null, 2),
 	);
+
+	const packageJsonPath = path.join(dir, "package.json");
+	const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
+	const packageJson = JSON.parse(packageJsonContent);
+
+	if (formatter === "biome") {
+		const biomeVersion = await getLatestPackageVersion("@biomejs/biome");
+		packageJson.devDependencies["@biomejs/biome"] = `^${biomeVersion}`;
+	} else if (formatter === "prettier") {
+		const prettierVersion = await getLatestPackageVersion("prettier");
+		packageJson.devDependencies.prettier = `^${prettierVersion}`;
+	}
+
+	await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
+
 	const installDependencies = await runInstallDependenciesPrompt();
 
 	if (installDependencies) {

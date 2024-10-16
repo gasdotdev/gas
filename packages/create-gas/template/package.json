@@ -8,5 +8,7 @@
 		"dev:setup": "gas dev:setup",
 		"dev:start": "gas dev:start"
 	},
+	"dependencies": {},
+	"devDependencies": {},
 	"workspaces": ["gas/*"]
 }
