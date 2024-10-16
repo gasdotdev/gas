@@ -53,7 +53,7 @@ async function setPortToViteBasedResourceName(
 	lastPortUsed: number;
 }> {
 	const portToViteBasedResourceName: PortToViteBasedResourceName = {};
-	let lastPortUsed = startPort;
+	let port = startPort;
 	for (const resourceName in resourceNameToConfigAst) {
 		if (
 			resourceNameToConfigAst[resourceName].function ===
@@ -62,11 +62,12 @@ async function setPortToViteBasedResourceName(
 				"@remix-run/react"
 			]
 		) {
-			const port = await setAvailablePort(lastPortUsed);
-			portToViteBasedResourceName[port] = resourceName;
-			lastPortUsed = port + 1;
+			const availablePort = await setAvailablePort(port);
+			portToViteBasedResourceName[availablePort] = resourceName;
+			port = availablePort + 1;
 		}
 	}
+	const lastPortUsed = port - 1;
 	return { portToViteBasedResourceName, lastPortUsed };
 }
 
