@@ -91,9 +91,9 @@ export async function runDevStart() {
 	mfPort = devManifest.miniflarePort;
 
 	const workers = [];
-	for (const name in devManifest.resources.nameToConfigData) {
+	for (const name in devManifest.resources.nameToConfigAst) {
 		if (
-			devManifest.resources.nameToConfigData[name].functionName ===
+			devManifest.resources.nameToConfigAst[name].function ===
 			"cloudflareWorkerApi"
 		) {
 			workers.push({

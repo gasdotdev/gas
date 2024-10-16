@@ -121,8 +121,8 @@ export const cloudflareRemixDevPlugin = <Env>(
 
 					for (const dependencyName of viteBasedResourceDependencies) {
 						if (
-							data.devManifest.resources.nameToConfigData[dependencyName]
-								.functionName === "cloudflareWorkerApi"
+							data.devManifest.resources.nameToConfigAst[dependencyName]
+								.function === "cloudflareWorkerApi"
 						) {
 							const serviceFetcher = new ServiceFetcher(dependencyName);
 							// @ts-ignore

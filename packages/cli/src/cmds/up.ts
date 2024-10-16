@@ -249,8 +249,8 @@ function setGroupDeployMachine(group: number) {
 				try {
 					const resourceProcessor =
 						resourceProcessors[
-							resourcesWithUp.nameToConfigData[event.name]
-								.functionName as keyof typeof resourceProcessors
+							resourcesWithUp.nameToConfigAst[event.name]
+								.function as keyof typeof resourceProcessors
 						];
 
 					const res = await resourceProcessor(resourcesWithUp, event.name);

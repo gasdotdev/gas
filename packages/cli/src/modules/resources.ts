@@ -189,18 +189,31 @@ async function setNameToConfigFileContent(
 	return res;
 }
 
-type ConfigData = {
-	variableName: string;
-	functionName: string;
-	exportString: string;
+type ConfigAst = {
+	variable: string;
+	function: string;
+	export: string;
 };
 
-export type ResourceNameToConfigData = Record<string, ConfigData>;
+export type ResourceNameToConfigAst = Record<string, ConfigAst>;
 
-function setNameToConfigData(
+/**
+ * @returns
+ * ```
+ * {
+ * 	variable: "coreBaseWorkerApi",
+ * 	function: "cloudflareWorkerApi",
+ * 	export: "export const coreBaseWorkerApi = cloudflareWorkerApi({
+ * 		api: "https://api.example.com",
+ * 		worker: "core-base-worker",
+ * 	} as const);",
+ * }
+ * ```
+ */
+function setNameToConfigAst(
 	nameToConfigFileContent: ResourceNameToConfigFileContent,
-): ResourceNameToConfigData {
-	const res: ResourceNameToConfigData = {};
+): ResourceNameToConfigAst {
+	const res: ResourceNameToConfigAst = {};
 	for (const name in nameToConfigFileContent) {
 		const configFileContent = nameToConfigFileContent[name];
 		const configSetterFunctionNameRegex =
@@ -213,28 +226,31 @@ function setNameToConfigData(
 
 		const exportedConfigRegex =
 			/export\s+const\s+\w+\s*=\s*\w+\([\s\S]*?\)\s*(?:as\s*const\s*)?;?/gm;
-		const possibleExportedConfigs =
+		const possibleConfigExports =
 			configFileContent.match(exportedConfigRegex) || [];
 
 		const possibleExportedConfigVariableNameRegex =
 			/export\s+const\s+(\w+)\s*=\s*\w+\(/;
 		const functionNameRegex = /\s*=\s*(\w+)\(/;
 
-		for (const possibleExportedConfig of possibleExportedConfigs) {
-			const functionNameMatch = possibleExportedConfig.match(functionNameRegex);
-			if (!functionNameMatch) continue;
-			const possibleExportedConfigFunctionName = functionNameMatch[1];
+		for (const possibleConfigExport of possibleConfigExports) {
+			const functionNameMatch = possibleConfigExport.match(functionNameRegex);
 
-			if (possibleExportedConfigFunctionName === configSetterFunctionName) {
-				const variableNameMatch = possibleExportedConfig.match(
+			if (!functionNameMatch) continue;
+
+			const possibleConfigFunction = functionNameMatch[1];
+
+			if (possibleConfigFunction === configSetterFunctionName) {
+				const configVariableMatch = possibleConfigExport.match(
 					possibleExportedConfigVariableNameRegex,
 				);
-				if (!variableNameMatch) continue;
+
+				if (!configVariableMatch) continue;
 
 				res[name] = {
-					variableName: variableNameMatch[1],
-					functionName: possibleExportedConfigFunctionName,
-					exportString: possibleExportedConfig,
+					variable: configVariableMatch[1],
+					function: possibleConfigFunction,
+					export: possibleConfigExport,
 				};
 				break;
 			}
@@ -246,7 +262,7 @@ function setNameToConfigData(
 export type ResourceNodeJsConfigScript = string;
 
 function setNodeJsConfigScript(
-	nameToConfigData: ResourceNameToConfigData,
+	nameToConfigAst: ResourceNameToConfigAst,
 	groupToDepthToNames: GraphGroupToDepthToNodes,
 ): ResourceNodeJsConfigScript {
 	if (Object.keys(groupToDepthToNames).length === 0) {
@@ -256,8 +272,8 @@ function setNodeJsConfigScript(
 	const functionNamesSet = new Set<string>();
 	const functionNames: string[] = [];
 
-	for (const name in nameToConfigData) {
-		const functionName = nameToConfigData[name].functionName;
+	for (const name in nameToConfigAst) {
+		const functionName = nameToConfigAst[name].function;
 		if (!functionNamesSet.has(functionName)) {
 			functionNamesSet.add(functionName);
 			functionNames.push(functionName);
@@ -270,17 +286,17 @@ function setNodeJsConfigScript(
 		const numOfDepths = Object.keys(groupToDepthToNames[group]).length;
 		for (let depth = numOfDepths - 1; depth >= 0; depth--) {
 			for (const name of groupToDepthToNames[group][depth] || []) {
-				if (nameToConfigData[name]) {
-					script += `${nameToConfigData[name].exportString.replace(" as const", "")}\n`;
+				if (nameToConfigAst[name]) {
+					script += `${nameToConfigAst[name].export.replace(" as const", "")}\n`;
 				}
 			}
 		}
 	}
 
 	script += "const resourceNameToConfig = {};\n";
-	for (const name in nameToConfigData) {
-		const configData = nameToConfigData[name];
-		script += `resourceNameToConfig["${name}"] = ${configData.variableName};\n`;
+	for (const name in nameToConfigAst) {
+		const configAst = nameToConfigAst[name];
+		script += `resourceNameToConfig["${name}"] = ${configAst.variable};\n`;
 	}
 	script += "console.log(JSON.stringify(resourceNameToConfig));\n";
 
@@ -352,7 +368,7 @@ export type Resources = {
 	nameToPackageJson: ResourceNameToPackageJson;
 	nameToFiles: ResourceNameToFiles;
 	nameToConfigFileContent: ResourceNameToConfigFileContent;
-	nameToConfigData: ResourceNameToConfigData;
+	nameToConfigAst: ResourceNameToConfigAst;
 	nameToDependencies: ResourceNameToDependencies;
 	nameToIndegrees: GraphNodeToInDegrees;
 	namesWithIndegreesOfZero: GraphNodesWithInDegreesOfZero;
@@ -396,7 +412,7 @@ async function factory(
 
 	const nameToConfigFileContent = await setNameToConfigFileContent(nameToFiles);
 
-	const nameToConfigData = setNameToConfigData(nameToConfigFileContent);
+	const nameToConfigAst = setNameToConfigAst(nameToConfigFileContent);
 
 	let nameToDependencies = setNameToDependencies(nameToPackageJson);
 
@@ -433,7 +449,7 @@ async function factory(
 	const groupToDepthToNames = graph.groupToDepthToNodes;
 
 	const nodeJsConfigScript = setNodeJsConfigScript(
-		nameToConfigData,
+		nameToConfigAst,
 		groupToDepthToNames,
 	);
 
@@ -455,7 +471,7 @@ async function factory(
 		groupToDepthToNames,
 		nameToFiles,
 		nameToConfigFileContent,
-		nameToConfigData,
+		nameToConfigAst: nameToConfigAst,
 		depthToNames,
 		nameToDepth,
 		nodeJsConfigScript,

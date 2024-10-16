@@ -4,7 +4,7 @@ import path, { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setConfig } from "../modules/config.js";
 import {
-	type ResourceNameToConfigData,
+	type ResourceNameToConfigAst,
 	type ResourceNameToPackageJson,
 	type Resources,
 	setResources,
@@ -46,7 +46,7 @@ type PortToViteBasedResourceName = Record<number, string>;
 
 async function setPortToViteBasedResourceName(
 	startPort: number,
-	resourceConfigData: ResourceNameToConfigData,
+	resourceNameToConfigAst: ResourceNameToConfigAst,
 	resourceNameToPackageJson: ResourceNameToPackageJson,
 ): Promise<{
 	portToViteBasedResourceName: PortToViteBasedResourceName;
@@ -54,9 +54,9 @@ async function setPortToViteBasedResourceName(
 }> {
 	const portToViteBasedResourceName: PortToViteBasedResourceName = {};
 	let lastPortUsed = startPort;
-	for (const resourceName in resourceConfigData) {
+	for (const resourceName in resourceNameToConfigAst) {
 		if (
-			resourceConfigData[resourceName].functionName ===
+			resourceNameToConfigAst[resourceName].function ===
 				"cloudflareWorkerSite" &&
 			resourceNameToPackageJson[resourceName]?.dependencies?.[
 				"@remix-run/react"
@@ -124,7 +124,7 @@ export async function runDevSetup(): Promise<void> {
 	const { portToViteBasedResourceName, lastPortUsed } =
 		await setPortToViteBasedResourceName(
 			devServerPort + 1,
-			resources.nameToConfigData,
+			resources.nameToConfigAst,
 			resources.nameToPackageJson,
 		);
 
