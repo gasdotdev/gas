@@ -1,4 +1,5 @@
 import { exec as execCallback } from "node:child_process";
+import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -780,16 +781,41 @@ const exec = util.promisify(execCallback);
 
 async function installPackages(): Promise<void> {
 	console.log("Installing packages...");
-	try {
-		const { stdout, stderr } = await exec("npm install");
-		console.log(stdout);
-		if (stderr) {
-			console.error(stderr);
-		}
-		console.log("Packages installed successfully.");
-	} catch (error) {
-		console.error("Error installing packages:", error);
-	}
+
+	return new Promise((resolve, reject) => {
+		const npmInstall = spawn("npm", ["install", "--verbose"], {
+			stdio: ["inherit", "pipe", "pipe"],
+		});
+
+		npmInstall.stdout.on("data", (data) => {
+			const output = data.toString().trim();
+			if (output.includes("npm http fetch") && output.includes("GET")) {
+				const packageInfo = output.split(" ").pop();
+				console.log(`Fetching ${packageInfo}...`);
+			} else if (output.includes("added")) {
+				console.log(output);
+			}
+		});
+
+		npmInstall.stderr.on("data", (data) => {
+			process.stderr.write(data);
+		});
+
+		npmInstall.on("close", (code) => {
+			if (code === 0) {
+				console.log("All packages installed successfully.");
+				resolve();
+			} else {
+				console.error(`npm install process exited with code ${code}`);
+				reject(new Error(`npm install failed with code ${code}`));
+			}
+		});
+
+		npmInstall.on("error", (err) => {
+			console.error("Error installing packages:", err);
+			reject(err);
+		});
+	});
 }
 
 async function runPrettier(nameToAddedResource: NameToAddedResource) {
