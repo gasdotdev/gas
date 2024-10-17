@@ -39,7 +39,7 @@ Options:
 			parsedArgs.positionals.length === 0 &&
 			Object.keys(parsedArgs.values).length === 0
 		) {
-			await create();
+			await runCreate();
 		} else if (parsedArgs.values.help) {
 			console.log(helpMessage);
 		} else {
@@ -79,7 +79,7 @@ async function runEmptyDirPrompt(dir: string) {
 	return res;
 }
 
-async function selectPackageManagerPrompt() {
+async function runSelectPackageManagerPrompt() {
 	const res = await select({
 		message: "Select package manager:",
 		choices: [{ name: "npm", value: "npm" }],
@@ -94,7 +94,7 @@ async function runInstallDependenciesPrompt() {
 	return res;
 }
 
-async function create() {
+async function runCreate() {
 	let loop = false;
 
 	let dir = await runDirInputPrompt();
@@ -131,7 +131,7 @@ async function create() {
 		}
 	}
 
-	const packageManager = await selectPackageManagerPrompt();
+	const packageManager = await runSelectPackageManagerPrompt();
 
 	if (!dirExists) {
 		console.log(`Creating directory ${dir}`);
