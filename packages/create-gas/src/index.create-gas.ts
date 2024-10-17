@@ -178,8 +178,14 @@ async function runCreate() {
 	const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
 	const packageJson = JSON.parse(packageJsonContent);
 
-	const prettierVersion = await getLatestPackageVersion("prettier");
+	console.log("Fetching latest package versions...");
+	const [prettierVersion, turboVersion] = await Promise.all([
+		getLatestPackageVersion("prettier"),
+		getLatestPackageVersion("turbo"),
+	]);
+
 	packageJson.devDependencies.prettier = prettierVersion;
+	packageJson.devDependencies.turbo = `^${turboVersion}`;
 
 	await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
