@@ -94,6 +94,11 @@ async function runInstallDependenciesPrompt() {
 	return res;
 }
 
+async function getLatestPackageVersion(packageName: string): Promise<string> {
+	const { stdout } = await exec(`npm view ${packageName} version`);
+	return stdout.trim();
+}
+
 async function runCreate() {
 	let loop = false;
 
@@ -172,6 +177,9 @@ async function runCreate() {
 	const packageJsonPath = path.join(dir, "package.json");
 	const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
 	const packageJson = JSON.parse(packageJsonContent);
+
+	const prettierVersion = await getLatestPackageVersion("prettier");
+	packageJson.devDependencies.prettier = prettierVersion;
 
 	await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
