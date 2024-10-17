@@ -792,6 +792,28 @@ async function installPackages(): Promise<void> {
 	}
 }
 
+async function runPrettier(nameToAddedResource: NameToAddedResource) {
+	console.log("Running Prettier on added resources...");
+	const prettierPromises = Object.values(nameToAddedResource).map(
+		async (resource) => {
+			const dirPath = dirname(resource.indexFilePath);
+			try {
+				await exec("npm run format", { cwd: dirPath });
+				console.log(`Prettier formatting completed for ${resource.kebabCase}`);
+			} catch (error) {
+				console.error(
+					`Error running Prettier on ${resource.kebabCase}:`,
+					error,
+				);
+				throw error;
+			}
+		},
+	);
+
+	await Promise.all(prettierPromises);
+	console.log("Prettier formatting completed for all resources.");
+}
+
 async function newGraph(
 	config: Config,
 	resources: Resources,
@@ -1053,6 +1075,8 @@ async function newGraph(
 	if (confirmInstallPackages) {
 		await installPackages();
 	}
+
+	await runPrettier(nameToAddedResources);
 }
 
 async function existingGraph() {

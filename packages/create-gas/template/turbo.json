@@ -16,6 +16,8 @@
 			"dependsOn": ["//#dev:setup"],
 			"cache": false,
 			"persistent": true
-		}
+		},
+		"format": {},
+		"format:check": {}
 	}
 }

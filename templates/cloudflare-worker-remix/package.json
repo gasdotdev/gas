@@ -4,8 +4,10 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
+		"build": "remix vite:build",
 		"dev": "dotenvx run -f .env.dev -- remix vite:dev",
-		"build": "remix vite:build"
+		"format": "prettier --write .",
+		"format:check": "prettier --check ."
 	},
 	"dependencies": {
 		"@gasdotdev/resources": "file:../../../gas/packages/resources",

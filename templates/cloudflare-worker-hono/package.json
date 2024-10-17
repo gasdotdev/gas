@@ -7,7 +7,9 @@
 	"types": "./src/index.entity-group.entity.descriptor.ts",
 	"scripts": {
 		"build": "esbuild src/index.entity-group.entity.descriptor.ts --platform=browser --bundle --outfile=build/src/index.entity-group.entity.descriptor.js --sourcemap --format=esm --minify",
-		"dev": "esbuild src/index.entity-group.entity.descriptor.ts --platform=browser --bundle --outfile=build/src/index.entity-group.entity.descriptor.js --sourcemap --format=esm --watch"
+		"dev": "esbuild src/index.entity-group.entity.descriptor.ts --platform=browser --bundle --outfile=build/src/index.entity-group.entity.descriptor.js --sourcemap --format=esm --watch",
+		"format": "prettier --write .",
+		"format:check": "prettier --check ."
 	},
 	"dependencies": {
 		"@gasdotdev/resources": "file:../../../gas/packages/resources",

@@ -6,7 +6,9 @@
 		"build": "turbo build --summarize",
 		"dev": "turbo dev dev:start",
 		"dev:setup": "gas dev:setup",
-		"dev:start": "gas dev:start"
+		"dev:start": "gas dev:start",
+		"format": "turbo format",
+		"format:check": "turbo format:check"
 	},
 	"dependencies": {},
 	"devDependencies": {},
