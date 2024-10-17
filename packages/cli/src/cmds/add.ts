@@ -1048,6 +1048,12 @@ async function newGraph(
 		);
 	}
 
+	const confirmInstallPackages = await runConfirmInstallPackages();
+
+	if (confirmInstallPackages) {
+		await installPackages();
+	}
+
 	const resourceNpmInstallCommands = setAddedResourceNpmInstallCommands(
 		nameToAddedResources,
 		addedEntryResourceName,
@@ -1069,12 +1075,6 @@ async function newGraph(
 		addedResourceNameToDependencies,
 		addedApiResourceName,
 	);
-
-	const confirmInstallPackages = await runConfirmInstallPackages();
-
-	if (confirmInstallPackages) {
-		await installPackages();
-	}
 
 	await runPrettier(nameToAddedResources);
 }
