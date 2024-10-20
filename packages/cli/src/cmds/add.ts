@@ -866,10 +866,11 @@ async function newGraph(
 		}
 	}
 
-	addedEntryResourceEntityGroup === 'web' &&
+	if (addedEntryResourceEntityGroup === 'web') {
 		console.log(
 			`${colors.green('✔')} ${colors.bold('Entity group set to web')}`,
 		);
+	}
 
 	let addedEntryResourceEntity = '';
 

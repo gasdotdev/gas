@@ -124,7 +124,7 @@ export const cloudflareRemixDevPlugin = <Env>(
 								.function === 'cloudflareWorkerApi'
 						) {
 							const serviceFetcher = new ServiceFetcher(dependencyName);
-							// @ts-ignore
+							// @ts-expect-error
 							env[dependencyName] = serviceFetcher;
 						}
 					}
