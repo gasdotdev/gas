@@ -2,7 +2,11 @@
 	"name": "@gasdotdev/eslint-config",
 	"version": "0.0.0",
 	"private": true,
+	"type": "module",
 	"devDependencies": {
-		"@eslint/js": "^9.13.0"
+		"@eslint/js": "^9.13.0",
+		"eslint-config-prettier": "^9.1.0",
+		"globals": "^15.11.0",
+		"typescript-eslint": "^8.10.0"
 	}
 }
