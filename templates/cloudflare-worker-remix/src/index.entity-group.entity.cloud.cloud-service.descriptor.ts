@@ -1,12 +1,12 @@
-import { cloudflareWorkerSite } from "@gasdotdev/resources";
-import { type ServerBuild, createRequestHandler } from "@remix-run/cloudflare";
+import { cloudflareWorkerSite } from '@gasdotdev/resources';
+import { type ServerBuild, createRequestHandler } from '@remix-run/cloudflare';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore This file won’t exist if it hasn’t yet been built
-import * as build from "../build/server";
+import * as build from '../build/server';
 
 export const entityGroupEntityCloudCloudServiceDescriptor =
 	cloudflareWorkerSite({
-		name: "ENTITY_GROUP_ENTITY_CLOUD_CLOUD_SERVICE_DESCRIPTOR",
+		name: 'ENTITY_GROUP_ENTITY_CLOUD_CLOUD_SERVICE_DESCRIPTOR',
 	} as const);
 
 type Env = {};
@@ -30,14 +30,14 @@ export default {
 			return await handleRemixRequest(request, loadContext);
 		} catch (error) {
 			console.log(error);
-			return new Response("An unexpected error occurred", { status: 500 });
+			return new Response('An unexpected error occurred', { status: 500 });
 		}
 	},
 } satisfies ExportedHandler<Env>;
 
-type Cloudflare = Omit<PlatformProxy<Env>, "dispose">;
+type Cloudflare = Omit<PlatformProxy<Env>, 'dispose'>;
 
-declare module "@remix-run/cloudflare" {
+declare module '@remix-run/cloudflare' {
 	interface AppLoadContext {
 		cloudflare: Cloudflare;
 	}
@@ -324,13 +324,13 @@ interface IncomingRequestCfPropertiesGeographicInformation {
 	 *
 	 * @example "GB"
 	 */
-	country?: Iso3166Alpha2Code | "T1";
+	country?: Iso3166Alpha2Code | 'T1';
 	/**
 	 * If present, this property indicates that the request originated in the EU
 	 *
 	 * @example "1"
 	 */
-	isEUCountry?: "1";
+	isEUCountry?: '1';
 	/**
 	 * A two-letter code indicating the continent the request originated from.
 	 *
@@ -392,19 +392,19 @@ interface IncomingRequestCfPropertiesGeographicInformation {
 /** Data about the incoming request's TLS certificate */
 interface IncomingRequestCfPropertiesTLSClientAuth {
 	/** Always `"1"`, indicating that the certificate was presented */
-	certPresented: "1";
+	certPresented: '1';
 	/**
 	 * Result of certificate verification.
 	 *
 	 * @example "FAILED:self signed certificate"
 	 */
-	certVerified: Exclude<CertVerificationStatus, "NONE">;
+	certVerified: Exclude<CertVerificationStatus, 'NONE'>;
 	/** The presented certificate's revokation status.
 	 *
 	 * - A value of `"1"` indicates the certificate has been revoked
 	 * - A value of `"0"` indicates the certificate has not been revoked
 	 */
-	certRevoked: "1" | "0";
+	certRevoked: '1' | '0';
 	/**
 	 * The certificate issuer's [distinguished name](https://knowledge.digicert.com/generalinformation/INFO1745.html)
 	 *
@@ -485,41 +485,41 @@ interface IncomingRequestCfPropertiesTLSClientAuth {
 
 /** Placeholder values for TLS Client Authorization */
 interface IncomingRequestCfPropertiesTLSClientAuthPlaceholder {
-	certPresented: "0";
-	certVerified: "NONE";
-	certRevoked: "0";
-	certIssuerDN: "";
-	certSubjectDN: "";
-	certIssuerDNRFC2253: "";
-	certSubjectDNRFC2253: "";
-	certIssuerDNLegacy: "";
-	certSubjectDNLegacy: "";
-	certSerial: "";
-	certIssuerSerial: "";
-	certSKI: "";
-	certIssuerSKI: "";
-	certFingerprintSHA1: "";
-	certFingerprintSHA256: "";
-	certNotBefore: "";
-	certNotAfter: "";
+	certPresented: '0';
+	certVerified: 'NONE';
+	certRevoked: '0';
+	certIssuerDN: '';
+	certSubjectDN: '';
+	certIssuerDNRFC2253: '';
+	certSubjectDNRFC2253: '';
+	certIssuerDNLegacy: '';
+	certSubjectDNLegacy: '';
+	certSerial: '';
+	certIssuerSerial: '';
+	certSKI: '';
+	certIssuerSKI: '';
+	certFingerprintSHA1: '';
+	certFingerprintSHA256: '';
+	certNotBefore: '';
+	certNotAfter: '';
 }
 
 /** Possible outcomes of TLS verification */
 declare type CertVerificationStatus =
 	/** Authentication succeeded */
-	| "SUCCESS"
+	| 'SUCCESS'
 	/** No certificate was presented */
-	| "NONE"
+	| 'NONE'
 	/** Failed because the certificate was self-signed */
-	| "FAILED:self signed certificate"
+	| 'FAILED:self signed certificate'
 	/** Failed because the certificate failed a trust chain check */
-	| "FAILED:unable to verify the first certificate"
+	| 'FAILED:unable to verify the first certificate'
 	/** Failed because the certificate not yet valid */
-	| "FAILED:certificate is not yet valid"
+	| 'FAILED:certificate is not yet valid'
 	/** Failed because the certificate is expired */
-	| "FAILED:certificate has expired"
+	| 'FAILED:certificate has expired'
 	/** Failed for another unspecified reason */
-	| "FAILED";
+	| 'FAILED';
 
 /**
  * An upstream endpoint's response to a TCP `keepalive` message from Cloudflare.
@@ -534,258 +534,258 @@ declare type IncomingRequestCfPropertiesEdgeRequestKeepAliveStatus =
 
 /** ISO 3166-1 Alpha-2 codes */
 declare type Iso3166Alpha2Code =
-	| "AD"
-	| "AE"
-	| "AF"
-	| "AG"
-	| "AI"
-	| "AL"
-	| "AM"
-	| "AO"
-	| "AQ"
-	| "AR"
-	| "AS"
-	| "AT"
-	| "AU"
-	| "AW"
-	| "AX"
-	| "AZ"
-	| "BA"
-	| "BB"
-	| "BD"
-	| "BE"
-	| "BF"
-	| "BG"
-	| "BH"
-	| "BI"
-	| "BJ"
-	| "BL"
-	| "BM"
-	| "BN"
-	| "BO"
-	| "BQ"
-	| "BR"
-	| "BS"
-	| "BT"
-	| "BV"
-	| "BW"
-	| "BY"
-	| "BZ"
-	| "CA"
-	| "CC"
-	| "CD"
-	| "CF"
-	| "CG"
-	| "CH"
-	| "CI"
-	| "CK"
-	| "CL"
-	| "CM"
-	| "CN"
-	| "CO"
-	| "CR"
-	| "CU"
-	| "CV"
-	| "CW"
-	| "CX"
-	| "CY"
-	| "CZ"
-	| "DE"
-	| "DJ"
-	| "DK"
-	| "DM"
-	| "DO"
-	| "DZ"
-	| "EC"
-	| "EE"
-	| "EG"
-	| "EH"
-	| "ER"
-	| "ES"
-	| "ET"
-	| "FI"
-	| "FJ"
-	| "FK"
-	| "FM"
-	| "FO"
-	| "FR"
-	| "GA"
-	| "GB"
-	| "GD"
-	| "GE"
-	| "GF"
-	| "GG"
-	| "GH"
-	| "GI"
-	| "GL"
-	| "GM"
-	| "GN"
-	| "GP"
-	| "GQ"
-	| "GR"
-	| "GS"
-	| "GT"
-	| "GU"
-	| "GW"
-	| "GY"
-	| "HK"
-	| "HM"
-	| "HN"
-	| "HR"
-	| "HT"
-	| "HU"
-	| "ID"
-	| "IE"
-	| "IL"
-	| "IM"
-	| "IN"
-	| "IO"
-	| "IQ"
-	| "IR"
-	| "IS"
-	| "IT"
-	| "JE"
-	| "JM"
-	| "JO"
-	| "JP"
-	| "KE"
-	| "KG"
-	| "KH"
-	| "KI"
-	| "KM"
-	| "KN"
-	| "KP"
-	| "KR"
-	| "KW"
-	| "KY"
-	| "KZ"
-	| "LA"
-	| "LB"
-	| "LC"
-	| "LI"
-	| "LK"
-	| "LR"
-	| "LS"
-	| "LT"
-	| "LU"
-	| "LV"
-	| "LY"
-	| "MA"
-	| "MC"
-	| "MD"
-	| "ME"
-	| "MF"
-	| "MG"
-	| "MH"
-	| "MK"
-	| "ML"
-	| "MM"
-	| "MN"
-	| "MO"
-	| "MP"
-	| "MQ"
-	| "MR"
-	| "MS"
-	| "MT"
-	| "MU"
-	| "MV"
-	| "MW"
-	| "MX"
-	| "MY"
-	| "MZ"
-	| "NA"
-	| "NC"
-	| "NE"
-	| "NF"
-	| "NG"
-	| "NI"
-	| "NL"
-	| "NO"
-	| "NP"
-	| "NR"
-	| "NU"
-	| "NZ"
-	| "OM"
-	| "PA"
-	| "PE"
-	| "PF"
-	| "PG"
-	| "PH"
-	| "PK"
-	| "PL"
-	| "PM"
-	| "PN"
-	| "PR"
-	| "PS"
-	| "PT"
-	| "PW"
-	| "PY"
-	| "QA"
-	| "RE"
-	| "RO"
-	| "RS"
-	| "RU"
-	| "RW"
-	| "SA"
-	| "SB"
-	| "SC"
-	| "SD"
-	| "SE"
-	| "SG"
-	| "SH"
-	| "SI"
-	| "SJ"
-	| "SK"
-	| "SL"
-	| "SM"
-	| "SN"
-	| "SO"
-	| "SR"
-	| "SS"
-	| "ST"
-	| "SV"
-	| "SX"
-	| "SY"
-	| "SZ"
-	| "TC"
-	| "TD"
-	| "TF"
-	| "TG"
-	| "TH"
-	| "TJ"
-	| "TK"
-	| "TL"
-	| "TM"
-	| "TN"
-	| "TO"
-	| "TR"
-	| "TT"
-	| "TV"
-	| "TW"
-	| "TZ"
-	| "UA"
-	| "UG"
-	| "UM"
-	| "US"
-	| "UY"
-	| "UZ"
-	| "VA"
-	| "VC"
-	| "VE"
-	| "VG"
-	| "VI"
-	| "VN"
-	| "VU"
-	| "WF"
-	| "WS"
-	| "YE"
-	| "YT"
-	| "ZA"
-	| "ZM"
-	| "ZW";
+	| 'AD'
+	| 'AE'
+	| 'AF'
+	| 'AG'
+	| 'AI'
+	| 'AL'
+	| 'AM'
+	| 'AO'
+	| 'AQ'
+	| 'AR'
+	| 'AS'
+	| 'AT'
+	| 'AU'
+	| 'AW'
+	| 'AX'
+	| 'AZ'
+	| 'BA'
+	| 'BB'
+	| 'BD'
+	| 'BE'
+	| 'BF'
+	| 'BG'
+	| 'BH'
+	| 'BI'
+	| 'BJ'
+	| 'BL'
+	| 'BM'
+	| 'BN'
+	| 'BO'
+	| 'BQ'
+	| 'BR'
+	| 'BS'
+	| 'BT'
+	| 'BV'
+	| 'BW'
+	| 'BY'
+	| 'BZ'
+	| 'CA'
+	| 'CC'
+	| 'CD'
+	| 'CF'
+	| 'CG'
+	| 'CH'
+	| 'CI'
+	| 'CK'
+	| 'CL'
+	| 'CM'
+	| 'CN'
+	| 'CO'
+	| 'CR'
+	| 'CU'
+	| 'CV'
+	| 'CW'
+	| 'CX'
+	| 'CY'
+	| 'CZ'
+	| 'DE'
+	| 'DJ'
+	| 'DK'
+	| 'DM'
+	| 'DO'
+	| 'DZ'
+	| 'EC'
+	| 'EE'
+	| 'EG'
+	| 'EH'
+	| 'ER'
+	| 'ES'
+	| 'ET'
+	| 'FI'
+	| 'FJ'
+	| 'FK'
+	| 'FM'
+	| 'FO'
+	| 'FR'
+	| 'GA'
+	| 'GB'
+	| 'GD'
+	| 'GE'
+	| 'GF'
+	| 'GG'
+	| 'GH'
+	| 'GI'
+	| 'GL'
+	| 'GM'
+	| 'GN'
+	| 'GP'
+	| 'GQ'
+	| 'GR'
+	| 'GS'
+	| 'GT'
+	| 'GU'
+	| 'GW'
+	| 'GY'
+	| 'HK'
+	| 'HM'
+	| 'HN'
+	| 'HR'
+	| 'HT'
+	| 'HU'
+	| 'ID'
+	| 'IE'
+	| 'IL'
+	| 'IM'
+	| 'IN'
+	| 'IO'
+	| 'IQ'
+	| 'IR'
+	| 'IS'
+	| 'IT'
+	| 'JE'
+	| 'JM'
+	| 'JO'
+	| 'JP'
+	| 'KE'
+	| 'KG'
+	| 'KH'
+	| 'KI'
+	| 'KM'
+	| 'KN'
+	| 'KP'
+	| 'KR'
+	| 'KW'
+	| 'KY'
+	| 'KZ'
+	| 'LA'
+	| 'LB'
+	| 'LC'
+	| 'LI'
+	| 'LK'
+	| 'LR'
+	| 'LS'
+	| 'LT'
+	| 'LU'
+	| 'LV'
+	| 'LY'
+	| 'MA'
+	| 'MC'
+	| 'MD'
+	| 'ME'
+	| 'MF'
+	| 'MG'
+	| 'MH'
+	| 'MK'
+	| 'ML'
+	| 'MM'
+	| 'MN'
+	| 'MO'
+	| 'MP'
+	| 'MQ'
+	| 'MR'
+	| 'MS'
+	| 'MT'
+	| 'MU'
+	| 'MV'
+	| 'MW'
+	| 'MX'
+	| 'MY'
+	| 'MZ'
+	| 'NA'
+	| 'NC'
+	| 'NE'
+	| 'NF'
+	| 'NG'
+	| 'NI'
+	| 'NL'
+	| 'NO'
+	| 'NP'
+	| 'NR'
+	| 'NU'
+	| 'NZ'
+	| 'OM'
+	| 'PA'
+	| 'PE'
+	| 'PF'
+	| 'PG'
+	| 'PH'
+	| 'PK'
+	| 'PL'
+	| 'PM'
+	| 'PN'
+	| 'PR'
+	| 'PS'
+	| 'PT'
+	| 'PW'
+	| 'PY'
+	| 'QA'
+	| 'RE'
+	| 'RO'
+	| 'RS'
+	| 'RU'
+	| 'RW'
+	| 'SA'
+	| 'SB'
+	| 'SC'
+	| 'SD'
+	| 'SE'
+	| 'SG'
+	| 'SH'
+	| 'SI'
+	| 'SJ'
+	| 'SK'
+	| 'SL'
+	| 'SM'
+	| 'SN'
+	| 'SO'
+	| 'SR'
+	| 'SS'
+	| 'ST'
+	| 'SV'
+	| 'SX'
+	| 'SY'
+	| 'SZ'
+	| 'TC'
+	| 'TD'
+	| 'TF'
+	| 'TG'
+	| 'TH'
+	| 'TJ'
+	| 'TK'
+	| 'TL'
+	| 'TM'
+	| 'TN'
+	| 'TO'
+	| 'TR'
+	| 'TT'
+	| 'TV'
+	| 'TW'
+	| 'TZ'
+	| 'UA'
+	| 'UG'
+	| 'UM'
+	| 'US'
+	| 'UY'
+	| 'UZ'
+	| 'VA'
+	| 'VC'
+	| 'VE'
+	| 'VG'
+	| 'VI'
+	| 'VN'
+	| 'VU'
+	| 'WF'
+	| 'WS'
+	| 'YE'
+	| 'YT'
+	| 'ZA'
+	| 'ZM'
+	| 'ZW';
 
 /** The 2-letter continent codes Cloudflare uses */
-declare type ContinentCode = "AF" | "AN" | "AS" | "EU" | "NA" | "OC" | "SA";
+declare type ContinentCode = 'AF' | 'AN' | 'AS' | 'EU' | 'NA' | 'OC' | 'SA';
 
 /**
  * The following code is sourced from:
@@ -840,7 +840,7 @@ declare type ContinentCode = "AF" | "AN" | "AS" | "EU" | "NA" | "OC" | "SA";
  */
 export class CacheStorage {
 	constructor() {
-		const unsupportedMethods = ["has", "delete", "keys", "match"];
+		const unsupportedMethods = ['has', 'delete', 'keys', 'match'];
 		unsupportedMethods.forEach((method) => {
 			Object.defineProperty(this, method, {
 				enumerable: false,
@@ -851,7 +851,7 @@ export class CacheStorage {
 				},
 			});
 		});
-		Object.defineProperty(this, "default", {
+		Object.defineProperty(this, 'default', {
 			enumerable: true,
 			value: this.default,
 		});

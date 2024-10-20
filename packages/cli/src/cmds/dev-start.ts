@@ -1,13 +1,13 @@
-import fs from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { serve } from "@hono/node-server";
-import { zValidator } from "@hono/zod-validator";
-import { Hono } from "hono";
-import { Miniflare } from "miniflare";
-import { z } from "zod";
-import type { Resources } from "../modules/resources.js";
-import type { DevManifest } from "./dev-setup.js";
+import fs from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { serve } from '@hono/node-server';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { Miniflare } from 'miniflare';
+import { z } from 'zod';
+import type { Resources } from '../modules/resources.js';
+import type { DevManifest } from './dev-setup.js';
 
 let mf: Miniflare;
 let mfPort: number;
@@ -16,28 +16,28 @@ let resources: Resources;
 
 let devManifest: DevManifest;
 
-const devManifestApi = new Hono().get("/", (c) => {
+const devManifestApi = new Hono().get('/', (c) => {
 	return c.json({
 		devManifest,
 	});
 });
 
-const ASchema = z.object({ action: z.literal("a"), a: z.string() });
-const BSchema = z.object({ action: z.literal("b"), b: z.string() });
+const ASchema = z.object({ action: z.literal('a'), a: z.string() });
+const BSchema = z.object({ action: z.literal('b'), b: z.string() });
 const ABSchema = z.union([ASchema, BSchema]);
 
 const miniflareApi = new Hono().post(
-	"/",
+	'/',
 	zValidator(
-		"json",
+		'json',
 		z.object({
-			action: z.literal("fetch"),
+			action: z.literal('fetch'),
 			resourceName: z.string(),
 			fetchParams: z.object({}),
 		}),
 	),
 	async (c) => {
-		const { resourceName } = c.req.valid("json");
+		const { resourceName } = c.req.valid('json');
 		const worker = await mf.getWorker(resourceName);
 		const res = await worker.fetch(`https://localhost:${mfPort}`);
 		// Proxy:
@@ -63,14 +63,14 @@ const miniflareApi = new Hono().post(
 const api = new Hono();
 
 const routes = api
-	.route("/dev-manifest", devManifestApi)
-	.route("/miniflare-run", miniflareApi);
+	.route('/dev-manifest', devManifestApi)
+	.route('/miniflare-run', miniflareApi);
 
 export type ApiType = typeof routes;
 
-routes.all("*", async (c) => {
+routes.all('*', async (c) => {
 	const res = await mf.dispatchFetch(`https://localhost:${mfPort}`);
-	const worker = await mf.getWorker("CORE_BASE_API");
+	const worker = await mf.getWorker('CORE_BASE_API');
 	// @ts-ignore
 	const newResponse = new Response(res.body, res);
 	return newResponse;
@@ -80,10 +80,10 @@ export async function runDevStart() {
 	const __filename = fileURLToPath(import.meta.url);
 	const __dirname = dirname(__filename);
 
-	const devManifestJsonPath = join(__dirname, "..", "..", ".dev-manifest.json");
+	const devManifestJsonPath = join(__dirname, '..', '..', '.dev-manifest.json');
 
 	devManifest = JSON.parse(
-		await fs.readFile(devManifestJsonPath, "utf-8"),
+		await fs.readFile(devManifestJsonPath, 'utf-8'),
 	) as DevManifest;
 
 	resources = devManifest.resources;
@@ -94,7 +94,7 @@ export async function runDevStart() {
 	for (const name in devManifest.resources.nameToConfigAst) {
 		if (
 			devManifest.resources.nameToConfigAst[name].function ===
-			"cloudflareWorkerApi"
+			'cloudflareWorkerApi'
 		) {
 			workers.push({
 				name,

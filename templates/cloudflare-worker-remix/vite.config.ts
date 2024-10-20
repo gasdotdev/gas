@@ -1,7 +1,7 @@
-import { cloudflareRemixDevPlugin } from "@gasdotdev/vite-plugin-cloudflare-remix-dev";
-import { vitePlugin as remix } from "@remix-run/dev";
-import { defineConfig } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
+import { cloudflareRemixDevPlugin } from '@gasdotdev/vite-plugin-cloudflare-remix-dev';
+import { vitePlugin as remix } from '@remix-run/dev';
+import { defineConfig } from 'vite';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
 	plugins: [
@@ -10,7 +10,7 @@ export default defineConfig({
 			Number(process.env.VITE_SERVER_PORT),
 		),
 		remix({
-			appDirectory: "src/app",
+			appDirectory: 'src/app',
 			future: {
 				v3_fetcherPersist: true,
 				v3_relativeSplatPath: true,
@@ -24,14 +24,14 @@ export default defineConfig({
 	},
 	ssr: {
 		resolve: {
-			conditions: ["workerd", "worker", "browser"],
+			conditions: ['workerd', 'worker', 'browser'],
 		},
 	},
 	resolve: {
-		mainFields: ["browser", "module", "main"],
+		mainFields: ['browser', 'module', 'main'],
 	},
 	build: {
 		minify: true,
 	},
-	publicDir: "src/public",
+	publicDir: 'src/public',
 });

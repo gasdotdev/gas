@@ -1,14 +1,14 @@
-import fs from "node:fs/promises";
-import http from "node:http";
-import path, { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { setConfig } from "../modules/config.js";
+import fs from 'node:fs/promises';
+import http from 'node:http';
+import path, { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { setConfig } from '../modules/config.js';
 import {
 	type ResourceNameToConfigAst,
 	type ResourceNameToPackageJson,
 	type Resources,
 	setResources,
-} from "../modules/resources.js";
+} from '../modules/resources.js';
 
 async function setAvailablePort(startPort: number): Promise<number> {
 	let port = startPort;
@@ -18,14 +18,14 @@ async function setAvailablePort(startPort: number): Promise<number> {
 		await new Promise((resolve, reject) => {
 			const testServer = http
 				.createServer()
-				.once("error", (err: NodeJS.ErrnoException) => {
-					if (err.code === "EADDRINUSE") {
+				.once('error', (err: NodeJS.ErrnoException) => {
+					if (err.code === 'EADDRINUSE') {
 						resolve(false);
 					} else {
 						reject(err);
 					}
 				})
-				.once("listening", () => {
+				.once('listening', () => {
 					testServer.close(() => {
 						isAvailable = true;
 						resolve(true);
@@ -57,9 +57,9 @@ async function setPortToViteBasedResourceName(
 	for (const resourceName in resourceNameToConfigAst) {
 		if (
 			resourceNameToConfigAst[resourceName].function ===
-				"cloudflareWorkerSite" &&
+				'cloudflareWorkerSite' &&
 			resourceNameToPackageJson[resourceName]?.dependencies?.[
-				"@remix-run/react"
+				'@remix-run/react'
 			]
 		) {
 			const availablePort = await setAvailablePort(port);
@@ -85,8 +85,8 @@ async function writeViteBasedResourceDotEnvFiles(
 			const envContent = `GAS_DEV_SERVER_PORT=${devServerPort}\nGAS_${resourceName}_PORT=${port}\n`;
 			const envFilePath = path.join(
 				path.dirname(configFilePath),
-				"..",
-				".env.dev",
+				'..',
+				'.env.dev',
 			);
 			promises.push(fs.writeFile(envFilePath, envContent));
 		}
@@ -150,7 +150,7 @@ export async function runDevSetup(): Promise<void> {
 	const __dirname = dirname(__filename);
 
 	await fs.writeFile(
-		join(__dirname, "..", "..", ".dev-manifest.json"),
+		join(__dirname, '..', '..', '.dev-manifest.json'),
 		devManifestJson,
 	);
 }

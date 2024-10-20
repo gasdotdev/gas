@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { parseArgs } from "node:util";
-import { runAdd } from "./cmds/add.js";
-import { runDevSetup } from "./cmds/dev-setup.js";
-import { runDevStart } from "./cmds/dev-start.js";
-import { runUp } from "./cmds/up.js";
+import { parseArgs } from 'node:util';
+import { runAdd } from './cmds/add.js';
+import { runDevSetup } from './cmds/dev-setup.js';
+import { runDevStart } from './cmds/dev-start.js';
+import { runUp } from './cmds/up.js';
 
 await main();
 
@@ -11,8 +11,8 @@ async function main() {
 	try {
 		const options = {
 			help: {
-				type: "boolean",
-				short: "h",
+				type: 'boolean',
+				short: 'h',
 			},
 		} as const;
 
@@ -41,19 +41,19 @@ Options:
 
 		const command = parsedArgs.positionals[0];
 		switch (command) {
-			case "add": {
+			case 'add': {
 				await runAdd();
 				break;
 			}
-			case "dev:setup": {
+			case 'dev:setup': {
 				await runDevSetup();
 				break;
 			}
-			case "dev:start": {
+			case 'dev:start': {
 				await runDevStart();
 				break;
 			}
-			case "up": {
+			case 'up': {
 				await runUp();
 				break;
 			}
@@ -61,7 +61,7 @@ Options:
 				console.log(helpMessage);
 		}
 	} catch (error) {
-		if (error.name === "ExitPromptError") {
+		if (error.name === 'ExitPromptError') {
 			process.exit(0);
 		}
 		console.error(error);

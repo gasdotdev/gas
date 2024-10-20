@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 export type TurboRunJson = {
 	id: string;
@@ -97,7 +97,7 @@ export type TurboRunJson = {
 export async function setTurboRunJson(): Promise<TurboRunJson> {
 	const res = {} as TurboRunJson;
 
-	const turboRunsDir = ".turbo/runs";
+	const turboRunsDir = '.turbo/runs';
 
 	try {
 		await fs.access(turboRunsDir);
@@ -107,7 +107,7 @@ export async function setTurboRunJson(): Promise<TurboRunJson> {
 
 	try {
 		const files = await fs.readdir(turboRunsDir);
-		const jsonFiles = files.filter((file) => path.extname(file) === ".json");
+		const jsonFiles = files.filter((file) => path.extname(file) === '.json');
 
 		if (jsonFiles.length === 0) {
 			return res;
@@ -124,7 +124,7 @@ export async function setTurboRunJson(): Promise<TurboRunJson> {
 		fileStats.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
 
 		const newestFilePath = fileStats[0].filePath;
-		const fileContent = await fs.readFile(newestFilePath, "utf-8");
+		const fileContent = await fs.readFile(newestFilePath, 'utf-8');
 		Object.assign(res, JSON.parse(fileContent));
 
 		return res;

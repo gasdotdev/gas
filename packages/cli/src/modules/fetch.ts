@@ -1,4 +1,4 @@
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
 interface FetchOptions extends RequestInit {
 	method: HttpMethod;
@@ -8,12 +8,12 @@ interface FetchOptions extends RequestInit {
 
 export async function fetchWrapper<T>(
 	url: string,
-	options: FetchOptions = { method: "GET" },
+	options: FetchOptions = { method: 'GET' },
 ): Promise<T> {
 	const { method, headers = {}, body, ...restOptions } = options;
 
 	const defaultHeaders = {
-		"Content-Type": "application/json",
+		'Content-Type': 'application/json',
 		...headers,
 	};
 

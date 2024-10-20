@@ -1,4 +1,4 @@
-const baseUrl = "https://api.cloudflare.com/client/v4";
+const baseUrl = 'https://api.cloudflare.com/client/v4';
 
 type BaseResponse<TResult> = {
 	success: true;
@@ -44,30 +44,30 @@ type UploadVersionResponse = {
 
 export async function cloudflareWorkersUploadVersion(): Promise<UploadVersionResponse> {
 	const mockUploadVersionResponse: UploadVersionResponse = {
-		id: "abc123def456",
+		id: 'abc123def456',
 		metadata: {
-			author_email: "developer@example.com",
-			author_id: "user_123456",
-			created_on: "2023-04-15T10:30:00Z",
-			modified_on: "2023-04-15T10:30:00Z",
-			source: "api",
+			author_email: 'developer@example.com',
+			author_id: 'user_123456',
+			created_on: '2023-04-15T10:30:00Z',
+			modified_on: '2023-04-15T10:30:00Z',
+			source: 'api',
 		},
 		number: 1,
 		resources: {
 			bindings: [
 				{
 					json: '{"key": "value"}',
-					name: "MY_BINDING",
-					type: "json",
+					name: 'MY_BINDING',
+					type: 'json',
 				},
 			],
 			script: {
-				etag: "etag_987654321",
-				handlers: ["fetch"],
-				last_deployed_from: "cli",
+				etag: 'etag_987654321',
+				handlers: ['fetch'],
+				last_deployed_from: 'cli',
 			},
 			script_runtime: {
-				usage_model: "bundled",
+				usage_model: 'bundled',
 			},
 		},
 		startup_time_ms: 50,

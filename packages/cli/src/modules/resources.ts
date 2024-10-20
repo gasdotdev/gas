@@ -1,8 +1,8 @@
-import { spawn } from "node:child_process";
-import fs from "node:fs/promises";
-import path from "node:path";
-import type { ResourceConfigAstFunctions } from "@gasdotdev/resources";
-import type { ResourceNameToUpOutput } from "../cmds/up.js";
+import { spawn } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import type { ResourceConfigAstFunctions } from '@gasdotdev/resources';
+import type { ResourceNameToUpOutput } from '../cmds/up.js';
 import {
 	type GraphDepthToNodes,
 	type GraphGroupToDepthToNodes,
@@ -13,13 +13,13 @@ import {
 	type GraphNodeToIntermediates,
 	type GraphNodesWithInDegreesOfZero,
 	setGraph,
-} from "./graph.js";
-import { deepMergeObjects } from "./objects.js";
+} from './graph.js';
+import { deepMergeObjects } from './objects.js';
 import {
 	convertCapitalSnakeCaseToKebabCase,
 	convertKebabCaseToCapitalSnakeCase,
-} from "./strings.js";
-import type { TurboPackageToHash } from "./turbo-summary.js";
+} from './strings.js';
+import type { TurboPackageToHash } from './turbo-summary.js';
 
 //
 // Main resource setters.
@@ -54,7 +54,7 @@ export type ResourceNameToPackageJson = Record<string, PackageJson>;
 
 function convertContainerSubdirPathToName(subdirPath: string): string {
 	const subdirName = path.basename(subdirPath);
-	return subdirName.replace(/-/g, "_").toUpperCase();
+	return subdirName.replace(/-/g, '_').toUpperCase();
 }
 
 async function setNameToPackageJson(
@@ -63,10 +63,10 @@ async function setNameToPackageJson(
 	const res: ResourceNameToPackageJson = {};
 	for (const subdirPath of containerSubdirPaths) {
 		const resourceName = convertContainerSubdirPathToName(subdirPath);
-		const packageJsonPath = path.join(subdirPath, "package.json");
+		const packageJsonPath = path.join(subdirPath, 'package.json');
 
 		try {
-			const data = await fs.readFile(packageJsonPath, "utf8");
+			const data = await fs.readFile(packageJsonPath, 'utf8');
 			const packageJson: PackageJson = JSON.parse(data);
 			res[resourceName] = packageJson;
 		} catch (err) {
@@ -126,7 +126,7 @@ async function setNameToFiles(
 
 	for (const subdirPath of containerSubdirPaths) {
 		const resourceName = convertContainerSubdirPathToName(subdirPath);
-		const srcPath = path.join(subdirPath, "src");
+		const srcPath = path.join(subdirPath, 'src');
 
 		try {
 			const srcStats = await fs.stat(srcPath);
@@ -138,14 +138,14 @@ async function setNameToFiles(
 					const configPath = path.join(srcPath, file);
 					const relativePath = path.relative(containerDirPath, configPath);
 					const parts = relativePath.split(path.sep);
-					parts.splice(1, 0, "build");
+					parts.splice(1, 0, 'build');
 					const buildPath = path
 						.join(containerDirPath, ...parts)
-						.replace(/\.ts$/, ".js");
+						.replace(/\.ts$/, '.js');
 
 					const [entityGroup, entity, cloud, cloudService, descriptor] = path
 						.basename(subdirPath)
-						.split("-");
+						.split('-');
 
 					res[resourceName] = {
 						configPath,
@@ -160,7 +160,7 @@ async function setNameToFiles(
 				}
 			}
 		} catch (err) {
-			if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+			if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
 				throw new Error(
 					`Unable to read src dir ${srcPath}: ${(err as Error).message}`,
 				);
@@ -179,7 +179,7 @@ async function setNameToConfigFileContent(
 	for (const name in nameToFiles) {
 		const configPath = nameToFiles[name].configPath;
 		try {
-			const content = await fs.readFile(configPath, "utf8");
+			const content = await fs.readFile(configPath, 'utf8');
 			res[name] = content;
 		} catch (err) {
 			throw new Error(
@@ -267,7 +267,7 @@ function setNodeJsConfigScript(
 	groupToDepthToNames: GraphGroupToDepthToNodes,
 ): ResourceNodeJsConfigScript {
 	if (Object.keys(groupToDepthToNames).length === 0) {
-		return "";
+		return '';
 	}
 
 	const functionNamesSet = new Set<string>();
@@ -281,25 +281,25 @@ function setNodeJsConfigScript(
 		}
 	}
 
-	let script = `import {\n${functionNames.join(",\n")}\n} from "@gasdotdev/resources"\n`;
+	let script = `import {\n${functionNames.join(',\n')}\n} from "@gasdotdev/resources"\n`;
 
 	for (const group of Object.keys(groupToDepthToNames).map(Number)) {
 		const numOfDepths = Object.keys(groupToDepthToNames[group]).length;
 		for (let depth = numOfDepths - 1; depth >= 0; depth--) {
 			for (const name of groupToDepthToNames[group][depth] || []) {
 				if (nameToConfigAst[name]) {
-					script += `${nameToConfigAst[name].export.replace(" as const", "")}\n`;
+					script += `${nameToConfigAst[name].export.replace(' as const', '')}\n`;
 				}
 			}
 		}
 	}
 
-	script += "const resourceNameToConfig = {};\n";
+	script += 'const resourceNameToConfig = {};\n';
 	for (const name in nameToConfigAst) {
 		const configAst = nameToConfigAst[name];
 		script += `resourceNameToConfig["${name}"] = ${configAst.variable};\n`;
 	}
-	script += "console.log(JSON.stringify(resourceNameToConfig));\n";
+	script += 'console.log(JSON.stringify(resourceNameToConfig));\n';
 
 	return script;
 }
@@ -322,25 +322,25 @@ export type ResourceRunNodeJsConfigScriptResult = Record<
 async function runNodeJsConfigScript(
 	nodeJsConfigScript: ResourceNodeJsConfigScript,
 ): Promise<ResourceRunNodeJsConfigScriptResult> {
-	if (nodeJsConfigScript === "") {
+	if (nodeJsConfigScript === '') {
 		return {};
 	}
 
 	return new Promise((resolve, reject) => {
-		const child = spawn("node", ["--input-type=module"], {
-			stdio: ["pipe", "pipe", "pipe"],
+		const child = spawn('node', ['--input-type=module'], {
+			stdio: ['pipe', 'pipe', 'pipe'],
 		});
-		let stdout = "";
-		let stderr = "";
+		let stdout = '';
+		let stderr = '';
 
-		child.stdout.on("data", (data) => {
+		child.stdout.on('data', (data) => {
 			stdout += data.toString();
 		});
-		child.stderr.on("data", (data) => {
+		child.stderr.on('data', (data) => {
 			stderr += data.toString();
 		});
 
-		child.on("close", (code) => {
+		child.on('close', (code) => {
 			if (code !== 0) {
 				reject(new Error(`Node.js script execution error: ${stderr}`));
 			} else {
@@ -558,11 +558,11 @@ export type UpResources = {
 };
 
 export async function setUpResources(path: string): Promise<UpResources> {
-	const data = await fs.readFile(path, "utf8");
+	const data = await fs.readFile(path, 'utf8');
 	return JSON.parse(data) as UpResources;
 }
 
-export type ResourceState = "CREATED" | "DELETED" | "UNCHANGED" | "UPDATED";
+export type ResourceState = 'CREATED' | 'DELETED' | 'UNCHANGED' | 'UPDATED';
 
 export type ResourceNameToState = {
 	[name: string]: ResourceState;
@@ -577,19 +577,19 @@ function setNameToState(
 
 	for (const name in upResources) {
 		if (!(name in nameToConfig)) {
-			nameToState[name] = "DELETED";
+			nameToState[name] = 'DELETED';
 		}
 	}
 
 	for (const name in nameToConfig) {
 		if (!(name in upResources)) {
-			nameToState[name] = "CREATED";
+			nameToState[name] = 'CREATED';
 		} else {
 			if (
 				JSON.stringify(nameToConfig[name]) !==
 				JSON.stringify(upResources[name].config)
 			) {
-				nameToState[name] = "UPDATED";
+				nameToState[name] = 'UPDATED';
 				continue;
 			}
 
@@ -597,11 +597,11 @@ function setNameToState(
 				JSON.stringify(nameToDependencies[name]) !==
 				JSON.stringify(upResources[name].dependencies)
 			) {
-				nameToState[name] = "UPDATED";
+				nameToState[name] = 'UPDATED';
 				continue;
 			}
 
-			nameToState[name] = "UNCHANGED";
+			nameToState[name] = 'UNCHANGED';
 		}
 	}
 
@@ -609,17 +609,17 @@ function setNameToState(
 }
 
 export type ResourceDeployState =
-	| "CANCELED"
-	| "CREATE_COMPLETE"
-	| "CREATE_FAILED"
-	| "CREATE_IN_PROGRESS"
-	| "DELETE_COMPLETE"
-	| "DELETE_FAILED"
-	| "DELETE_IN_PROGRESS"
-	| "PENDING"
-	| "UPDATE_COMPLETE"
-	| "UPDATE_FAILED"
-	| "UPDATE_IN_PROGRESS";
+	| 'CANCELED'
+	| 'CREATE_COMPLETE'
+	| 'CREATE_FAILED'
+	| 'CREATE_IN_PROGRESS'
+	| 'DELETE_COMPLETE'
+	| 'DELETE_FAILED'
+	| 'DELETE_IN_PROGRESS'
+	| 'PENDING'
+	| 'UPDATE_COMPLETE'
+	| 'UPDATE_FAILED'
+	| 'UPDATE_IN_PROGRESS';
 
 export type ResourceNameToDeployState = {
 	[name: string]: ResourceState | ResourceDeployState;
@@ -634,7 +634,7 @@ function setGroupsWithStateChanges(
 	const res: GroupsWithStateChanges = [];
 	const seenGroups = new Set<number>();
 	for (const name in nameToState) {
-		if (nameToState[name] !== "UNCHANGED") {
+		if (nameToState[name] !== 'UNCHANGED') {
 			const group = nameToGroup[name];
 			if (!seenGroups.has(group)) {
 				res.push(group);
@@ -664,7 +664,7 @@ function setGroupToHighestDeployDepth(
 		for (const name of groupToNames[group]) {
 			// UNCHANGED resources aren't deployed, so its depth
 			// can't be the deploy depth.
-			if (nameToState[name] === "UNCHANGED") {
+			if (nameToState[name] === 'UNCHANGED') {
 				continue;
 			}
 

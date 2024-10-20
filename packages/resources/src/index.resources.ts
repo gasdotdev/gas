@@ -1,27 +1,27 @@
-import type { D1Database, Fetcher, Rpc } from "@cloudflare/workers-types";
+import type { D1Database, Fetcher, Rpc } from '@cloudflare/workers-types';
 
 export type ResourceConfigAstFunctions =
-	| "cloudflareD1"
-	| "cloudflareWorker"
-	| "cloudflareWorkerApi"
-	| "cloudflareWorkerSite";
+	| 'cloudflareD1'
+	| 'cloudflareWorker'
+	| 'cloudflareWorkerApi'
+	| 'cloudflareWorkerSite';
 
 export type D1Bindings<T extends ReadonlyArray<{ readonly binding: string }>> =
 	{
-		[P in T[number]["binding"]]: D1Database;
+		[P in T[number]['binding']]: D1Database;
 	};
 
 export type ServiceRpcBindings<
 	TBindings extends ReadonlyArray<{ readonly binding: string }>,
 	TRpc extends Rpc.WorkerEntrypointBranded | undefined = undefined,
 > = {
-	[P in TBindings[number]["binding"]]: TRpc;
+	[P in TBindings[number]['binding']]: TRpc;
 };
 
 export type ServiceFetcherBindings<
 	T extends ReadonlyArray<{ readonly binding: string }>,
 > = {
-	[P in T[number]["binding"]]: Fetcher;
+	[P in T[number]['binding']]: Fetcher;
 };
 
 export type CloudflareD1 = {
