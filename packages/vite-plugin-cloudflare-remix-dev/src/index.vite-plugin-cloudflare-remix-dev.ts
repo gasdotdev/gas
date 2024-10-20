@@ -1,14 +1,14 @@
-import { once } from "node:events";
-import type { IncomingHttpHeaders, ServerResponse } from "node:http";
-import { Readable } from "node:stream";
-import { createReadableStreamFromReadable } from "@remix-run/node";
-import { createRequestHandler } from "@remix-run/server-runtime";
-import type { ServerBuild } from "@remix-run/server-runtime";
-import { hc } from "hono/client";
-import { splitCookiesString } from "set-cookie-parser";
-import type { Plugin } from "vite";
-import type * as Vite from "vite";
-import type { ApiType } from "../../cli/src/cmds/dev-start.js";
+import { once } from 'node:events';
+import type { IncomingHttpHeaders, ServerResponse } from 'node:http';
+import { Readable } from 'node:stream';
+import { createReadableStreamFromReadable } from '@remix-run/node';
+import { createRequestHandler } from '@remix-run/server-runtime';
+import type { ServerBuild } from '@remix-run/server-runtime';
+import { hc } from 'hono/client';
+import { splitCookiesString } from 'set-cookie-parser';
+import type { Plugin } from 'vite';
+import type * as Vite from 'vite';
+import type { ApiType } from '../../cli/src/cmds/dev-start.js';
 
 /**
    * The following code is sourced from:
@@ -38,9 +38,9 @@ import type { ApiType } from "../../cli/src/cmds/dev-start.js";
   SOFTWARE.
    */
 
-const serverBuildId = "virtual:remix/server-build";
+const serverBuildId = 'virtual:remix/server-build';
 
-const NAME = "vite-plugin-cloudflare-remix-dev";
+const NAME = 'vite-plugin-cloudflare-remix-dev';
 
 export const cloudflareRemixDevPlugin = <Env>(
 	devServerPort: number,
@@ -51,14 +51,14 @@ export const cloudflareRemixDevPlugin = <Env>(
 		config: () => ({
 			ssr: {
 				resolve: {
-					externalConditions: ["workerd", "worker"],
+					externalConditions: ['workerd', 'worker'],
 				},
 			},
 		}),
 		configResolved: (viteConfig) => {
 			const pluginIndex = (name: string) =>
 				viteConfig.plugins.findIndex((plugin) => plugin.name === name);
-			const remixIndex = pluginIndex("remix");
+			const remixIndex = pluginIndex('remix');
 			if (remixIndex >= 0 && remixIndex < pluginIndex(NAME)) {
 				throw new Error(
 					`The "${NAME}" plugin should be placed before the Remix plugin in your Vite config file`,
@@ -90,11 +90,10 @@ export const cloudflareRemixDevPlugin = <Env>(
 					this.resourceName = resourceName;
 				}
 
-				// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 				async fetch(request: any) {
-					const res = await client["miniflare-run"].$post({
+					const res = await client['miniflare-run'].$post({
 						json: {
-							action: "fetch",
+							action: 'fetch',
 							resourceName: this.resourceName,
 							fetchParams: {},
 						},
@@ -106,7 +105,7 @@ export const cloudflareRemixDevPlugin = <Env>(
 			async function setEnv() {
 				const env = {};
 
-				const res = await client["dev-manifest"].$get();
+				const res = await client['dev-manifest'].$get();
 
 				if (res.ok) {
 					const data = await res.json();
@@ -122,7 +121,7 @@ export const cloudflareRemixDevPlugin = <Env>(
 					for (const dependencyName of viteBasedResourceDependencies) {
 						if (
 							data.devManifest.resources.nameToConfigAst[dependencyName]
-								.function === "cloudflareWorkerApi"
+								.function === 'cloudflareWorkerApi'
 						) {
 							const serviceFetcher = new ServiceFetcher(dependencyName);
 							// @ts-ignore
@@ -138,7 +137,7 @@ export const cloudflareRemixDevPlugin = <Env>(
 
 			let env = undefined;
 
-			if (process.env.NODE_ENV === "development") {
+			if (process.env.NODE_ENV === 'development') {
 				env = await setEnv();
 			}
 
@@ -151,7 +150,6 @@ export const cloudflareRemixDevPlugin = <Env>(
 					ctx: undefined,
 					caches: undefined,
 				},
-				// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 			} as any;
 
 			return () => {
@@ -162,7 +160,7 @@ export const cloudflareRemixDevPlugin = <Env>(
 								serverBuildId,
 							)) as ServerBuild;
 
-							const handler = createRequestHandler(build, "development");
+							const handler = createRequestHandler(build, 'development');
 							const req = fromNodeRequest(nodeReq);
 							const res = await handler(req, context);
 							await toNodeRequest(res, nodeRes);
@@ -232,13 +230,13 @@ export function fromNodeRequest(
 	nodeReq: Vite.Connect.IncomingMessage,
 ): Request {
 	const origin =
-		nodeReq.headers.origin && "null" !== nodeReq.headers.origin
+		nodeReq.headers.origin && 'null' !== nodeReq.headers.origin
 			? nodeReq.headers.origin
 			: `http://${nodeReq.headers.host}`;
 	// Use `req.originalUrl` so Remix is aware of the full path
 	invariant(
 		nodeReq.originalUrl,
-		"Expected `nodeReq.originalUrl` to be defined",
+		'Expected `nodeReq.originalUrl` to be defined',
 	);
 	const url = new URL(nodeReq.originalUrl, origin);
 	const init: RequestInit = {
@@ -246,9 +244,9 @@ export function fromNodeRequest(
 		headers: fromNodeHeaders(nodeReq.headers),
 	};
 
-	if (nodeReq.method !== "GET" && nodeReq.method !== "HEAD") {
+	if (nodeReq.method !== 'GET' && nodeReq.method !== 'HEAD') {
 		init.body = createReadableStreamFromReadable(nodeReq);
-		(init as { duplex: "half" }).duplex = "half";
+		(init as { duplex: 'half' }).duplex = 'half';
 	}
 
 	return new Request(url.href, init);
@@ -263,13 +261,13 @@ export async function toNodeRequest(res: Response, nodeRes: ServerResponse) {
 	const cookiesStrings = [];
 
 	for (const [name, value] of res.headers) {
-		if (name === "set-cookie") {
+		if (name === 'set-cookie') {
 			cookiesStrings.push(...splitCookiesString(value));
 		} else nodeRes.setHeader(name, value);
 	}
 
 	if (cookiesStrings.length) {
-		nodeRes.setHeader("set-cookie", cookiesStrings);
+		nodeRes.setHeader('set-cookie', cookiesStrings);
 	}
 
 	if (res.body) {
@@ -277,7 +275,7 @@ export async function toNodeRequest(res: Response, nodeRes: ServerResponse) {
 		const responseBody = res.body as unknown as AsyncIterable<Uint8Array>;
 		const readable = Readable.from(responseBody);
 		readable.pipe(nodeRes);
-		await once(readable, "end");
+		await once(readable, 'end');
 	} else {
 		nodeRes.end();
 	}
@@ -318,11 +316,10 @@ export function invariant<T>(
 	message?: string,
 ): asserts value is T;
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 export function invariant(value: any, message?: string) {
-	if (value === false || value === null || typeof value === "undefined") {
+	if (value === false || value === null || typeof value === 'undefined') {
 		console.error(
-			"The following error is a bug in Remix; please open an issue! https://github.com/remix-run/remix/issues/new",
+			'The following error is a bug in Remix; please open an issue! https://github.com/remix-run/remix/issues/new',
 		);
 		throw new Error(message);
 	}

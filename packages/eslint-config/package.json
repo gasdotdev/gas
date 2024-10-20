@@ -1,0 +1,8 @@
+{
+	"name": "@gasdotdev/eslint-config",
+	"version": "0.0.0",
+	"private": true,
+	"devDependencies": {
+		"@eslint/js": "^9.13.0"
+	}
+}

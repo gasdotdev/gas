@@ -1,8 +1,7 @@
-import fs from "node:fs/promises";
+import fs from 'node:fs/promises';
 
 interface ConfigJson {
 	resourceContainerDirPath?: string;
-	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	[key: string]: any;
 }
 
@@ -19,13 +18,13 @@ export async function setConfig(): Promise<Config> {
 }
 
 async function setJson(): Promise<ConfigJson> {
-	const configPath = "gas.config.json";
+	const configPath = 'gas.config.json';
 
 	try {
-		const data = await fs.readFile(configPath, "utf8");
+		const data = await fs.readFile(configPath, 'utf8');
 		return JSON.parse(data) as ConfigJson;
 	} catch (err) {
-		if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+		if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
 			return {};
 		}
 		throw new Error(
@@ -35,15 +34,15 @@ async function setJson(): Promise<ConfigJson> {
 }
 
 function setContainerDirPath(json: ConfigJson): string {
-	if (typeof json.resourceContainerDirPath === "string") {
+	if (typeof json.resourceContainerDirPath === 'string') {
 		return json.resourceContainerDirPath;
 	}
-	return "./gas";
+	return './gas';
 }
 
 function setUpJsonPath(json: ConfigJson): string {
-	if (typeof json.resourceContainerDirPath === "string") {
+	if (typeof json.resourceContainerDirPath === 'string') {
 		return json.resourceContainerDirPath;
 	}
-	return "./gas.up.json";
+	return './gas.up.json';
 }

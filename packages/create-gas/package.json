@@ -9,7 +9,10 @@
 	"engines": {
 		"node": ">=20.0.0"
 	},
-	"files": ["build/", "template/"],
+	"files": [
+		"build/",
+		"template/"
+	],
 	"homepage": "https://gas.dev",
 	"license": "MIT",
 	"repository": {
@@ -19,14 +22,17 @@
 	},
 	"scripts": {
 		"build": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts src/index.create-gas.ts && tsc --noemit",
-		"check:write": "pnpm biome check ./**/*.ts --write",
 		"clean": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/clean/index.clean.ts .turbo,build,node_modules",
-		"dev": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts src/index.create-gas.ts --watch"
+		"dev": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts src/index.create-gas.ts --watch",
+		"format": "prettier --write .",
+		"lint": "eslint ."
 	},
 	"dependencies": {
+		"@gasdotdev/eslint-config": "workspace:*",
 		"@inquirer/prompts": "^5.3.8"
 	},
 	"devDependencies": {
-		"@types/node": "^20.0.0"
+		"@types/node": "^20.0.0",
+		"eslint": "^9.13.0"
 	}
 }

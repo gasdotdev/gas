@@ -20,11 +20,13 @@
 	},
 	"scripts": {
 		"build": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts src/index.vite-plugin-cloudflare-remix-dev.ts && tsc -p tsconfig.json --emitDeclarationOnly --declaration --removeComments --stripInternal --outDir build/src",
-		"check:write": "pnpm biome check ./*.ts --write",
 		"clean": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/clean/index.clean.ts .turbo,build,node_modules",
-		"dev": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts src/index.vite-plugin-cloudflare-remix-dev.ts --watch"
+		"dev": "NODE_OPTIONS=--experimental-transform-types node ../../scripts/build-package/index.build-package.ts src/index.vite-plugin-cloudflare-remix-dev.ts --watch",
+		"format": "prettier --write .",
+		"lint": "eslint ."
 	},
 	"dependencies": {
+		"@gasdotdev/eslint-config": "workspace:*",
 		"@remix-run/node": "^2.11.1",
 		"@remix-run/server-runtime": "^2.11.1",
 		"hono": "^4.5.11",
@@ -32,6 +34,7 @@
 		"vite": "^5.1.0"
 	},
 	"devDependencies": {
-		"@types/set-cookie-parser": "^2.4.10"
+		"@types/set-cookie-parser": "^2.4.10",
+		"eslint": "^9.13.0"
 	}
 }

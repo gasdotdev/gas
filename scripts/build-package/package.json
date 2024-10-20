@@ -9,8 +9,8 @@
 		"node": ">=20.0.0"
 	},
 	"scripts": {
-		"check:write": "pnpm biome check ./*.ts --write",
-		"clean": "NODE_OPTIONS=--experimental-transform-types node ../clean/index.clean.ts .turbo,node_modules"
+		"clean": "NODE_OPTIONS=--experimental-transform-types node ../clean/index.clean.ts .turbo,node_modules",
+		"format": "prettier --write ."
 	},
 	"dependencies": {
 		"esbuild": "^0.23.1"

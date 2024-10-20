@@ -4,7 +4,9 @@
 		"build": "turbo run build --filter='./packages/*'",
 		"check:write": "turbo run check:write",
 		"clean": "turbo run clean && NODE_OPTIONS=--experimental-transform-types node ./scripts/clean/index.clean.ts .turbo,node_modules",
-		"dev": "turbo run dev --filter='./packages/*'"
+		"dev": "turbo run dev --filter='./packages/*'",
+		"format": "turbo run format",
+		"lint": "turbo run lint"
 	},
 	"license": "MIT",
 	"dependencies": {
@@ -12,8 +14,8 @@
 	},
 	"packageManager": "pnpm@9.7.0",
 	"devDependencies": {
-		"@biomejs/biome": "1.8.3",
 		"@types/node": "^20.0.0",
+		"prettier": "3.3.3",
 		"typescript": "^5.5.4"
 	}
 }
